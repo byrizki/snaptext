@@ -18,7 +18,7 @@
 
 | Module | Type | Files | Warnings | Hub |
 | ------ | ---- | ----- | -------- | --- |
-| [root](modules/root/MODULE.md) | root | 25 | - |  |
+| [root](modules/root/MODULE.md) | root | 36 | - |  |
 | [app/workflows/ocr](modules/app-workflows-ocr/MODULE.md) | js/ts | 11 | - |  |
 | [components/demo](modules/components-demo/MODULE.md) | implicit | 9 | - |  |
 | [components/landing](modules/components-landing/MODULE.md) | implicit | 5 | - |  |

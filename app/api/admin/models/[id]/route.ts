@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb, ocrModels } from "@/db";
@@ -11,7 +12,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     
     const [model] = await db.update(ocrModels).set({
       name: data.name,
-      tier: data.tier,
       provider: data.provider,
       modelId: getProviderPrefixedModelId(data.provider, data.modelId),
       temperature: data.temperature,

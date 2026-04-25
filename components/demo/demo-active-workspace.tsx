@@ -26,6 +26,7 @@ function PdfPane({ pdfUrl, filename, currentFile }: { pdfUrl?: string; filename:
   useEffect(() => {
     if (currentFile && currentFile.type === "application/pdf") {
       const url = URL.createObjectURL(currentFile);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalPdfUrl(url);
       return () => URL.revokeObjectURL(url);
     }

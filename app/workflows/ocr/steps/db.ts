@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { and, asc, eq } from "drizzle-orm";
 import { getDb, jobPages, jobResults, jobs, ocrModels, type OcrModel } from "@/db";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";

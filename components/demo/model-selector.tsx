@@ -1,26 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
 import useSWR from "swr";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { CpuIcon, FlashIcon, StarIcon, SparklesIcon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
+import { UnfoldMoreIcon } from "@hugeicons/core-free-icons";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-const TIER_CONFIGS = {
-  nano: { icon: CpuIcon, color: "text-slate-500 bg-slate-500/10 border-slate-500/20" },
-  flash: { icon: FlashIcon, color: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
-  pro: { icon: StarIcon, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
-  max: { icon: SparklesIcon, color: "text-purple-500 bg-purple-500/10 border-purple-500/20" },
-} as const;
-
-type Tier = keyof typeof TIER_CONFIGS;
 
 type OcrModel = {
   id: string;
   name: string;
-  tier: Tier;
   provider: string;
 };
 
@@ -70,7 +58,6 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
   if (models.length === 0) return null;
 
   const selectedModel = models.find((m) => m.id === value);
-  const tierCfg = selectedModel ? TIER_CONFIGS[selectedModel.tier] : null;
 
   return (
     <SelectPrimitive.Root
@@ -87,14 +74,6 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
           "focus-visible:ring-2 focus-visible:ring-blue-500/40"
         )}
       >
-        {tierCfg && selectedModel && (
-          <Badge
-            variant="outline"
-            className={`gap-1 px-1.5 py-0 border-0 bg-transparent shadow-none ${tierCfg.color}`}
-          >
-            <HugeiconsIcon icon={tierCfg.icon} size={13} />
-          </Badge>
-        )}
         <span className="truncate max-w-[160px]">
           {selectedModel ? selectedModel.name : "Select model"}
         </span>
@@ -114,7 +93,6 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
           <SelectPrimitive.Popup className="min-w-52 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-xl overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 duration-100 origin-(--transform-origin)">
             <SelectPrimitive.List className="p-1.5">
               {models.map((model) => {
-                const cfg = TIER_CONFIGS[model.tier];
                 return (
                   <SelectPrimitive.Item
                     key={model.id}
@@ -124,13 +102,6 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
                     <SelectPrimitive.ItemText className="font-medium text-zinc-800 dark:text-zinc-200">
                       {model.name}
                     </SelectPrimitive.ItemText>
-                    <Badge
-                      variant="outline"
-                      className={`gap-1 text-[10px] h-4 px-1.5 leading-none shrink-0 ${cfg.color}`}
-                    >
-                      <HugeiconsIcon icon={cfg.icon} size={11} />
-                      <span className="capitalize">{model.tier}</span>
-                    </Badge>
                   </SelectPrimitive.Item>
                 );
               })}

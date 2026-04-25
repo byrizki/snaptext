@@ -57,7 +57,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
   }, []);
 
   const pollStatus = useCallback(
-    async (id: string, attempt = 0) => {
+    async function poll(id: string, attempt = 0) {
       if (attempt >= MAX_POLL_ATTEMPTS) {
         setStatus("error");
         setError("OCR timed out. The document may be too large or complex.");
@@ -68,9 +68,20 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         const response = await fetch(`/api/demo/ocr/status/${id}`);
         const json = (await response.json()) as {
           status: string;
-          job?: any;
-          pages?: any[];
-          result?: any;
+          job?: {
+            pdfBlobUrl: string;
+            totalPages?: number;
+            createdAt?: string;
+            updatedAt?: string;
+          };
+          pages?: {
+            pageNumber: number;
+            toonOutput?: string;
+            parsedData?: Record<string, unknown>;
+          }[];
+          result?: {
+            mergedData?: Record<string, unknown>;
+          };
           error?: string;
         };
 
@@ -127,12 +138,12 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         }
 
         pollTimerRef.current = setTimeout(
-          () => void pollStatus(id, attempt + 1),
+          () => void poll(id, attempt + 1),
           currentIntervalRef.current,
         );
       } catch {
         pollTimerRef.current = setTimeout(
-          () => void pollStatus(id, attempt + 1),
+          () => void poll(id, attempt + 1),
           POLL_INTERVAL_MS,
         );
       }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { getDb, ocrModels } from "@/db";
 import { getModelId, getProviderPrefixedModelId } from "@/lib/provider-mapping";
@@ -21,7 +22,6 @@ export async function POST(request: Request) {
       .insert(ocrModels)
       .values({
         name: data.name,
-        tier: data.tier,
         provider: data.provider,
         modelId: getProviderPrefixedModelId(data.provider, data.modelId),
         temperature: data.temperature,

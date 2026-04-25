@@ -44,12 +44,12 @@ export function Features() {
             <div className="mt-auto relative w-full h-[240px] rounded-3xl border border-zinc-200/50 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/80 shadow-inner overflow-hidden">
               <div className="absolute inset-0 p-8 font-mono text-[15px] text-blue-600/80 dark:text-blue-300/80 leading-[1.8] overflow-hidden">
                 {"{\n"}
-                {"  "}<span className="text-zinc-800 dark:text-zinc-50">"invoice"</span>: {"{\n"}
-                {"    "}<span className="text-zinc-800 dark:text-zinc-50">"id"</span>: <span className="text-emerald-600 dark:text-emerald-400">"INV-2023-001"</span>,{"\n"}
-                {"    "}<span className="text-zinc-800 dark:text-zinc-50">"date"</span>: <span className="text-emerald-600 dark:text-emerald-400">"2023-10-24"</span>,{"\n"}
-                {"    "}<span className="text-zinc-800 dark:text-zinc-50">"total"</span>: <span className="text-amber-600 dark:text-amber-400">1250.00</span>,{"\n"}
-                {"    "}<span className="text-zinc-800 dark:text-zinc-50">"lineItems"</span>: [{"\n"}
-                {"      "}{"{ "}<span className="text-zinc-800 dark:text-zinc-50">"desc"</span>: <span className="text-emerald-600 dark:text-emerald-400">"API Usage"</span>, <span className="text-zinc-800 dark:text-zinc-50">"amount"</span>: <span className="text-amber-600 dark:text-amber-400">1250.00</span> {"}"}{"\n"}
+                {"  "}<span className="text-zinc-800 dark:text-zinc-50">&quot;invoice&quot;</span>: {"{\n"}
+                {"    "}<span className="text-zinc-800 dark:text-zinc-50">&quot;id&quot;</span>: <span className="text-emerald-600 dark:text-emerald-400">&quot;INV-2023-001&quot;</span>,{"\n"}
+                {"    "}<span className="text-zinc-800 dark:text-zinc-50">&quot;date&quot;</span>: <span className="text-emerald-600 dark:text-emerald-400">&quot;2023-10-24&quot;</span>,{"\n"}
+                {"    "}<span className="text-zinc-800 dark:text-zinc-50">&quot;total&quot;</span>: <span className="text-amber-600 dark:text-amber-400">1250.00</span>,{"\n"}
+                {"    "}<span className="text-zinc-800 dark:text-zinc-50">&quot;lineItems&quot;</span>: [{"\n"}
+                {"      "}{"{ "}<span className="text-zinc-800 dark:text-zinc-50">&quot;desc&quot;</span>: <span className="text-emerald-600 dark:text-emerald-400">&quot;API Usage&quot;</span>, <span className="text-zinc-800 dark:text-zinc-50">&quot;amount&quot;</span>: <span className="text-amber-600 dark:text-amber-400">1250.00</span> {"}"}{"\n"}
                 {"    "}]{"\n"}
                 {"  "}{"}"}{"\n"}
                 {"}"}

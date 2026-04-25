@@ -12,7 +12,7 @@
 | ---- | ----- | ----- |
 | `db/client.ts` | 26 |  |
 | `db/index.ts` | 2 |  |
-| `db/schema.ts` | 109 |  |
+| `db/schema.ts` | 156 |  |
 
 ---
 

@@ -7,6 +7,7 @@
 ```mermaid
 graph TD
     root[root] --> __[..]
+    root[root] --> lib[lib]
     root[root] --> _[.]
     root[root] --> workflows[workflows]
     root[root] --> ocr[ocr]
@@ -18,6 +19,8 @@ graph TD
     root[root] --> landing[landing]
     root[root] --> landing[landing]
     root[root] --> components[components]
+    root[root] --> components[components]
+    root[root] --> ui[ui]
     root[root] --> ui[ui]
     root[root] --> ui[ui]
     root[root] --> ui[ui]
@@ -31,10 +34,17 @@ graph TD
     root[root] --> hooks[hooks]
     root[root] --> lib[lib]
     root[root] --> lib[lib]
+    root[root] --> lib[lib]
+    root[root] --> lib[lib]
+    root[root] --> _better_fetch[@better-fetch]
     root[root] --> _hugeicons[@hugeicons]
     root[root] --> _hugeicons[@hugeicons]
     root[root] --> _next[@next]
     root[root] --> _vercel[@vercel]
+    root[root] --> better_auth[better-auth]
+    root[root] --> adapters[adapters]
+    root[root] --> better_auth[better-auth]
+    root[root] --> better_auth[better-auth]
     root[root] --> clsx[clsx]
     root[root] --> crypto[crypto]
     root[root] --> drizzle_orm[drizzle-orm]
@@ -46,7 +56,11 @@ graph TD
     root[root] --> font[font]
     root[root] --> next[next]
     root[root] --> next[next]
+    root[root] --> next[next]
+    root[root] --> next[next]
     root[root] --> react[react]
+    root[root] --> recharts[recharts]
+    root[root] --> sonner[sonner]
     root[root] --> swr[swr]
     root[root] --> tailwind_merge[tailwind-merge]
     root[root] --> workflow[workflow]
@@ -59,6 +73,7 @@ graph TD
 Dependencies from other modules:
 
 - `../db`
+- `../lib/auth`
 - `./globals.css`
 - `@/app/workflows/ocr`
 - `@/app/workflows/ocr/hooks`
@@ -70,23 +85,32 @@ Dependencies from other modules:
 - `@/components/landing/header`
 - `@/components/landing/hero`
 - `@/components/theme-provider`
+- `@/components/theme-toggle`
 - `@/components/ui/badge`
 - `@/components/ui/button`
-- `@/components/ui/dialog`
+- `@/components/ui/card`
 - `@/components/ui/input`
 - `@/components/ui/label`
 - `@/components/ui/select`
+- `@/components/ui/sheet`
 - `@/components/ui/table`
 - `@/components/ui/textarea`
 - `@/components/ui/tooltip`
 - `@/db`
 - `@/hooks/use-ocr-pipeline`
+- `@/lib/auth`
+- `@/lib/auth-client`
 - `@/lib/provider-mapping`
 - `@/lib/utils`
+- `@better-fetch/fetch`
 - `@hugeicons/core-free-icons`
 - `@hugeicons/react`
 - `@next/env`
 - `@vercel/blob`
+- `better-auth`
+- `better-auth/adapters/drizzle`
+- `better-auth/next-js`
+- `better-auth/react`
 - `clsx`
 - `crypto`
 - `drizzle-orm`
@@ -96,9 +120,13 @@ Dependencies from other modules:
 - `framer-motion`
 - `next-themes`
 - `next/font/google`
+- `next/image`
 - `next/link`
+- `next/navigation`
 - `next/server`
 - `react`
+- `recharts`
+- `sonner`
 - `swr`
 - `tailwind-merge`
 - `workflow/api`

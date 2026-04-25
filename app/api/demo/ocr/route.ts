@@ -2,8 +2,8 @@ import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 
-import { getDb, jobs } from "@/db";
-import { eq } from "drizzle-orm";
+import { getDb, jobs, adminSettings } from "@/db";
+import { eq, sql } from "drizzle-orm";
 import { ocrWorkflow } from "@/app/workflows/ocr";
 import { createHash } from "crypto";
 
@@ -40,6 +40,23 @@ export async function POST(request: Request): Promise<NextResponse> {
   const fileHash = createHash("sha256").update(Buffer.from(fileBuffer)).digest("hex");
 
   const db = getDb();
+
+  // Enforce global daily scan limit
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [settings] = await db.select().from(adminSettings).limit(1);
+  const dailyLimit = settings ? settings.dailyScanLimit : 20;
+
+  const { count } = await db.select({ count: sql`count(*)` }).from(jobs).where(sql`${jobs.createdAt} >= ${today}`);
+  const currentCount = Number(count);
+
+  if (currentCount >= dailyLimit) {
+    return NextResponse.json(
+      { error: `Global daily scan limit of ${dailyLimit} reached. Please try again tomorrow.` },
+      { status: 429 }
+    );
+  }
 
   // Check for an existing job with the same fileHash that is already active.
   // Prevent duplicates: reuse the active run instead of starting a new one.

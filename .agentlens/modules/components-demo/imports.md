@@ -13,7 +13,6 @@ graph TD
     components_demo[components-demo] --> demo[demo]
     components_demo[components-demo] --> demo[demo]
     components_demo[components-demo] --> demo[demo]
-    components_demo[components-demo] --> ui[ui]
     components_demo[components-demo] --> lib[lib]
     components_demo[components-demo] --> react[react]
     components_demo[components-demo] --> _hugeicons[@hugeicons]
@@ -34,7 +33,6 @@ Dependencies from other modules:
 - `@/components/demo/scanning-view`
 - `@/components/demo/upload-progress`
 - `@/components/demo/upload-zone`
-- `@/components/ui/badge`
 - `@/lib/utils`
 - `@base-ui/react/select`
 - `@hugeicons/core-free-icons`

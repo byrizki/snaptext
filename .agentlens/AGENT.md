@@ -28,8 +28,8 @@ Follow this protocol to understand the codebase efficiently:
 
 ## Freshness Check
 
-**Generated:** 2026-04-25T09:31:30Z
-**Git HEAD:** `141a3e2`
+**Generated:** 2026-04-25T10:30:48Z
+**Git HEAD:** `911e520`
 
 ### How to verify freshness
 
@@ -41,7 +41,7 @@ Follow this protocol to understand the codebase efficiently:
 
 | Module | Files | Type | Description |
 | ------ | ----- | ---- | ----------- |
-| `` | 25 | root | Module |
+| `` | 36 | root | Module |
 | `app/workflows/ocr` | 11 | js/ts | Module |
 | `components/demo` | 9 | implicit | Module |
 | `components/landing` | 5 | implicit | Module |
@@ -76,7 +76,7 @@ If documentation seems outdated or inconsistent with the code:
 
 | Metric | Value |
 | ------ | ----- |
-| Total files | 108 |
+| Total files | 119 |
 | Modules | 6 |
 | Warnings | 0 |
 

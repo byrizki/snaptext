@@ -74,13 +74,13 @@ export function Hero() {
         </div>
         <div className="p-8 md:p-10 overflow-x-auto text-left text-[15px] md:text-base leading-[1.8]">
           <pre className="font-mono text-zinc-800 dark:text-zinc-300">
-            <span className="text-violet-600 dark:text-violet-400">import</span> {"{ "} SnapText {" }"} <span className="text-violet-600 dark:text-violet-400">from</span> <span className="text-emerald-600 dark:text-emerald-400">"@snaptext/sdk"</span>;
+            <span className="text-violet-600 dark:text-violet-400">import</span> {"{ "} SnapText {" }"} <span className="text-violet-600 dark:text-violet-400">from</span> <span className="text-emerald-600 dark:text-emerald-400">&quot;@snaptext/sdk&quot;</span>;
             {"\n\n"}
             <span className="text-blue-600 dark:text-blue-400">const</span> client = <span className="text-violet-600 dark:text-violet-400">new</span> SnapText({"{ "} apiKey: process.env.SNAPTEXT_KEY {" }"});
             {"\n\n"}
-            <span className="text-zinc-400 dark:text-zinc-500">// Extract directly to structured JSON</span>{"\n"}
-            <span className="text-blue-600 dark:text-blue-400">const</span> data = <span className="text-violet-600 dark:text-violet-400">await</span> client.extract(<span className="text-emerald-600 dark:text-emerald-400">"./invoice.pdf"</span>, {"{\n"}
-            {"  "}schema: {"{ "} totalAmount: <span className="text-emerald-600 dark:text-emerald-400">"number"</span>, vendorName: <span className="text-emerald-600 dark:text-emerald-400">"string"</span> {" }\n"}
+            <span className="text-zinc-400 dark:text-zinc-500">{"// Extract directly to structured JSON"}</span>{"\n"}
+            <span className="text-blue-600 dark:text-blue-400">const</span> data = <span className="text-violet-600 dark:text-violet-400">await</span> client.extract(<span className="text-emerald-600 dark:text-emerald-400">&quot;./invoice.pdf&quot;</span>, {"{\n"}
+            {"  "}schema: {"{ "} totalAmount: <span className="text-emerald-600 dark:text-emerald-400">&quot;number&quot;</span>, vendorName: <span className="text-emerald-600 dark:text-emerald-400">&quot;string&quot;</span> {" }\n"}
             {"}"});
           </pre>
         </div>

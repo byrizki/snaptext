@@ -78,6 +78,7 @@ function LiquidScoreBadge({ label, value, colorClass }: { label: string; value: 
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function StructuredViewer({ data, depth = 0 }: { data: any; depth?: number }) {
   if (Array.isArray(data)) {
     const isArrayOfObjects = data.length > 0 && data.every(item => typeof item === 'object' && item !== null && !Array.isArray(item));
@@ -172,7 +173,7 @@ export function ResultsView({ result, onReset, onRerun }: ResultsViewProps) {
   const readability = docMetadata.readability_score !== undefined ? `${docMetadata.readability_score}%` : "N/A";
   const usability = docMetadata.data_usability_score !== undefined ? `${docMetadata.data_usability_score}%` : "N/A";
 
-  const { document_metadata, ...displayData } = result.merged;
+  const { document_metadata: _document_metadata, ...displayData } = result.merged;
   const duration = formatDuration(result.createdAt, result.updatedAt);
 
   return (

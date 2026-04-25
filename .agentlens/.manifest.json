@@ -1,36 +1,36 @@
 {
   "version": "0.5.0",
-  "generated_at": 1777109490,
+  "generated_at": 1777113048,
   "modules": {
     "components-demo": {
-      "latest_mtime": 1777109191,
+      "latest_mtime": 1777111389,
       "file_count": 9,
       "files_hash": 7323756284191596253
     },
-    "components-ui": {
-      "latest_mtime": 1777043024,
-      "file_count": 55,
-      "files_hash": 116333839749046845
-    },
-    "app-workflows-ocr": {
-      "latest_mtime": 1777109413,
-      "file_count": 11,
-      "files_hash": 10915143741147641524
-    },
-    "root": {
-      "latest_mtime": 1777108914,
-      "file_count": 25,
-      "files_hash": 11757074956971832869
-    },
     "db": {
-      "latest_mtime": 1777094596,
+      "latest_mtime": 1777111064,
       "file_count": 3,
       "files_hash": 6824255821759241283
     },
     "components-landing": {
-      "latest_mtime": 1777079665,
+      "latest_mtime": 1777111211,
       "file_count": 5,
       "files_hash": 2576994052868434202
+    },
+    "app-workflows-ocr": {
+      "latest_mtime": 1777111311,
+      "file_count": 11,
+      "files_hash": 10915143741147641524
+    },
+    "components-ui": {
+      "latest_mtime": 1777111024,
+      "file_count": 55,
+      "files_hash": 116333839749046845
+    },
+    "root": {
+      "latest_mtime": 1777112907,
+      "file_count": 36,
+      "files_hash": 14347884076718801474
     }
   }
 }

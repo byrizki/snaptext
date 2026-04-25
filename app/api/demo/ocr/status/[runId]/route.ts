@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getRun } from "workflow/api";

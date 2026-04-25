@@ -19,7 +19,7 @@
 | `components/ui/button.tsx` | 56 |  |
 | `components/ui/calendar.tsx` | 222 |  |
 | `components/ui/card.tsx` | 100 |  |
-| `components/ui/carousel.tsx` | 243 |  |
+| `components/ui/carousel.tsx` | 244 |  |
 | `components/ui/chart.tsx` | 373 |  |
 | `components/ui/checkbox.tsx` | 29 |  |
 | `components/ui/collapsible.tsx` | 21 |  |

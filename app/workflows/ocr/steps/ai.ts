@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { OcrModel } from "@/db";
 import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import type { LanguageModelV3 } from '@ai-sdk/provider';
@@ -6,7 +7,6 @@ import { DurableAgent } from "@workflow/ai/agent";
 import { stepCountIs } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import { getWritable } from "workflow";
-import { stopHook } from "../hooks";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
 import {
   buildMergeSystemPrompt,
@@ -26,9 +26,9 @@ const predefinedProvider = {
 
 function getAiModel(
   modelId: string,
-  config: any = {},
+  config: Record<string, unknown> = {},
   fileHash?: string | null,
-): { model: string | (() => Promise<LanguageModelV3>), providerConfig: any } {
+): { model: string | (() => Promise<LanguageModelV3>), providerConfig: Record<string, unknown> } {
   if (modelId.startsWith("@vercel/")) {
     const actualModelId = modelId.slice("@vercel/".length);
     const [providerId] = actualModelId.split("/");
@@ -133,13 +133,13 @@ export async function runOcrOnPage(
     const steps = streamRes.steps;
     const lastStep = steps[steps.length - 1];
     const rawToon = lastStep?.text || "";
-    let inputTokens = steps.reduce((acc, step) => acc + (step.usage?.inputTokens ?? 0), 0);
-    let outputTokens = steps.reduce((acc, step) => acc + (step.usage?.outputTokens ?? 0), 0);
-    let finishReason = lastStep?.finishReason ?? "";
+    const inputTokens = steps.reduce((acc, step) => acc + (step.usage?.inputTokens ?? 0), 0);
+    const outputTokens = steps.reduce((acc, step) => acc + (step.usage?.outputTokens ?? 0), 0);
+    const finishReason = lastStep?.finishReason ?? "";
 
     let data: Record<string, unknown> = {};
     let parseError: string | null = null;
-    let attempts = 1;
+    const attempts = 1;
 
     try {
       const trimmed = rawToon.trim();
@@ -432,7 +432,7 @@ You will receive the data for subsequent pages.`;
     };
   } catch (error) {
     console.error(`🔥 Error in mergePageData step for jobId: ${jobId}`, error);
-    const e = error as any;
+        const e = error as any;
     const msg = e?.message || '';
     const status = e?.status || e?.statusCode;
     if (status === 429 || msg.includes('429') || msg.includes('Too Many Requests') || msg.toLowerCase().includes('rate limit')) {

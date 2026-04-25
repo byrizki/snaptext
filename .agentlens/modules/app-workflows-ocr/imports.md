@@ -10,7 +10,6 @@ graph TD
     app_workflows_ocr[app-workflows-ocr] --> __[..]
     app_workflows_ocr[app-workflows-ocr] --> __[..]
     app_workflows_ocr[app-workflows-ocr] --> __[..]
-    app_workflows_ocr[app-workflows-ocr] --> __[..]
     app_workflows_ocr[app-workflows-ocr] --> _[.]
     app_workflows_ocr[app-workflows-ocr] --> _[.]
     app_workflows_ocr[app-workflows-ocr] --> _[@]
@@ -35,7 +34,6 @@ Dependencies within this module:
 
 Dependencies from other modules:
 
-- `../hooks`
 - `../image-processing`
 - `../models`
 - `../prompts`
