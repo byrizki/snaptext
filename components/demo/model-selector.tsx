@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import useSWR from "swr";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CpuIcon, FlashIcon, StarIcon, SparklesIcon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
@@ -29,23 +30,40 @@ interface ModelSelectorProps {
 }
 
 export function ModelSelector({ value, onChange }: ModelSelectorProps) {
-  const [models, setModels] = useState<OcrModel[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/models")
-      .then((res) => res.json())
-      .then((data: OcrModel[]) => {
-        setModels(data);
+  const { data: models, error, isLoading, isValidating, mutate } = useSWR<OcrModel[]>(
+    "/api/models",
+    (url) => fetch(url).then((res) => res.json()),
+    {
+      onSuccess: (data) => {
         if (data.length > 0 && !value) {
           onChange(data[0].id);
         }
-      })
-      .finally(() => setIsLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      },
+    }
+  );
 
-  if (isLoading) {
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 h-9 px-3 text-sm text-red-500 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-full">
+        <span>Failed to load</span>
+        <button 
+          onClick={(e) => { e.preventDefault(); mutate(); }} 
+          disabled={isValidating}
+          className="flex items-center gap-1.5 text-xs font-semibold underline hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isValidating && (
+            <svg className="animate-spin size-3" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          )}
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (isLoading || !models) {
     return <div className="animate-pulse h-9 w-52 bg-zinc-100 dark:bg-zinc-800 rounded-full" />;
   }
 

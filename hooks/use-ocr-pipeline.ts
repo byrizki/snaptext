@@ -14,6 +14,8 @@ export interface OcrResult {
   totalPages: number;
   pages: OcrPageResult[];
   merged: Record<string, unknown>;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface UseOcrPipelineReturn {
@@ -83,11 +85,23 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
               data: p.parsedData ?? {},
             })),
             merged: json.result?.mergedData ?? {},
+            createdAt: json.job.createdAt,
+            updatedAt: json.job.updatedAt,
           };
           setResult(mappedResult);
         }
 
         if (json.status === "completed") {
+          const mergedData = json.result?.mergedData || {};
+          const hasEmptyFlag = mergedData.empty === true;
+          const dataKeys = Object.keys(mergedData).filter(k => k !== 'document_metadata');
+          
+          if (hasEmptyFlag || dataKeys.length === 0) {
+            setStatus("error");
+            setError("No readable data could be extracted from this document.");
+            return;
+          }
+
           setStatus("completed");
           return;
         }
