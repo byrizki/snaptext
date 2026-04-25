@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 
 import { getDb, jobs, adminSettings } from "@/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, gte, count } from "drizzle-orm";
 import { ocrWorkflow } from "@/app/workflows/ocr";
 import { createHash } from "crypto";
 
@@ -48,8 +48,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   const [settings] = await db.select().from(adminSettings).limit(1);
   const dailyLimit = settings ? settings.dailyScanLimit : 20;
 
-  const { count } = await db.select({ count: sql`count(*)` }).from(jobs).where(sql`${jobs.createdAt} >= ${today}`);
-  const currentCount = Number(count);
+  const [result] = await db.select({ value: count() }).from(jobs).where(gte(jobs.createdAt, today));
+  const currentCount = result ? Number(result.value) : 0;
 
   if (currentCount >= dailyLimit) {
     return NextResponse.json(
