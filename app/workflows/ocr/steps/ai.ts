@@ -185,6 +185,12 @@ export async function runOcrOnPage(
       `🔥 Error in runOcrOnPage step (page ${pageNumber}) for jobId: ${jobId}`,
       error,
     );
+    const e = error as any;
+    const msg = e?.message || '';
+    const status = e?.status || e?.statusCode;
+    if (status === 429 || msg.includes('429') || msg.includes('Too Many Requests') || msg.toLowerCase().includes('rate limit')) {
+      throw new Error("Rate limited by AI provider (429). Please try again later.");
+    }
     throw error;
   }
 }
@@ -302,6 +308,12 @@ export async function repairOcrPageData(
       `🔥 Error in repairOcrPageData step (page ${pageResult.pageNumber}) for jobId: ${jobId}`,
       error,
     );
+    const e = error as any;
+    const msg = e?.message || '';
+    const status = e?.status || e?.statusCode;
+    if (status === 429 || msg.includes('429') || msg.includes('Too Many Requests') || msg.toLowerCase().includes('rate limit')) {
+      throw new Error("Rate limited by AI provider (429). Please try again later.");
+    }
     throw error;
   }
 }
@@ -381,7 +393,7 @@ You will receive the data for subsequent pages.`;
           content: `Here are the subsequent pages to merge:\n\n${subsequentPages}`,
         },
       ],
-      stopWhen: stepCountIs(pages.length + 3),
+      stopWhen: stepCountIs(pages.length + 10),
       writable: getWritable({ namespace: 'ocr-merge' }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
@@ -420,6 +432,12 @@ You will receive the data for subsequent pages.`;
     };
   } catch (error) {
     console.error(`🔥 Error in mergePageData step for jobId: ${jobId}`, error);
+    const e = error as any;
+    const msg = e?.message || '';
+    const status = e?.status || e?.statusCode;
+    if (status === 429 || msg.includes('429') || msg.includes('Too Many Requests') || msg.toLowerCase().includes('rate limit')) {
+      throw new Error("Rate limited by AI provider (429). Please try again later.");
+    }
     throw error;
   }
 }

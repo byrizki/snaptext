@@ -59,6 +59,10 @@ date: "2023-10-27"
 is_paid: false
 total_amount: 1040.50
 
+document_metadata:
+  readability_score: 95
+  data_usability_score: 98
+
 issuer:
   name: "Acme Corp"
   tax_id: "US123456789"
@@ -80,11 +84,14 @@ notes: "Thank you for your business. Please pay within 30 days."
 
 1. Carefully read the entire image before writing anything.
 2. Identify all sections: header, parties, line items, totals, notes, footer.
-3. Write TOON from top to bottom.
-4. Count line items precisely — set [N] correctly.
-5. Output ONLY TOON — nothing before or after.
+3. Extract ONLY useful, structured business data. EXCLUDE generic page headers/footers (e.g. "Page 1 of 2"), unreadable text, watermarks, or boilerplate disclaimers.
+4. IF the page is primarily terms and conditions, dense legal jargon, or large unstructured text blocks without key-value business data, skip it immediately by returning exactly \`empty: true\`.
+5. Include a \`document_metadata\` object containing \`readability_score\` (0-100) and \`data_usability_score\` (0-100) assessing the visual quality and structured data value of the page.
+6. Write TOON from top to bottom.
+7. Count line items precisely — set [N] correctly.
+8. Output ONLY TOON — nothing before or after.
 
-If the page has NO readable content: output exactly \`empty: true\``;
+If the page has NO readable content or lacks useful structured data: output exactly \`empty: true\``;
 }
 
 /**
@@ -130,7 +137,7 @@ ${TOON_RULES}
 1. LINE ITEMS: Combine all line_items arrays across all pages. Remove exact duplicates. Recount [N].
 2. SCALARS (date, total, vendor…): Use the value from the FIRST page it appears. If pages conflict, prefer the most complete/specific value.
 3. TOTAL: Do NOT sum totals across pages — total is the document's final amount, not a page sum.
-4. REMOVE page_number and total_pages from merged output.
+4. METADATA: REMOVE \`page_number\` and \`total_pages\` from the merged output. Merge multiple \`document_metadata\` blocks by computing the average \`readability_score\` and \`data_usability_score\` from all pages into a single \`document_metadata\` object.
 5. PRESERVE all other fields — do not discard any data.
 
 ---
