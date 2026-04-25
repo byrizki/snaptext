@@ -17,9 +17,15 @@ importers:
       '@ai-sdk/mistral':
         specifier: ^3.0.30
         version: 3.0.30(zod@4.3.6)
+      '@ai-sdk/moonshotai':
+        specifier: ^2.0.16
+        version: 2.0.16(zod@4.3.6)
       '@ai-sdk/openai':
         specifier: ^3.0.53
         version: 3.0.53(zod@4.3.6)
+      '@ai-sdk/provider':
+        specifier: ^3.0.8
+        version: 3.0.8
       '@base-ui/react':
         specifier: ^1.4.1
         version: 1.4.1(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -41,6 +47,9 @@ importers:
       '@vercel/oidc':
         specifier: ^3.2.1
         version: 3.2.1
+      '@workflow/ai':
+        specifier: ^4.1.2
+        version: 4.1.2(@opentelemetry/api@1.9.0)(ai@6.0.168(zod@4.3.6))(workflow@4.2.4(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.19(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.0)(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3))
       '@workflow/next':
         specifier: ^4.0.5
         version: 4.0.5(@opentelemetry/api@1.9.0)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
@@ -49,7 +58,7 @@ importers:
         version: 6.0.168(zod@4.3.6)
       ai-gateway-provider:
         specifier: ^3.1.3
-        version: 3.1.3(@ai-sdk/openai-compatible@2.0.41(zod@4.3.6))(@ai-sdk/provider-utils@5.0.0-beta.26(zod@4.3.6))(@ai-sdk/provider@4.0.0-beta.12)(ai@6.0.168(zod@4.3.6))(zod@4.3.6)
+        version: 3.1.3(@ai-sdk/openai-compatible@2.0.41(zod@4.3.6))(@ai-sdk/provider-utils@5.0.0-beta.26(zod@4.3.6))(@ai-sdk/provider@3.0.8)(ai@6.0.168(zod@4.3.6))(zod@4.3.6)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -124,7 +133,7 @@ importers:
         version: 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       workers-ai-provider:
         specifier: ^3.1.12
-        version: 3.1.12(@ai-sdk/provider@4.0.0-beta.12)(ai@6.0.168(zod@4.3.6))
+        version: 3.1.12(@ai-sdk/provider@3.0.8)(ai@6.0.168(zod@4.3.6))
       workflow:
         specifier: ^4.2.4
         version: 4.2.4(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.19(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.0)(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3)
@@ -248,6 +257,12 @@ packages:
 
   '@ai-sdk/mistral@3.0.30':
     resolution: {integrity: sha512-+j4IXRSk9E661cFSafmIr+XHOzwjFagawwzMOlSqwL6U4Sq4PCFLDF+oHbX5NUqNjUL7FD1zi/9lBIfa41pUvw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/moonshotai@2.0.16':
+    resolution: {integrity: sha512-UR9btjE+hOlbBftkwTVb2crokPJrT7a4wcApgLpCp0tOp4P1ADM3ZteBN8PbnTIOez/a1m/TK/MuluYGqkgb2Q==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -2584,6 +2599,16 @@ packages:
   '@vercel/queue@0.1.4':
     resolution: {integrity: sha512-wo+jCycmCX078vQSbkX+RcLvySONDCK0f9aQp5UMKQD1+B+xKt3YVbIYbZukvoHQpbm5nnk6If+ADSeK/PmCgQ==}
     engines: {node: '>=20.0.0'}
+
+  '@workflow/ai@4.1.2':
+    resolution: {integrity: sha512-6gxc/FEseaJukjZ/1J1wELg5an+Vu2d8MftbLmPAD9lXq1Z4mGImu3We+Anqkv0dBHRbu+qlvl7mtqb1YtbqkA==}
+    peerDependencies:
+      '@opentelemetry/api': ^1.0.0
+      ai: ^6
+      workflow: ^4.2.3
+    peerDependenciesMeta:
+      '@opentelemetry/api':
+        optional: true
 
   '@workflow/astro@4.0.4':
     resolution: {integrity: sha512-TVx1SY4KoYSkHS/nkhXP7wz10rYBKJ0o9oQGahS+kCBkGkD5kyKdAc4QR2IpynG/u/vVg599XJj2Bsh9m2Jsrw==}
@@ -6153,6 +6178,13 @@ snapshots:
       '@ai-sdk/provider-utils': 4.0.23(zod@4.3.6)
       zod: 4.3.6
 
+  '@ai-sdk/moonshotai@2.0.16(zod@4.3.6)':
+    dependencies:
+      '@ai-sdk/openai-compatible': 2.0.41(zod@4.3.6)
+      '@ai-sdk/provider': 3.0.8
+      '@ai-sdk/provider-utils': 4.0.23(zod@4.3.6)
+      zod: 4.3.6
+
   '@ai-sdk/openai-compatible@2.0.41(zod@4.3.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.8
@@ -8336,6 +8368,21 @@ snapshots:
       mixpart: 0.0.5
       picocolors: 1.1.1
 
+  '@workflow/ai@4.1.2(@opentelemetry/api@1.9.0)(ai@6.0.168(zod@4.3.6))(workflow@4.2.4(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.19(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.0)(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3))':
+    dependencies:
+      '@ai-sdk/provider': 3.0.8
+      '@workflow/serde': 4.1.1
+      ai: 6.0.168(zod@4.3.6)
+      workflow: 4.2.4(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.19(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.0)(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3)
+      zod: 4.3.6
+    optionalDependencies:
+      '@ai-sdk/anthropic': 3.0.71(zod@4.3.6)
+      '@ai-sdk/gateway': 3.0.104(zod@4.3.6)
+      '@ai-sdk/google': 3.0.64(zod@4.3.6)
+      '@ai-sdk/openai': 3.0.53(zod@4.3.6)
+      '@ai-sdk/xai': 3.0.83(zod@4.3.6)
+      '@opentelemetry/api': 1.9.0
+
   '@workflow/astro@4.0.4(@opentelemetry/api@1.9.0)':
     dependencies:
       '@swc/core': 1.15.3
@@ -8700,10 +8747,10 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  ai-gateway-provider@3.1.3(@ai-sdk/openai-compatible@2.0.41(zod@4.3.6))(@ai-sdk/provider-utils@5.0.0-beta.26(zod@4.3.6))(@ai-sdk/provider@4.0.0-beta.12)(ai@6.0.168(zod@4.3.6))(zod@4.3.6):
+  ai-gateway-provider@3.1.3(@ai-sdk/openai-compatible@2.0.41(zod@4.3.6))(@ai-sdk/provider-utils@5.0.0-beta.26(zod@4.3.6))(@ai-sdk/provider@3.0.8)(ai@6.0.168(zod@4.3.6))(zod@4.3.6):
     dependencies:
       '@ai-sdk/openai-compatible': 2.0.41(zod@4.3.6)
-      '@ai-sdk/provider': 4.0.0-beta.12
+      '@ai-sdk/provider': 3.0.8
       '@ai-sdk/provider-utils': 5.0.0-beta.26(zod@4.3.6)
       ai: 6.0.168(zod@4.3.6)
     optionalDependencies:
@@ -12226,9 +12273,9 @@ snapshots:
 
   wordwrap@1.0.0: {}
 
-  workers-ai-provider@3.1.12(@ai-sdk/provider@4.0.0-beta.12)(ai@6.0.168(zod@4.3.6)):
+  workers-ai-provider@3.1.12(@ai-sdk/provider@3.0.8)(ai@6.0.168(zod@4.3.6)):
     dependencies:
-      '@ai-sdk/provider': 4.0.0-beta.12
+      '@ai-sdk/provider': 3.0.8
       ai: 6.0.168(zod@4.3.6)
 
   workflow@4.2.4(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.19(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.0)(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3):
