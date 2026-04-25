@@ -1,5 +1,4 @@
 import { betterFetch } from "@better-fetch/fetch";
-import type { Session } from "better-auth/api";
 import { NextResponse, type NextRequest } from "next/server";
 
 export default async function authMiddleware(request: NextRequest) {
@@ -7,7 +6,7 @@ export default async function authMiddleware(request: NextRequest) {
     const isAdminAPI = request.nextUrl.pathname.startsWith('/api/admin');
 
     if (isAdminUI || isAdminAPI) {
-        const { data: session } = await betterFetch<Session>(
+        const { data: session } = await betterFetch<any>(
             "/api/auth/get-session",
             {
                 baseURL: request.nextUrl.origin,

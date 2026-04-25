@@ -15,7 +15,8 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth-client";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -49,9 +50,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         
         <div className="flex items-center gap-4">
           <ThemeToggle />
-          <Button variant="ghost" size="sm" asChild className="hidden md:flex">
-            <Link href="/demo">Back to App</Link>
-          </Button>
+          <Link 
+            href="/demo" 
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden md:flex")}
+          >
+            Back to App
+          </Link>
           <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <HugeiconsIcon icon={isSidebarOpen ? Cancel01Icon : Menu01Icon} size={20} />
           </Button>
