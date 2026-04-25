@@ -23,7 +23,7 @@ export interface UseOcrPipelineReturn {
   result: OcrResult | null;
   error: string | null;
   currentFile: File | null;
-  startOcr: (file: File) => Promise<void>;
+  startOcr: (file: File, ocrModelId?: string) => Promise<void>;
   rerunOcr: (jobId: string, filename: string) => Promise<void>;
   viewJob: (jobId: string, filename: string) => Promise<void>;
   stopJob: (runId: string) => Promise<void>;
@@ -127,7 +127,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
   );
 
   const startOcr = useCallback(
-    async (file: File) => {
+    async (file: File, ocrModelId?: string) => {
       clearPollTimer();
       setStatus("uploading");
       setUploadProgress(0);
@@ -143,6 +143,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
       try {
         const formData = new FormData();
         formData.append("file", file);
+        if (ocrModelId) formData.append("ocrModelId", ocrModelId);
 
         const response = await fetch("/api/demo/ocr", {
           method: "POST",

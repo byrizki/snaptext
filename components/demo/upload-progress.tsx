@@ -7,31 +7,36 @@ interface UploadProgressProps {
 
 export function UploadProgress({ progress, filename }: UploadProgressProps) {
   return (
-    <div className="w-full max-w-md text-center">
-      <div className="size-20 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-8 animate-pulse">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          className="size-10 text-blue-500"
-          stroke="currentColor"
-          strokeWidth="2.5"
-        >
-          <path
+    <div className="w-full max-w-sm text-center">
+      <div className="relative size-20 mx-auto mb-7">
+        <svg className="size-full -rotate-90" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="34" fill="none" strokeWidth="6" className="stroke-zinc-100 dark:stroke-zinc-800" />
+          <circle
+            cx="40"
+            cy="40"
+            r="34"
+            fill="none"
+            strokeWidth="6"
             strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            strokeDasharray={`${2 * Math.PI * 34}`}
+            strokeDashoffset={`${2 * Math.PI * 34 * (1 - progress / 100)}`}
+            className="stroke-blue-500 transition-all duration-300"
           />
         </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-blue-600 dark:text-blue-400">
+          {progress}%
+        </span>
       </div>
-      <h3 className="text-xl font-bold mb-1">Uploading Document...</h3>
-      <p className="text-zinc-500 text-sm mb-6 truncate max-w-xs mx-auto">{filename}</p>
-      <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+
+      <h3 className="text-xl font-bold mb-1 text-zinc-900 dark:text-white">Uploading…</h3>
+      <p className="text-zinc-400 dark:text-zinc-500 text-sm truncate max-w-xs mx-auto">{filename}</p>
+
+      <div className="mt-6 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
         <div
           className="h-full bg-gradient-to-r from-blue-500 to-violet-500 transition-all duration-300 rounded-full"
           style={{ width: `${progress}%` }}
         />
       </div>
-      <p className="text-zinc-500 text-xs mt-3">{progress}%</p>
     </div>
   );
 }
