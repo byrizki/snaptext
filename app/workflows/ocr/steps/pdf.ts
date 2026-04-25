@@ -41,13 +41,14 @@ export async function extractPdfPageImages(
     for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
       const rawImageBuffer = await renderPageAsImage(pdf, pageNumber, {
         canvasImport: () => import("@napi-rs/canvas"),
+        scale: 2.0,
       });
 
       const imageBuffer = await grayscaleImage(Buffer.from(rawImageBuffer));
 
       const blobKey = fileHash
-        ? `ocr/pages/${String(pageNumber).padStart(3, "0")}-${fileHash}.png`
-        : `ocr/pages/${String(pageNumber).padStart(3, "0")}-${Date.now()}.png`;
+        ? `pages/${String(pageNumber).padStart(3, "0")}-${fileHash}.png`
+        : `pages/${String(pageNumber).padStart(3, "0")}-${Date.now()}.png`;
 
       const { url: pageBlobUrl } = await put(
         blobKey,

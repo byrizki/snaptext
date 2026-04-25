@@ -62,7 +62,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     pdfBlobUrl = activeJob.pdfBlobUrl;
   } else {
     const uploadResult = await put(
-      `ocr/uploads/${fileHash}.pdf`,
+      `uploads/${fileHash}.pdf`,
       fileBuffer,
       { access: "public", contentType: "application/pdf" }
     );
