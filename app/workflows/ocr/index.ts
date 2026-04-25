@@ -1,4 +1,5 @@
-import { FatalError } from "workflow";
+import { FatalError, getWorkflowMetadata } from "workflow";
+import { stopHook } from "./hooks";
 
 import {
   extractPdfPageImages,
@@ -14,15 +15,24 @@ import {
   dbSaveNewPages,
   dbSaveOcrPageResult,
   dbSaveRepairPageResult,
-  dbSaveJobResult
+  dbSaveJobResult,
+  dbGetOcrModel
 } from "./steps";
 import type { OcrPageResult, OcrWorkflowResult } from "./types";
+import type { OcrModel } from "@/db";
 
 export async function ocrWorkflow(
   jobId: string,
   pdfUrl: string,
 ): Promise<OcrWorkflowResult> {
   "use workflow";
+  const { workflowRunId } = getWorkflowMetadata();
+  const stopState = { current: false };
+  const hook = stopHook.create({ token: `stop:${workflowRunId}` });
+  hook.then(() => {
+    stopState.current = true;
+  });
+
 
   try {
     await initializeJob(jobId);
@@ -30,6 +40,11 @@ export async function ocrWorkflow(
     const job = await dbGetJob(jobId);
     if (!job) {
       throw new Error(`Job ${jobId} not found`);
+    }
+
+    let ocrModelConfig: OcrModel | undefined = undefined;
+    if (job.ocrModelId) {
+      ocrModelConfig = await dbGetOcrModel(job.ocrModelId);
     }
 
     let pageImages = await dbGetExistingPages(jobId);
@@ -70,14 +85,26 @@ export async function ocrWorkflow(
         continue;
       }
 
-      let result = await runOcrOnPage(pageBlobUrl, pageNumber, jobId, job.fileHash);
+      if (stopState.current) {
+        throw new FatalError("Workflow stopped by user");
+      }
+
+      let result = await runOcrOnPage(pageBlobUrl, pageNumber, jobId, job.fileHash, ocrModelConfig, stopState);
       await dbSaveOcrPageResult(jobId, pageNumber, result);
 
+      if (stopState.current) {
+        throw new FatalError("Workflow stopped by user");
+      }
+
       if (result.data.parse_error) {
-        result = await repairOcrPageData(result, jobId, job.fileHash);
+        result = await repairOcrPageData(result, jobId, job.fileHash, ocrModelConfig, stopState);
         await dbSaveRepairPageResult(jobId, pageNumber, result);
       }
       pages.push(result);
+    }
+
+    if (stopState.current) {
+      throw new FatalError("Workflow stopped by user");
     }
 
     let merged: Record<string, unknown>;
@@ -89,7 +116,7 @@ export async function ocrWorkflow(
         `[${new Date().toISOString()}] Single-page document — merge step skipped`
       );
     } else {
-      const mergeRes = await mergePageData(pages, jobId, job.fileHash);
+      const mergeRes = await mergePageData(pages, jobId, job.fileHash, ocrModelConfig, stopState);
       merged = mergeRes.merged;
       await dbSaveJobResult(jobId, merged, mergeRes.log, mergeRes.usage);
     }

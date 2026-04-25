@@ -1,6 +1,14 @@
 import { and, asc, eq } from "drizzle-orm";
-import { getDb, jobPages, jobResults, jobs } from "@/db";
+import { getDb, jobPages, jobResults, jobs, ocrModels, type OcrModel } from "@/db";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
+
+export async function dbGetOcrModel(modelId: string): Promise<OcrModel | undefined> {
+  "use step";
+  const db = getDb();
+  return await db.query.ocrModels.findFirst({
+    where: eq(ocrModels.id, modelId),
+  });
+}
 
 export async function initializeJob(jobId: string): Promise<void> {
   "use step";

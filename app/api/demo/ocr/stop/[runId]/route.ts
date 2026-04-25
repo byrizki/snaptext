@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getRun } from "workflow/api";
+import { stopHook } from "@/app/workflows/ocr/hooks";
 
 import { getDb, jobs } from "@/db";
 
@@ -53,6 +54,12 @@ export async function POST(
       ) {
         console.error("[stop] Failed to cancel workflow run:", err);
       }
+    }
+
+    try {
+      await stopHook.resume(`stop:${workflowRunId}`, { reason: "User requested stop" });
+    } catch (err) {
+      console.error("[stop] Failed to resume stop hook:", err);
     }
   }
 

@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getWorld } from "workflow/runtime";
+import { stopHook } from "@/app/workflows/ocr/hooks";
 
 import { getDb, jobs } from "@/db";
 
@@ -46,6 +47,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     // Cancel the workflow run via World SDK event
     const world = await getWorld();
     await world.events.create(job.workflowRunId, { eventType: "run_cancelled" });
+
+    // Also trigger the modern stopHook to gracefully halt the DurableAgent tool loop
+    try {
+      await stopHook.resume(`stop:${job.workflowRunId}`, { reason: "User requested stop" });
+    } catch (err) {
+      console.error("[stop] Failed to resume stop hook:", err);
+    }
 
     // Mark the DB record as failed immediately so the UI reflects the change
     await db

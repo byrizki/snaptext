@@ -12,6 +12,7 @@ export const maxDuration = 60;
 export async function POST(request: Request): Promise<NextResponse> {
   const formData = await request.formData();
   const file = formData.get("file");
+  const ocrModelId = formData.get("ocrModelId") as string | null;
 
   if (!file || !(file instanceof File)) {
     return NextResponse.json(
@@ -76,6 +77,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       fileSize: file.size,
       fileHash,
       pdfBlobUrl,
+      ocrModelId: ocrModelId || null,
       status: "pending",
     })
     .returning({ id: jobs.id });

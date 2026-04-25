@@ -1,15 +1,13 @@
+import type { OcrModel } from "@/db";
+import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
+import type { LanguageModelV3 } from '@ai-sdk/provider';
 import { decode, encode } from "@toon-format/toon";
-import { stepCountIs, streamText } from "ai";
+import { DurableAgent } from "@workflow/ai/agent";
+import { stepCountIs } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
-import { GoogleLanguageModelOptions } from '@ai-sdk/google';
-import { MistralLanguageModelOptions } from '@ai-sdk/mistral';
-
-import {
-  OCR_MODEL_MAX_TOKENS,
-  OCR_MODEL_TEMPERATURE,
-  OCR_TEXT_MODEL,
-  OCR_VISION_MODEL
-} from "../models";
+import { getWritable } from "workflow";
+import { stopHook } from "../hooks";
+import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
 import {
   buildMergeSystemPrompt,
   buildOcrSystemPrompt,
@@ -18,22 +16,30 @@ import {
 import { buildFixToonTool, buildMergeTools } from "../tools";
 import type { OcrPageResult } from "../types";
 
-const providerOptions = {
-  mistral: {
-    // reasoningEffort: 'none',
-  } satisfies MistralLanguageModelOptions,
+const predefinedProvider = {
   google: {
-    thinkingConfig: {
-      thinkingLevel: "low",
-    },
-  } satisfies GoogleLanguageModelOptions,
+    // thinkingConfig: {
+    //   thinkingLevel: "low",
+    // },
+  } satisfies GoogleGenerativeAIProviderOptions,
 };
 
-function getAiModel(modelId: string, fileHash?: string | null) {
+function getAiModel(
+  modelId: string,
+  config: any = {},
+  fileHash?: string | null,
+): { model: string | (() => Promise<LanguageModelV3>), providerConfig: any } {
   if (modelId.startsWith("@vercel/")) {
-    return modelId.replace("@vercel/","");
+    const actualModelId = modelId.slice("@vercel/".length);
+    const [providerId] = actualModelId.split("/");
+
+    return {
+      model: actualModelId,
+      providerConfig: { ...predefinedProvider, [providerId]: config },
+    };
   }
 
+  const actualModelId = modelId.replace(/^@cf\//, "");
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
 
@@ -49,45 +55,67 @@ function getAiModel(modelId: string, fileHash?: string | null) {
     apiKey: apiToken,
   });
 
-  return gateway(modelId, {
-    chat_template_kwargs: {
-      enable_thinking: false,
-    },
-    reasoning_effort: "low",
-    sessionAffinity: fileHash || undefined
-  });
+  return {
+    model: async () => gateway(actualModelId, {
+      sessionAffinity: fileHash || undefined,
+      ...config,
+    }),
+    providerConfig: predefinedProvider,
+  };
+}
+
+export async function fetchPageImageBase64(pageBlobUrl: string): Promise<string> {
+  "use step";
+  const imageResponse = await fetch(pageBlobUrl);
+  if (!imageResponse.ok) {
+    throw new Error(
+      `Failed to fetch page image: ${imageResponse.status} ${imageResponse.statusText}`,
+    );
+  }
+  const imageArrayBuffer = await imageResponse.arrayBuffer();
+  return Buffer.from(imageArrayBuffer).toString("base64");
 }
 
 export async function runOcrOnPage(
   pageBlobUrl: string,
   pageNumber: number,
   jobId: string,
-  fileHash: string | null
+  fileHash: string | null,
+  ocrModelConfig?: OcrModel,
+  stopState?: { current: boolean },
 ): Promise<OcrPageResult & { log: string }> {
-  "use step";
   try {
-    console.log(`[Step] runOcrOnPage started for jobId: ${jobId}, page: ${pageNumber}`);
-    const model = getAiModel(OCR_VISION_MODEL, fileHash);
-    const startedAt = new Date().toISOString();
+    console.log(
+      `[Step] runOcrOnPage started for jobId: ${jobId}, page: ${pageNumber}`,
+    );
+    const modelId = ocrModelConfig?.modelId ?? OCR_VISION_MODEL;
+    const temperature = ocrModelConfig?.temperature;
+    const maxTokens = ocrModelConfig?.maxOutputTokens;
+    const config = ocrModelConfig?.config ?? {};
 
-    const imageResponse = await fetch(pageBlobUrl);
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch page image: ${imageResponse.status} ${imageResponse.statusText}`);
-    }
-    const imageArrayBuffer = await imageResponse.arrayBuffer();
-    const processedImageBuffer = Buffer.from(imageArrayBuffer);
+    const { model, providerConfig } = getAiModel(modelId, config, fileHash);
+    const startedAt = "N/A";
 
-    const stream = streamText({
-      model,
-      system: buildOcrSystemPrompt(),
-      temperature: OCR_MODEL_TEMPERATURE,
-      maxOutputTokens: OCR_MODEL_MAX_TOKENS,
-      providerOptions,
+    const base64Image = await fetchPageImageBase64(pageBlobUrl);
+
+    const agent = new DurableAgent({
+      model: model as any,
+      instructions: buildOcrSystemPrompt(),
+      temperature,
+      maxOutputTokens: maxTokens,
+      providerOptions: providerConfig,
+    });
+
+    const streamRes = await agent.stream({
       messages: [
         {
           role: "user",
           content: [
-            { type: "image", image: processedImageBuffer, mediaType: "image/png" },
+            {
+              type: "file",
+              data: base64Image,
+              mediaType: "image/png",
+            },
             {
               type: "text",
               text: `Extract all data from this document page (page ${pageNumber}) and output it in TOON format as instructed.`,
@@ -95,14 +123,19 @@ export async function runOcrOnPage(
           ],
         },
       ],
+      writable: getWritable({ namespace: 'ocr-run' }),
+      prepareStep: () => {
+        if (stopState?.current) return { toolChoice: "none" };
+        return {};
+      },
     });
 
-    const rawToon = await stream.text;
-    const usage = await stream.usage;
-    let finishReason = (await stream.finishReason) ?? "";
-
-    let inputTokens = usage.inputTokens ?? 0;
-    let outputTokens = usage.outputTokens ?? 0;
+    const steps = streamRes.steps;
+    const lastStep = steps[steps.length - 1];
+    const rawToon = lastStep?.text || "";
+    let inputTokens = steps.reduce((acc, step) => acc + (step.usage?.inputTokens ?? 0), 0);
+    let outputTokens = steps.reduce((acc, step) => acc + (step.usage?.outputTokens ?? 0), 0);
+    let finishReason = lastStep?.finishReason ?? "";
 
     let data: Record<string, unknown> = {};
     let parseError: string | null = null;
@@ -120,12 +153,13 @@ export async function runOcrOnPage(
     }
 
     const log = [
-      `[${startedAt}] OCR started — model: ${OCR_VISION_MODEL}`,
-      `[${new Date().toISOString()}] OCR complete — finish_reason: ${finishReason} (Attempts: ${attempts})`,
-      `[${new Date().toISOString()}] Tokens — input: ${inputTokens}, output: ${outputTokens}`,
+      `[${startedAt}] OCR started — model: ${modelId}`,
+      `[N/A] Raw response: ${rawToon}`,
+      `[N/A] OCR complete — finish_reason: ${finishReason} (Attempts: ${attempts})`,
+      `[N/A] Tokens — input: ${inputTokens}, output: ${outputTokens}`,
       parseError
-        ? `[${new Date().toISOString()}] TOON parse error: ${parseError}`
-        : `[${new Date().toISOString()}] TOON decoded successfully`,
+        ? `[N/A] TOON parse error: ${parseError}`
+        : `[N/A] TOON decoded successfully`,
     ].join("\n");
 
     const result = {
@@ -133,7 +167,7 @@ export async function runOcrOnPage(
       pageBlobUrl,
       rawToon,
       data,
-      model: OCR_VISION_MODEL,
+      model: modelId,
       usage: {
         promptTokens: inputTokens,
         completionTokens: outputTokens,
@@ -142,7 +176,9 @@ export async function runOcrOnPage(
       finishReason,
       log,
     };
-    console.log(`[Step] runOcrOnPage completed for jobId: ${jobId}, page: ${pageNumber}`);
+    console.log(
+      `[Step] runOcrOnPage completed for jobId: ${jobId}, page: ${pageNumber}`,
+    );
     return result;
   } catch (error) {
     console.error(
@@ -156,45 +192,65 @@ export async function runOcrOnPage(
 export async function repairOcrPageData(
   pageResult: OcrPageResult,
   jobId: string,
-  fileHash: string | null
+  fileHash: string | null,
+  ocrModelConfig?: OcrModel,
+  stopState?: { current: boolean },
 ): Promise<OcrPageResult & { log: string }> {
-  "use step";
-
   try {
     const { pageNumber, rawToon, data: initialData } = pageResult;
-    console.log(`[Step] repairOcrPageData started for jobId: ${jobId}, page: ${pageNumber}`);
+    console.log(
+      `[Step] repairOcrPageData started for jobId: ${jobId}, page: ${pageNumber}`,
+    );
     const parseError = initialData.error as string | undefined;
-    const startedAt = new Date().toISOString();
+    const startedAt = "N/A";
     let attempts = 1;
 
-    const fixModel = getAiModel(OCR_TEXT_MODEL, fileHash);
+    const modelId = OCR_TEXT_MODEL;
+    const temperature = ocrModelConfig?.temperature;
+    const maxTokens = ocrModelConfig?.maxOutputTokens;
+    const config = ocrModelConfig?.config ?? {};
+
+    const { model: fixModel, providerConfig } = getAiModel(
+      modelId,
+      config,
+      fileHash,
+    );
     let fixedData: Record<string, unknown> | null = null;
 
     let inputTokens = 0;
     let outputTokens = 0;
     let finishReason = "";
 
-    const stream = streamText({
+    const currentToon = () => rawToon;
+    const agent = new DurableAgent({
       model: fixModel,
-      system: buildRepairSystemPrompt(),
-      temperature: OCR_MODEL_TEMPERATURE,
-      maxOutputTokens: OCR_MODEL_MAX_TOKENS,
-      providerOptions,
+      instructions: buildRepairSystemPrompt(),
+      temperature,
+      providerOptions: providerConfig,
+      maxOutputTokens: maxTokens,
+      tools: {
+        patch_invalid_toon: buildFixToonTool(currentToon, (d) => {
+          fixedData = d;
+        }),
+      },
+    });
+
+    const streamRes = await agent.stream({
       messages: [
         {
           role: "user",
           content: `The following TOON data has a syntax error:\n\n\`\`\`\n${rawToon}\n\`\`\`\n\nError: ${parseError || "Unknown error"}\n\nPlease apply patches to fix it.`,
         },
       ],
-      stopWhen: stepCountIs(50),
-      tools: {
-        patch_invalid_toon: buildFixToonTool(rawToon, (d) => {
-          fixedData = d;
-        }),
+      stopWhen: stepCountIs(10),
+      writable: getWritable({ namespace: 'ocr-repair' }),
+      prepareStep: () => {
+        if (stopState?.current) return { toolChoice: "none" };
+        return {};
       },
     });
 
-    const steps = await stream.steps;
+    const steps = streamRes.steps;
 
     for (const step of steps) {
       inputTokens += step.usage.inputTokens ?? 0;
@@ -208,17 +264,22 @@ export async function repairOcrPageData(
     if (fixedData) {
       data = fixedData;
     } else {
-      data = { raw_text: rawToon, parse_error: true, error: "Failed to repair" };
+      data = {
+        raw_text: rawToon,
+        parse_error: true,
+        error: "Failed to repair",
+      };
       finalError = "Failed to repair";
     }
 
     const log = [
-      `[${startedAt}] Repair started — model: ${OCR_TEXT_MODEL}`,
-      `[${new Date().toISOString()}] Repair complete — finish_reason: ${finishReason} (Repair attempts: ${attempts - 1})`,
-      `[${new Date().toISOString()}] Repair Tokens — input: ${inputTokens}, output: ${outputTokens}`,
+      `[${startedAt}] Repair started — model: ${modelId}`,
+      `[N/A] Raw response: ${rawToon}`,
+      `[N/A] Repair complete — finish_reason: ${finishReason} (Repair attempts: ${attempts - 1})`,
+      `[N/A] Repair Tokens — input: ${inputTokens}, output: ${outputTokens}`,
       finalError
-        ? `[${new Date().toISOString()}] Repair failed: ${finalError}`
-        : `[${new Date().toISOString()}] TOON repaired successfully`,
+        ? `[N/A] Repair failed: ${finalError}`
+        : `[N/A] TOON repaired successfully`,
     ].join("\n");
 
     const result = {
@@ -232,7 +293,9 @@ export async function repairOcrPageData(
       finishReason,
       log,
     };
-    console.log(`[Step] repairOcrPageData completed for jobId: ${jobId}, page: ${pageNumber}`);
+    console.log(
+      `[Step] repairOcrPageData completed for jobId: ${jobId}, page: ${pageNumber}`,
+    );
     return result;
   } catch (error) {
     console.error(
@@ -246,19 +309,28 @@ export async function repairOcrPageData(
 export async function mergePageData(
   pages: OcrPageResult[],
   jobId: string,
-  fileHash: string | null
+  fileHash: string | null,
+  ocrModelConfig?: OcrModel,
+  stopState?: { current: boolean },
 ): Promise<{ merged: Record<string, unknown>; usage: any; log: string }> {
-  "use step";
-
   try {
-    console.log(`[Step] mergePageData started for ${pages.length} pages for jobId: ${jobId}`);
+    console.log(
+      `[Step] mergePageData started for ${pages.length} pages for jobId: ${jobId}`,
+    );
     if (pages.length === 0) {
-      console.log(`[Step] mergePageData skipped (no pages) for jobId: ${jobId}`);
+      console.log(
+        `[Step] mergePageData skipped (no pages) for jobId: ${jobId}`,
+      );
       return { merged: {}, usage: undefined, log: "No pages to merge" };
     }
 
-    const model = getAiModel(OCR_TEXT_MODEL, fileHash);
-    const startedAt = new Date().toISOString();
+    const modelId = OCR_TEXT_MODEL;
+    const temperature = ocrModelConfig?.temperature;
+    const maxTokens = ocrModelConfig?.maxOutputTokens;
+    const config = ocrModelConfig?.config ?? {};
+
+    const { model, providerConfig } = getAiModel(modelId, config, fileHash);
+    const startedAt = "N/A";
 
     let merged = pages[0].data;
     const subsequentPages = pages
@@ -280,21 +352,20 @@ You will receive the data for subsequent pages.`;
     let finishReason = "";
     let rawResponse = "";
 
-    const stream = streamText({
-      model,
-      system: systemPrompt,
-      temperature: OCR_MODEL_TEMPERATURE,
-      maxOutputTokens: OCR_MODEL_MAX_TOKENS,
-      providerOptions,
-      messages: [
-        {
-          role: "user",
-          content: `Here are the subsequent pages to merge:\n\n${subsequentPages}`,
-        },
-      ],
-      stopWhen: stepCountIs(pages.length + 3),
+    let pendingPatchToon = "";
+    const getPendingPatch = () => pendingPatchToon;
+    const setPendingPatch = (val: string) => { pendingPatchToon = val; };
+
+    const agent = new DurableAgent({
+      model: model as any,
+      instructions: systemPrompt,
+      providerOptions: providerConfig,
+      temperature,
+      maxOutputTokens: maxTokens,
       tools: {
         ...buildMergeTools(
+          getPendingPatch,
+          setPendingPatch,
           () => merged,
           (val) => {
             merged = val;
@@ -303,7 +374,22 @@ You will receive the data for subsequent pages.`;
       },
     });
 
-    const steps = await stream.steps;
+    const streamRes = await agent.stream({
+      messages: [
+        {
+          role: "user",
+          content: `Here are the subsequent pages to merge:\n\n${subsequentPages}`,
+        },
+      ],
+      stopWhen: stepCountIs(pages.length + 3),
+      writable: getWritable({ namespace: 'ocr-merge' }),
+      prepareStep: () => {
+        if (stopState?.current) return { toolChoice: "none" };
+        return {};
+      },
+    });
+
+    const steps = streamRes.steps;
 
     for (const step of steps) {
       inputTokens += step.usage.inputTokens ?? 0;
@@ -313,10 +399,11 @@ You will receive the data for subsequent pages.`;
     }
 
     const log = [
-      `[${startedAt}] Merge started — ${pages.length} pages — model: ${OCR_TEXT_MODEL}`,
-      `[${new Date().toISOString()}] Merge complete — finish_reason: ${finishReason}`,
-      `[${new Date().toISOString()}] Tokens — input: ${inputTokens}, output: ${outputTokens}`,
-      `[${new Date().toISOString()}] Merged JSON generated via TOON tool calls loop`,
+      `[${startedAt}] Merge started — ${pages.length} pages — model: ${modelId}`,
+      `[N/A] Raw response: ${rawResponse}`,
+      `[N/A] Merge complete — finish_reason: ${finishReason}`,
+      `[N/A] Tokens — input: ${inputTokens}, output: ${outputTokens}`,
+      `[N/A] Merged JSON generated via TOON tool calls loop`,
     ].join("\n");
 
     console.log(`[Step] mergePageData completed for jobId: ${jobId}`);
