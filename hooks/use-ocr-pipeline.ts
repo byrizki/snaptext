@@ -1,0 +1,258 @@
+import { useCallback, useRef, useState } from "react";
+
+export type OcrStatus = "idle" | "uploading" | "scanning" | "completed" | "error";
+
+export interface OcrPageResult {
+  pageNumber: number;
+  rawToon: string;
+  data: Record<string, unknown>;
+}
+
+export interface OcrResult {
+  runId: string;
+  pdfUrl: string;
+  totalPages: number;
+  pages: OcrPageResult[];
+  merged: Record<string, unknown>;
+}
+
+export interface UseOcrPipelineReturn {
+  status: OcrStatus;
+  uploadProgress: number;
+  runId: string | null;
+  result: OcrResult | null;
+  error: string | null;
+  currentFile: File | null;
+  startOcr: (file: File) => Promise<void>;
+  rerunOcr: (jobId: string, filename: string) => Promise<void>;
+  viewJob: (jobId: string, filename: string) => Promise<void>;
+  stopJob: (runId: string) => Promise<void>;
+  reset: () => void;
+}
+
+const POLL_INTERVAL_MS = 2500;
+const MAX_POLL_ATTEMPTS = 120;
+
+export function useOcrPipeline(): UseOcrPipelineReturn {
+  const [status, setStatus] = useState<OcrStatus>("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [result, setResult] = useState<OcrResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
+
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastStatusRef = useRef<string | null>(null);
+  const currentIntervalRef = useRef<number>(POLL_INTERVAL_MS);
+
+  const clearPollTimer = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    lastStatusRef.current = null;
+    currentIntervalRef.current = POLL_INTERVAL_MS;
+  }, []);
+
+  const pollStatus = useCallback(
+    async (id: string, attempt = 0) => {
+      if (attempt >= MAX_POLL_ATTEMPTS) {
+        setStatus("error");
+        setError("OCR timed out. The document may be too large or complex.");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/demo/ocr/status/${id}`);
+        const json = (await response.json()) as {
+          status: string;
+          job?: any;
+          pages?: any[];
+          result?: any;
+          error?: string;
+        };
+
+        if (json.job) {
+          const mappedResult: OcrResult = {
+            runId: id,
+            pdfUrl: json.job.pdfBlobUrl,
+            totalPages: json.job.totalPages ?? 0,
+            pages: (json.pages ?? []).map((p) => ({
+              pageNumber: p.pageNumber,
+              rawToon: p.toonOutput ?? "",
+              data: p.parsedData ?? {},
+            })),
+            merged: json.result?.mergedData ?? {},
+          };
+          setResult(mappedResult);
+        }
+
+        if (json.status === "completed") {
+          setStatus("completed");
+          return;
+        }
+
+        if (json.status === "failed" || json.status === "cancelled") {
+          setStatus("error");
+          setError(json.error ?? "Workflow failed unexpectedly.");
+          return;
+        }
+
+        // Fingerprint to detect progress: status + pages count + presence of result
+        const currentFingerprint = `${json.status}-${json.pages?.length || 0}-${!!json.result}`;
+
+        // Defer with increasing timing when returning same status fingerprint
+        if (currentFingerprint === lastStatusRef.current) {
+          currentIntervalRef.current = Math.min(
+            currentIntervalRef.current + 1500,
+            15000,
+          );
+        } else {
+          lastStatusRef.current = currentFingerprint;
+          currentIntervalRef.current = POLL_INTERVAL_MS;
+        }
+
+        pollTimerRef.current = setTimeout(
+          () => void pollStatus(id, attempt + 1),
+          currentIntervalRef.current,
+        );
+      } catch {
+        pollTimerRef.current = setTimeout(
+          () => void pollStatus(id, attempt + 1),
+          POLL_INTERVAL_MS,
+        );
+      }
+    },
+    [],
+  );
+
+  const startOcr = useCallback(
+    async (file: File) => {
+      clearPollTimer();
+      setStatus("uploading");
+      setUploadProgress(0);
+      setRunId(null);
+      setResult(null);
+      setError(null);
+      setCurrentFile(file);
+
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => Math.min(prev + 8, 90));
+      }, 80);
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/demo/ocr", {
+          method: "POST",
+          body: formData,
+        });
+
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+
+        if (!response.ok) {
+          const err = await response.json() as { error?: string };
+          throw new Error(err.error ?? "Upload failed");
+        }
+
+        const json = await response.json() as { runId: string };
+        setRunId(json.runId);
+        setStatus("scanning");
+
+        await pollStatus(json.runId);
+      } catch (err) {
+        clearInterval(progressInterval);
+        setStatus("error");
+        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+      }
+    },
+    [clearPollTimer, pollStatus]
+  );
+
+  const rerunOcr = useCallback(
+    async (jobId: string, filename: string) => {
+      clearPollTimer();
+      setStatus("scanning"); // Skip uploading phase
+      setUploadProgress(100);
+      setRunId(null);
+      setResult(null);
+      setError(null);
+      // We don't have the File object, but we can mock enough for the UI to display the name
+      setCurrentFile(new File([], filename));
+
+      try {
+        const response = await fetch("/api/demo/ocr/rerun", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ jobId }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json() as { error?: string };
+          throw new Error(err.error ?? "Rerun failed");
+        }
+
+        const json = await response.json() as { runId: string };
+        setRunId(json.runId);
+
+        await pollStatus(json.runId);
+      } catch (err) {
+        setStatus("error");
+        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+      }
+    },
+    [clearPollTimer, pollStatus]
+  );
+
+  const viewJob = useCallback(
+    async (jobId: string, filename: string) => {
+      clearPollTimer();
+      setStatus("scanning"); // Show loading UI while fetching
+      setUploadProgress(100);
+      setRunId(jobId);
+      setResult(null);
+      setError(null);
+      setCurrentFile(new File([], filename));
+
+      await pollStatus(jobId);
+    },
+    [clearPollTimer, pollStatus]
+  );
+
+  const stopJob = useCallback(
+    async (id: string) => {
+      clearPollTimer();
+      try {
+        await fetch("/api/demo/ocr/stop", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId: id }),
+        });
+      } catch (err) {
+        console.error("Failed to stop job:", err);
+      }
+      setStatus("idle");
+      setRunId(null);
+      setResult(null);
+      setError(null);
+      setCurrentFile(null);
+    },
+    [clearPollTimer],
+  );
+
+  const reset = useCallback(() => {
+    clearPollTimer();
+    setStatus("idle");
+    setUploadProgress(0);
+    setRunId(null);
+    setResult(null);
+    setError(null);
+    setCurrentFile(null);
+  }, [clearPollTimer]);
+
+  return { status, uploadProgress, runId, result, error, currentFile, startOcr, rerunOcr, viewJob, stopJob, reset };
+}

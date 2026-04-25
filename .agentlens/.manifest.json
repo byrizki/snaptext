@@ -1,0 +1,36 @@
+{
+  "version": "0.5.0",
+  "generated_at": 1777062102,
+  "modules": {
+    "components-landing": {
+      "latest_mtime": 1777039500,
+      "file_count": 5,
+      "files_hash": 2576994052868434202
+    },
+    "root": {
+      "latest_mtime": 1777062079,
+      "file_count": 12,
+      "files_hash": 7573520093153515521
+    },
+    "app-workflows-ocr": {
+      "latest_mtime": 1777044666,
+      "file_count": 4,
+      "files_hash": 17266191953729864808
+    },
+    "components-demo": {
+      "latest_mtime": 1777042831,
+      "file_count": 5,
+      "files_hash": 11318915168683198772
+    },
+    "components-ui": {
+      "latest_mtime": 1777043024,
+      "file_count": 55,
+      "files_hash": 116333839749046845
+    },
+    "db": {
+      "latest_mtime": 1777062093,
+      "file_count": 3,
+      "files_hash": 6824255821759241283
+    }
+  }
+}

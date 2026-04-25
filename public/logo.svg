@@ -1,0 +1,131 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Glow for the document strokes -->
+    <filter id="docGlow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Soft wide glow for the laser outer layer -->
+    <filter id="laserOuterGlow" x="-80%" y="-800%" width="260%" height="1700%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="b1" />
+      <feGaussianBlur in="SourceGraphic" stdDeviation="40" result="b2" />
+      <feMerge>
+        <feMergeNode in="b2" />
+        <feMergeNode in="b1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Tight glow for the laser core -->
+    <filter id="laserCoreGlow" x="-80%" y="-800%" width="260%" height="1700%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b1" />
+      <feMerge>
+        <feMergeNode in="b1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Gradient for the tapered laser body -->
+    <linearGradient id="laserBodyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0" />
+      <stop offset="40%" stop-color="#8b5cf6" stop-opacity="1" />
+      <stop offset="75%" stop-color="#c4b5fd" stop-opacity="1" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="1" />
+    </linearGradient>
+
+    <!-- Gradient for the laser core shine -->
+    <linearGradient id="laserCoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0" />
+      <stop offset="55%" stop-color="#ddd6fe" stop-opacity="1" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="1" />
+    </linearGradient>
+
+    <!-- Tail glow gradient (fading purple streaks trailing behind) -->
+    <linearGradient id="tailGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0" />
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.7" />
+    </linearGradient>
+
+    <!-- Clip to canvas -->
+    <clipPath id="canvas">
+      <rect width="512" height="512" />
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#canvas)">
+    <!-- ==================== DOCUMENT ==================== -->
+    <g filter="url(#docGlow)" stroke="#3b82f6" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Page body -->
+      <path
+        d="M158 140 C158 120 174 104 194 104 H306 L390 188 V376 C390 396 374 412 354 412 H194 C174 412 158 396 158 376 Z"
+        stroke-width="20"
+      />
+      <!-- Fold crease -->
+      <path
+        d="M306 104 L306 152 C306 170 322 188 340 188 H390"
+        stroke-width="20"
+      />
+      <!-- Text line 1 -->
+      <line x1="210" y1="228" x2="338" y2="228" stroke-width="18" />
+      <!-- Text line 2 -->
+      <line x1="210" y1="278" x2="338" y2="278" stroke-width="18" />
+      <!-- Text line 3 (short) -->
+      <line x1="210" y1="328" x2="280" y2="328" stroke-width="18" />
+    </g>
+
+    <!-- ==================== LASER SLASH ==================== -->
+    <!--
+      The slash goes from bottom-left (~50, 460) to top-right (~470, 50).
+      It's shaped as a tapered wedge: thin pointed tip at top-right, 
+      fanning out to a wide glowing tail at bottom-left.
+    -->
+
+    <!-- Layer 1: Widest outer purple atmosphere -->
+    <path
+      d="M 60 470 C 100 430 180 370 260 300 C 330 238 400 170 462 60
+         L 466 68
+         C 406 176 338 244 266 308 C 186 378 108 440 68 478 Z"
+      fill="#6d28d9"
+      filter="url(#laserOuterGlow)"
+      opacity="0.55"
+    />
+
+    <!-- Layer 2: Mid purple body — tapered wedge -->
+    <path
+      d="M 72 462 C 118 418 204 354 276 292 C 348 228 414 160 462 64
+         L 464 66
+         C 416 162 352 232 280 296 C 206 360 120 424 76 468 Z"
+      fill="url(#laserBodyGrad)"
+      filter="url(#laserCoreGlow)"
+      opacity="0.95"
+    />
+
+    <!-- Layer 3: Bright core — very thin, white-to-purple -->
+    <path
+      d="M 84 454 C 134 404 220 340 292 276 C 360 214 424 150 463 61
+         L 464 63
+         C 424 152 362 216 294 278 C 222 342 136 406 86 456 Z"
+      fill="url(#laserCoreGrad)"
+      opacity="1"
+    />
+
+    <!-- Layer 4: Hair-thin hot white center line -->
+    <line
+      x1="463" y1="61"
+      x2="90" y2="452"
+      stroke="white"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity="0.9"
+    />
+
+    <!-- Layer 5: Trailing motion streaks (parallel, offset lines fading left) -->
+    <line x1="80"  y1="490" x2="160" y2="420" stroke="#7c3aed" stroke-width="8"  stroke-linecap="round" opacity="0.5" filter="url(#laserOuterGlow)" />
+    <line x1="55"  y1="475" x2="150" y2="405" stroke="#8b5cf6" stroke-width="5"  stroke-linecap="round" opacity="0.45" filter="url(#laserOuterGlow)" />
+    <line x1="35"  y1="462" x2="140" y2="392" stroke="#a78bfa" stroke-width="3"  stroke-linecap="round" opacity="0.35" filter="url(#laserOuterGlow)" />
+  </g>
+</svg>
