@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getRun } from "workflow/api";
 
-import { getDb, jobPages, jobResults, jobs } from "@/db";
+import { getDb, jobPages, jobResults, jobs, ocrModels } from "@/db";
 
 interface RouteParams {
   params: Promise<{ runId: string }>;
@@ -39,6 +39,10 @@ export async function GET(
 
   let status = "unknown";
   let workflowResult = null;
+
+  const ocrModel = job?.ocrModelId 
+    ? await db.query.ocrModels.findFirst({ where: eq(ocrModels.id, job.ocrModelId) })
+    : null;
 
   try {
     // If we have a job, use its workflowRunId, otherwise assume the param itself is the runId.
@@ -91,5 +95,6 @@ export async function GET(
     pages,
     result,
     workflowResult,
+    modelName: ocrModel?.name,
   });
 }

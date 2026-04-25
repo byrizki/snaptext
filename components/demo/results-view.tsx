@@ -196,6 +196,14 @@ export function ResultsView({ result, onReset, onRerun }: ResultsViewProps) {
                 {duration}
               </div>
             )}
+            {result.modelName && (
+              <div className="px-2.5 py-1 rounded-full bg-linear-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 shadow-xs">
+                <svg viewBox="0 0 24 24" fill="none" className="size-3.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+                {result.modelName}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

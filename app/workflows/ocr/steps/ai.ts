@@ -28,7 +28,7 @@ function getAiModel(
   modelId: string,
   config: Record<string, unknown> = {},
   fileHash?: string | null,
-): { model: string | (() => Promise<LanguageModelV3>), providerConfig: Record<string, unknown> } {
+): { model: string | (() => Promise<LanguageModelV3>), providerConfig: any } {
   if (modelId.startsWith("@vercel/")) {
     const actualModelId = modelId.slice("@vercel/".length);
     const [providerId] = actualModelId.split("/");

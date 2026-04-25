@@ -14,6 +14,7 @@ export interface OcrResult {
   totalPages: number;
   pages: OcrPageResult[];
   merged: Record<string, unknown>;
+  modelName?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -96,6 +97,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
               data: p.parsedData ?? {},
             })),
             merged: json.result?.mergedData ?? {},
+            modelName: (json as any).modelName,
             createdAt: json.job.createdAt,
             updatedAt: json.job.updatedAt,
           };
