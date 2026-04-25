@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon, PencilEdit02Icon, Delete02Icon, CpuIcon, FlashIcon, StarIcon, SparklesIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
@@ -31,8 +32,11 @@ const TIER_CONFIGS = {
 };
 
 export default function ModelsAdminPage() {
-  const [models, setModels] = useState<OcrModel[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: models = [], isLoading, mutate } = useSWR<OcrModel[]>(
+    "/api/admin/models",
+    (url: string) => fetch(url).then((r) => r.json())
+  );
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<OcrModel | null>(null);
 
@@ -45,23 +49,6 @@ export default function ModelsAdminPage() {
     maxOutputTokens: 4096,
     config: {},
   });
-
-  const fetchModels = async () => {
-    try {
-      const res = await fetch("/api/admin/models");
-      if (res.ok) {
-        setModels(await res.json());
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchModels();
-  }, []);
 
   const handleOpenDialog = (model?: OcrModel) => {
     if (model) {
@@ -95,7 +82,7 @@ export default function ModelsAdminPage() {
 
       if (res.ok) {
         setIsDialogOpen(false);
-        fetchModels();
+        mutate();
       } else {
         alert("Failed to save model");
       }
@@ -109,7 +96,7 @@ export default function ModelsAdminPage() {
     if (!confirm("Are you sure you want to delete this model?")) return;
     try {
       const res = await fetch(`/api/admin/models/${id}`, { method: "DELETE" });
-      if (res.ok) fetchModels();
+      if (res.ok) mutate();
     } catch (e) {
       console.error(e);
     }

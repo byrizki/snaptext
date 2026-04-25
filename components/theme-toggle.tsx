@@ -16,7 +16,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="h-10 w-10 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-center justify-center opacity-0">
+      <div className="h-10 w-10 rounded-xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center opacity-0">
         <div className="h-5 w-5" />
       </div>
     );
@@ -27,7 +27,7 @@ export function ThemeToggle() {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="h-10 w-10 rounded-xl bg-zinc-900/50 dark:bg-zinc-900/50 light:bg-zinc-100 border border-zinc-800 dark:border-zinc-800 light:border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-zinc-50 dark:hover:text-zinc-50 light:hover:text-zinc-900 transition-colors shadow-sm"
+      className="h-10 w-10 rounded-xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors shadow-sm"
       aria-label="Toggle theme"
     >
       <div className="relative h-5 w-5 flex items-center justify-center">

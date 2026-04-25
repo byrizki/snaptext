@@ -18,7 +18,21 @@ interface DemoActiveWorkspaceProps {
   onStop: () => void;
 }
 
-function PdfPane({ pdfUrl, filename }: { pdfUrl?: string; filename: string }) {
+import { useEffect, useState } from "react";
+
+function PdfPane({ pdfUrl, filename, currentFile }: { pdfUrl?: string; filename: string, currentFile: File | null }) {
+  const [localPdfUrl, setLocalPdfUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentFile && currentFile.type === "application/pdf") {
+      const url = URL.createObjectURL(currentFile);
+      setLocalPdfUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setLocalPdfUrl(null);
+  }, [currentFile]);
+
+  const displayUrl = pdfUrl || localPdfUrl;
   return (
     <div className="h-full flex flex-col rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl shadow-lg overflow-hidden">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/60 shrink-0">
@@ -31,9 +45,9 @@ function PdfPane({ pdfUrl, filename }: { pdfUrl?: string; filename: string }) {
           {filename}
         </span>
       </div>
-      {pdfUrl ? (
+      {displayUrl ? (
         <iframe
-          src={pdfUrl}
+          src={displayUrl}
           className="flex-1 w-full bg-white"
           title="PDF Preview"
         />
@@ -103,7 +117,7 @@ export function DemoActiveWorkspace({
         style={{ minHeight: "calc(100vh - 100px)" }}
       >
         <div className="lg:sticky lg:top-24 h-[calc(100vh-116px)]">
-          <PdfPane pdfUrl={result?.pdfUrl} filename={filename} />
+          <PdfPane pdfUrl={result?.pdfUrl} filename={filename} currentFile={currentFile} />
         </div>
 
         <div className="h-[calc(100vh-116px)]">

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Clock01Icon, ViewIcon, StopIcon, RefreshIcon } from "@hugeicons/core-free-icons";
+import { Clock01Icon, ViewIcon, StopIcon, RefreshIcon, ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 export interface HistoryJob {
   id: string;
@@ -51,7 +52,7 @@ function JobRow({
   };
 
   return (
-    <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/60 bg-white dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-all shadow-sm">
+    <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/60 bg-white/40 dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-all shadow-sm">
       <div className="flex items-center gap-3 min-w-0">
         <span className={`shrink-0 size-2 rounded-full ${cfg.dot}`} />
         <div className="min-w-0">
@@ -98,50 +99,80 @@ function JobRow({
   );
 }
 
-export function HistoryList({ onRerun, onView, onStop }: HistoryListProps) {
-  const [jobs, setJobs] = useState<HistoryJob[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-  useEffect(() => {
-    fetch("/api/demo/ocr/history")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setJobs(data);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to load history:", err);
-        setIsLoading(false);
-      });
-  }, []);
+export function HistoryList({ onRerun, onView, onStop }: HistoryListProps) {
+  const [page, setPage] = useState(1);
+  
+  const { data, error, isLoading, mutate } = useSWR<{ data: HistoryJob[], meta: { totalPages: number, page: number } }>(
+    `/api/demo/ocr/history?page=${page}&limit=5`,
+    fetcher,
+    { keepPreviousData: true }
+  );
 
   const handleStop = async (job: HistoryJob) => {
     await onStop(job.id);
-    setJobs((prev) =>
-      prev.map((j) => (j.id === job.id ? { ...j, status: "failed" } : j))
-    );
+    mutate();
   };
 
-  if (isLoading) {
+  if (error) {
+    return (
+      <div className="w-full p-4 rounded-xl border border-red-200 bg-red-50 text-red-600 text-sm">
+        Failed to load history.
+      </div>
+    );
+  }
+
+  if (isLoading && !data) {
     return (
       <div className="w-full animate-pulse space-y-3">
         <div className="h-5 w-28 bg-zinc-200 dark:bg-zinc-800 rounded mb-3" />
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-14 w-full bg-zinc-100 dark:bg-zinc-800/50 rounded-xl" />
+          <div key={i} className="h-16 w-full bg-zinc-100 dark:bg-zinc-800/50 rounded-xl" />
         ))}
       </div>
     );
   }
 
-  if (jobs.length === 0) return null;
+  const jobs = data?.data ?? [];
+  const totalPages = data?.meta.totalPages ?? 1;
+
+  if (jobs.length === 0) return (
+    <div className="w-full text-center py-10 text-zinc-500 dark:text-zinc-400">
+      <p className="text-sm">No recent scans found.</p>
+    </div>
+  );
 
   return (
-    <div className="w-full">
-      <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-        <HugeiconsIcon icon={Clock01Icon} size={14} className="text-blue-500" />
-        Recent Scans
-      </h3>
-      <div className="grid gap-2">
+    <div className="w-full flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+          <HugeiconsIcon icon={Clock01Icon} size={14} className="text-blue-500" />
+          Recent Scans
+        </h3>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
+            </button>
+            <span className="text-xs font-medium text-zinc-500">
+              {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="grid gap-2 flex-1">
         {jobs.map((job) => (
           <JobRow
             key={job.id}

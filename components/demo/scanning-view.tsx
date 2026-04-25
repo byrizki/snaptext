@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 
 interface ScanningViewProps {
   filename: string;
@@ -33,18 +34,33 @@ export function ScanningView({
     totalPages > 0 ? Math.round((pagesProcessed / totalPages) * 100) : null;
 
   return (
-    <div className="relative w-full flex flex-col items-center gap-6">
-      <div className="relative w-48 bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-lg">
-        <div className="p-4 space-y-2.5">
-          <div className="w-full h-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
-          <div className="w-3/4 h-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
-          <div className="w-full h-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
-          <div className="w-1/2 h-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
-          <div className="w-full h-12 bg-zinc-50 dark:bg-zinc-900 rounded-lg" />
-          <div className="w-full h-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
-          <div className="w-2/3 h-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="relative w-full flex flex-col items-center gap-8"
+    >
+      <div className="relative w-56 bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl ring-1 ring-black/5 dark:ring-white/5">
+        <div className="p-5 space-y-3 relative z-10">
+          <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 1 }} className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+          <motion.div initial={{ width: "0%" }} animate={{ width: "75%" }} transition={{ duration: 1.2 }} className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+          <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 0.8 }} className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+          <motion.div initial={{ width: "0%" }} animate={{ width: "50%" }} transition={{ duration: 1.5 }} className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="w-full h-16 bg-zinc-50 dark:bg-zinc-900 rounded-xl" />
+          <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 1.1 }} className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+          <motion.div initial={{ width: "0%" }} animate={{ width: "66%" }} transition={{ duration: 0.9 }} className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
         </div>
-        <div className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-[0_0_18px_rgba(59,130,246,0.9)] animate-scan-laser" />
+        {/* Sophisticated Framer Motion Laser */}
+        <motion.div 
+          animate={{ y: ["0%", "100%", "0%"] }}
+          transition={{ duration: 3, ease: "easeInOut", repeat: Infinity }}
+          className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-[0_0_20px_rgba(59,130,246,0.9)] z-20"
+        />
+        <motion.div 
+          animate={{ y: ["0%", "100%", "0%"] }}
+          transition={{ duration: 3, ease: "easeInOut", repeat: Infinity }}
+          className="absolute left-0 right-0 top-0 h-32 bg-gradient-to-b from-blue-500/0 via-blue-500/10 to-blue-500/30 z-0 pointer-events-none"
+          style={{ transform: "translateY(-100%)" }}
+        />
       </div>
 
       <div className="text-center space-y-1">
@@ -119,6 +135,6 @@ export function ScanningView({
         </button>
       )}
 
-    </div>
+    </motion.div>
   );
 }
