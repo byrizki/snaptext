@@ -8,6 +8,8 @@ Follow this protocol to understand the codebase efficiently:
 2. **Navigate to relevant module** - Go to `modules/{name}/MODULE.md` for the area you're working on
 3. **Check memory.md before editing** - Review warnings and TODOs for that module
 4. **Use outline.md for large files** - Find symbols without reading entire files
+5. **Check imports.md for dependencies** - Understand module relationships before changes
+6. **Review files/*.md for complex files** - Deep documentation for high-complexity files
 
 ### Documentation Structure
 
@@ -26,8 +28,8 @@ Follow this protocol to understand the codebase efficiently:
 
 ## Freshness Check
 
-**Generated:** 2026-04-24T20:21:42Z
-**Git HEAD:** `3567d2d`
+**Generated:** 2026-04-25T09:31:30Z
+**Git HEAD:** `141a3e2`
 
 ### How to verify freshness
 
@@ -39,9 +41,9 @@ Follow this protocol to understand the codebase efficiently:
 
 | Module | Files | Type | Description |
 | ------ | ----- | ---- | ----------- |
-| `` | 12 | root | Module |
-| `app/workflows/ocr` | 4 | js/ts | Module |
-| `components/demo` | 5 | implicit | Module |
+| `` | 25 | root | Module |
+| `app/workflows/ocr` | 11 | js/ts | Module |
+| `components/demo` | 9 | implicit | Module |
 | `components/landing` | 5 | implicit | Module |
 | `components/ui` | 55 | implicit | Module |
 | `db` | 3 | js/ts | Database layer |
@@ -69,6 +71,14 @@ If documentation seems outdated or inconsistent with the code:
    ```bash
    agentlens --force
    ```
+
+## Quick Reference
+
+| Metric | Value |
+| ------ | ----- |
+| Total files | 108 |
+| Modules | 6 |
+| Warnings | 0 |
 
 ---
 

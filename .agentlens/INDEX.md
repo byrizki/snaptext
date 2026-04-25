@@ -18,9 +18,9 @@
 
 | Module | Type | Files | Warnings | Hub |
 | ------ | ---- | ----- | -------- | --- |
-| [root](modules/root/MODULE.md) | root | 12 | - |  |
-| [app/workflows/ocr](modules/app-workflows-ocr/MODULE.md) | js/ts | 4 | - |  |
-| [components/demo](modules/components-demo/MODULE.md) | implicit | 5 | - |  |
+| [root](modules/root/MODULE.md) | root | 25 | - |  |
+| [app/workflows/ocr](modules/app-workflows-ocr/MODULE.md) | js/ts | 11 | - |  |
+| [components/demo](modules/components-demo/MODULE.md) | implicit | 9 | - |  |
 | [components/landing](modules/components-landing/MODULE.md) | implicit | 5 | - |  |
 | [components/ui](modules/components-ui/MODULE.md) | implicit | 55 | - |  |
 | [db](modules/db/MODULE.md) | js/ts | 3 | - |  |

@@ -8,23 +8,13 @@
 
 | File | Lines | Large |
 | ---- | ----- | ----- |
-| `components/landing/background-grid.tsx` | 26 |  |
-| `components/landing/features.tsx` | 106 |  |
-| `components/landing/footer.tsx` | 51 |  |
-| `components/landing/header.tsx` | 42 |  |
-| `components/landing/hero.tsx` | 62 |  |
+| `components/landing/background-grid.tsx` | 55 |  |
+| `components/landing/features.tsx` | 136 |  |
+| `components/landing/footer.tsx` | 49 |  |
+| `components/landing/header.tsx` | 53 |  |
+| `components/landing/hero.tsx` | 90 |  |
 
----
+## Documentation
 
-```mermaid
-graph TD
-    components_landing[components-landing] --> next[next]
-    components_landing[components-landing] --> next[next]
-```
+- [imports.md](imports.md) - Dependencies
 
-## External Dependencies
-
-Dependencies from other modules:
-
-- `next/image`
-- `next/link`
