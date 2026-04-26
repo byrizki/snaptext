@@ -94,15 +94,15 @@ export async function dbSaveReusablePages(jobId: string, reusablePages: Array<{ 
   // Idempotent: clear any existing pages for this job before inserting to prevent duplicates on replay
   await db.delete(jobPages).where(eq(jobPages.jobId, jobId));
 
-  for (const p of reusablePages) {
-    await db
-      .insert(jobPages)
-      .values({
+  if (reusablePages.length > 0) {
+    await db.insert(jobPages).values(
+      reusablePages.map((p) => ({
         jobId,
         pageNumber: p.pageNumber,
         pageBlobUrl: p.pageBlobUrl,
         log: `[${new Date().toISOString()}] Page ${p.pageNumber} image reused from existing hash blob`,
-      });
+      }))
+    );
   }
   await db
     .update(jobs)
@@ -119,15 +119,15 @@ export async function dbSaveNewPages(jobId: string, pages: Array<{ pageNumber: n
   // Idempotent: clear any existing pages for this job before inserting to prevent duplicates on replay
   await db.delete(jobPages).where(eq(jobPages.jobId, jobId));
 
-  for (const p of pages) {
-    await db
-      .insert(jobPages)
-      .values({
+  if (pages.length > 0) {
+    await db.insert(jobPages).values(
+      pages.map((p) => ({
         jobId,
         pageNumber: p.pageNumber,
         pageBlobUrl: p.pageBlobUrl,
         log: `[${new Date().toISOString()}] Page ${p.pageNumber} image uploaded to Blob`,
-      });
+      }))
+    );
   }
   await db
     .update(jobs)
