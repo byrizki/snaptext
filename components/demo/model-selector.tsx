@@ -52,7 +52,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
   }
 
   if (isLoading || !models) {
-    return <div className="animate-pulse h-9 w-52 bg-zinc-100 dark:bg-zinc-800 rounded-full" />;
+    return <div className="animate-pulse h-9 w-24 bg-zinc-100 dark:bg-zinc-800 rounded-full" />;
   }
 
   if (models.length === 0) return null;
