@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { useRouter } from "next/navigation";
-import { BackgroundGrid } from "@/components/landing/background-grid";
-import { Header } from "@/components/landing/header";
-import { Footer } from "@/components/landing/footer";
-import { DemoIdlePanel } from "@/components/demo/demo-idle-panel";
 import { DemoActiveWorkspace } from "@/components/demo/demo-active-workspace";
+import { BackgroundGrid } from "@/components/landing/background-grid";
+import { Footer } from "@/components/landing/footer";
+import { Header } from "@/components/landing/header";
 import { useOcrPipeline } from "@/hooks/use-ocr-pipeline";
+import { AnimatePresence, motion } from "framer-motion";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-export default function DemoPage() {
+export default function JobRunPage() {
+  const params = useParams();
   const router = useRouter();
+  const id = params.id as string;
   const {
     status,
     uploadProgress,
@@ -19,71 +20,69 @@ export default function DemoPage() {
     result,
     error,
     currentFile,
-    startOcr,
+    viewJob,
     rerunOcr,
     stopJob,
-    reset,
   } = useOcrPipeline();
 
+  const [initialized, setInitialized] = useState(false);
+
   useEffect(() => {
-    if (runId && (status === "scanning" || status === "completed")) {
+    if (id && !initialized) {
+      setInitialized(true);
+      viewJob(id, "document.pdf").catch(console.error);
+    }
+  }, [id, initialized, viewJob]);
+
+  useEffect(() => {
+    if (
+      runId &&
+      runId !== id &&
+      (status === "scanning" || status === "completed")
+    ) {
       router.push(`/demo/jobs/${runId}`);
     }
-  }, [runId, status, router]);
+  }, [runId, id, status, router]);
 
-  const [selectedModelId, setSelectedModelId] = useState<string>("");
-
-  const isActive = status !== "idle";
+  const handleReset = () => {
+    router.push("/demo");
+  };
 
   return (
     <div className="relative min-h-screen bg-zinc-50 dark:bg-background text-foreground flex flex-col">
       <BackgroundGrid />
       <Header />
 
-      <main className="relative z-10 flex-1 flex flex-col pt-20">
+      <main className="relative z-10 flex-1 flex flex-col py-20 mx-auto max-w-[95vw]">
         <AnimatePresence mode="wait">
-          {!isActive ? (
-            <motion.div
-              key="idle"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3 }}
-              className="flex-1 flex flex-col"
-            >
-              <DemoIdlePanel
-                selectedModelId={selectedModelId}
-                onModelChange={setSelectedModelId}
-                onFileSelect={(file, schema) => startOcr(file, selectedModelId, schema)}
-                onRerun={rerunOcr}
-                onView={async (jobId) => router.push(`/demo/jobs/${jobId}`)}
-                onStop={stopJob}
-              />
-              <Footer />
-            </motion.div>
-          ) : (
+          {status !== "idle" && (
             <motion.div
               key="active"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
-              className="flex-1 flex flex-col"
+              className="flex-1 flex flex-col w-full"
             >
               <DemoActiveWorkspace
                 status={status}
                 uploadProgress={uploadProgress}
-                runId={runId}
+                runId={runId || id}
                 result={result}
                 error={error}
                 currentFile={currentFile}
-                onReset={reset}
-                onStop={() => runId && stopJob(runId)}
+                onReset={handleReset}
+                onStop={status === "scanning" ? () => {
+                  const jobId = runId || id;
+                  if (jobId) stopJob(jobId);
+                } : undefined}
               />
             </motion.div>
           )}
         </AnimatePresence>
       </main>
+
+      <Footer />
 
       <style
         dangerouslySetInnerHTML={{

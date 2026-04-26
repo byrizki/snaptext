@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Share08Icon, Tick01Icon } from "@hugeicons/core-free-icons";
 
 import type { OcrResult } from "@/hooks/use-ocr-pipeline";
 
 interface ResultsViewProps {
   result: OcrResult;
   onReset: () => void;
-  onRerun: () => void;
 }
 
 function formatDuration(start?: string, end?: string) {
@@ -25,7 +26,7 @@ function formatDuration(start?: string, end?: string) {
 
 function JsonViewer({ data }: { data: Record<string, unknown> }) {
   return (
-    <pre className="font-mono text-sm text-blue-600 dark:text-blue-300 leading-relaxed overflow-x-auto whitespace-pre-wrap break-words">
+    <pre className="font-mono text-sm text-blue-600 dark:text-blue-300 leading-relaxed overflow-x-auto whitespace-pre-wrap">
       {JSON.stringify(data, null, 2)}
     </pre>
   );
@@ -58,7 +59,7 @@ function LiquidScoreBadge({ label, value, colorClass }: { label: string; value: 
           <div className={`absolute inset-0 ${colorClass} opacity-30 dark:opacity-20`} />
           
           {/* Wave cutouts placed at the very top of the liquid body */}
-          <div className="absolute top-0 left-1/2 w-[300px] h-[300px] -translate-x-1/2 -translate-y-[285px] pointer-events-none">
+          <div className="absolute top-0 left-1/2 w-75 h-75 -translate-x-1/2 -translate-y-71.25 pointer-events-none">
             <motion.div
               className="absolute inset-0 rounded-[40%] bg-white dark:bg-zinc-900"
               animate={{ rotate: 360 }}
@@ -84,42 +85,42 @@ function StructuredViewer({ data, depth = 0 }: { data: any; depth?: number }) {
     const isArrayOfObjects = data.length > 0 && data.every(item => typeof item === 'object' && item !== null && !Array.isArray(item));
     
     if (isArrayOfObjects) {
-      const allKeys = Array.from(new Set(data.flatMap(item => Object.keys(item))));
-      
-      return (
-        <div className={`w-full overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800/80 ${depth > 0 ? 'ml-1 my-2' : ''}`}>
-          <table className="w-full text-left border-collapse min-w-max">
-            <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                {allKeys.map(key => (
-                  <th key={key} className="p-3 text-[10px] text-zinc-400 font-semibold uppercase tracking-wider bg-zinc-50 dark:bg-zinc-900/40 first:rounded-tl-lg last:rounded-tr-lg">
-                    {key.replace(/_/g, " ")}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50 bg-white dark:bg-zinc-950/20">
-              {data.map((item, i) => (
-                <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 transition-colors">
-                  {allKeys.map(key => {
-                    const val = item[key];
-                    const isComplex = typeof val === 'object' && val !== null;
-                    return (
-                      <td key={key} className="p-3 text-sm text-zinc-800 dark:text-zinc-200 align-top">
-                        {isComplex ? (
-                           <StructuredViewer data={val} depth={depth + 1} />
-                        ) : (
-                           <span className="font-medium text-zinc-900 dark:text-zinc-100 break-all">{val !== undefined && val !== null ? String(val) : ''}</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      const allKeys = Array.from(new Set(data.flatMap((item: Record<string, unknown>) => Object.keys(item))));
+      const hasComplexValues = data.some((item: Record<string, unknown>) =>
+        allKeys.some(key => typeof item[key] === 'object' && item[key] !== null)
       );
+      const isTableSuitable = !hasComplexValues;
+
+      if (isTableSuitable) {
+        return (
+          <div className={`w-full overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800/80 ${depth > 0 ? 'ml-1 my-2' : ''}`}>
+            <table className="w-full text-left border-collapse min-w-max">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                  {allKeys.map(key => (
+                    <th key={key} className="p-3 text-[10px] text-zinc-400 font-semibold uppercase tracking-wider bg-zinc-50 dark:bg-zinc-900/40 first:rounded-tl-lg last:rounded-tr-lg">
+                      {key.replace(/_/g, " ")}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50 bg-white dark:bg-zinc-950/20">
+                {data.map((item: Record<string, unknown>, i: number) => (
+                  <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 transition-colors">
+                    {allKeys.map(key => (
+                      <td key={key} className="p-3 text-sm text-zinc-800 dark:text-zinc-200 align-top">
+                        <span className="font-medium text-zinc-900 dark:text-zinc-100 break-all">
+                          {item[key] !== undefined && item[key] !== null ? String(item[key]) : ''}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
     }
 
     return (
@@ -166,8 +167,20 @@ function StructuredViewer({ data, depth = 0 }: { data: any; depth?: number }) {
   return <span className="font-medium">{String(data)}</span>;
 }
 
-export function ResultsView({ result, onReset, onRerun }: ResultsViewProps) {
+export function ResultsView({ result, onReset }: ResultsViewProps) {
   const [activeTab, setActiveTab] = useState<"structured" | "json">("structured");
+  const [isCopied, setIsCopied] = useState(false);
+  
+  const handleShare = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy URL", err);
+    }
+  };
   
   const docMetadata = (result.merged.document_metadata || {}) as Record<string, unknown>;
   const readability = docMetadata.readability_score !== undefined ? `${docMetadata.readability_score}%` : "N/A";
@@ -180,13 +193,7 @@ export function ResultsView({ result, onReset, onRerun }: ResultsViewProps) {
     <div className="w-full animate-fade-in flex flex-col gap-5 h-full overflow-hidden">
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400">
-          <div className="size-7 rounded-full bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="none" className="size-4" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
           <div className="flex items-center gap-3">
-            <span className="font-bold text-lg text-zinc-900 dark:text-white">Extraction Complete</span>
             {duration && (
               <div className="px-2.5 py-1 rounded-full bg-linear-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 shadow-xs">
                 <svg viewBox="0 0 24 24" fill="none" className="size-3.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -216,13 +223,11 @@ export function ResultsView({ result, onReset, onRerun }: ResultsViewProps) {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={onRerun}
-            className="h-8 px-4 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-1.5"
+            onClick={handleShare}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
-            <svg viewBox="0 0 24 24" fill="none" className="size-3.5" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Rerun
+            <HugeiconsIcon icon={isCopied ? Tick01Icon : Share08Icon} size={14} className={isCopied ? "text-emerald-500" : ""} />
+            {isCopied ? "Copied" : "Share"}
           </button>
           <button
             onClick={onReset}
