@@ -1,3 +1,4 @@
+import pMap from "p-map";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { FatalError, getWorkflowMetadata } from "workflow";
 import { stopHook } from "./hooks";
@@ -67,15 +68,14 @@ export async function ocrWorkflow(
       }
     }
 
-    const pages: OcrPageResult[] = [];
-    for (const p of pageImages) {
+    const processPage = async (p: any): Promise<OcrPageResult | null> => {
       const { pageNumber, pageBlobUrl } = p as any;
-      if (!pageBlobUrl) continue;
+      if (!pageBlobUrl) return null;
 
       // If this page was already successfully OCR'd (e.g. from a previous run attempt),
       // skip reprocessing and reconstruct the result from the DB record.
       if ((p as any).parsedData) {
-        pages.push({
+        return {
           pageNumber,
           pageBlobUrl,
           rawToon: (p as any).toonOutput ?? "",
@@ -87,8 +87,7 @@ export async function ocrWorkflow(
             totalTokens: (p as any).totalTokens ?? 0,
           },
           finishReason: (p as any).finishReason ?? "",
-        });
-        continue;
+        };
       }
 
       if (stopState.current) {
@@ -106,8 +105,14 @@ export async function ocrWorkflow(
         result = await repairOcrPageData(result, jobId, job.fileHash, ocrModelConfig, stopState, toonSchemaTemplate);
         await dbSaveRepairPageResult(jobId, pageNumber, result);
       }
-      pages.push(result);
-    }
+      return result;
+    };
+
+    const pagesResults = await pMap(pageImages, processPage, { concurrency: 5 });
+    const pages = pagesResults.filter((p): p is OcrPageResult => p !== null);
+
+    // Sort pages by pageNumber to maintain original order since pMap might process out of order
+    pages.sort((a, b) => a.pageNumber - b.pageNumber);
 
     if (stopState.current) {
       throw new FatalError("Workflow stopped by user");
