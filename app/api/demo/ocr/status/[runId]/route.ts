@@ -96,5 +96,6 @@ export async function GET(
     result,
     workflowResult,
     modelName: ocrModel?.name,
+    hasSchema: !!job?.jsonSchema,
   });
 }

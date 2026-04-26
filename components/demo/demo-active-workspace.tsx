@@ -14,28 +14,23 @@ interface DemoActiveWorkspaceProps {
   error: string | null;
   currentFile: File | null;
   onReset: () => void;
-  onRerun: () => void;
-  onStop: () => void;
+  onStop?: () => void;
 }
+import { useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
-import { useEffect, useState } from "react";
+function PdfPane({ pdfUrl, filename }: { pdfUrl?: string; filename: string }) {
+  const stableUrlRef = useRef<string | null>(null);
+  if (pdfUrl) stableUrlRef.current = pdfUrl;
+  const displayUrl = stableUrlRef.current;
 
-function PdfPane({ pdfUrl, filename, currentFile }: { pdfUrl?: string; filename: string, currentFile: File | null }) {
-  const [localPdfUrl, setLocalPdfUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (currentFile && currentFile.type === "application/pdf") {
-      const url = URL.createObjectURL(currentFile);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLocalPdfUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-    setLocalPdfUrl(null);
-  }, [currentFile]);
-
-  const displayUrl = pdfUrl || localPdfUrl;
   return (
-    <div className="h-full flex flex-col rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl shadow-lg overflow-hidden">
+    <motion.div
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="h-full flex flex-col rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl shadow-lg overflow-hidden"
+    >
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/60 shrink-0">
         <div className="flex gap-1.5">
           <span className="size-2.5 rounded-full bg-zinc-200 dark:bg-zinc-700" />
@@ -48,54 +43,53 @@ function PdfPane({ pdfUrl, filename, currentFile }: { pdfUrl?: string; filename:
       </div>
       {displayUrl ? (
         <iframe
-          src={displayUrl}
+          src={`${displayUrl}#toolbar=0`}
           className="flex-1 w-full bg-white"
           title="PDF Preview"
         />
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-zinc-300 dark:text-zinc-700">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            className="size-14"
-            stroke="currentColor"
-            strokeWidth="1"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-            />
-          </svg>
-          <p className="text-sm font-medium text-zinc-400 dark:text-zinc-600 animate-pulse">
-            Preparing preview…
-          </p>
+        <div className="flex-1 flex flex-col gap-3 p-5">
+          <div className="flex flex-col gap-2.5 flex-1">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-3 rounded-full bg-zinc-100 dark:bg-zinc-800 animate-pulse"
+                style={{
+                  width: `${[100, 85, 92, 70, 88, 60, 95, 78, 84, 65, 90, 55][i]}%`,
+                  animationDelay: `${i * 0.05}s`,
+                }}
+              />
+            ))}
+            <div className="h-20 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse mt-1" style={{ animationDelay: "0.6s" }} />
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={`b-${i}`}
+                className="h-3 rounded-full bg-zinc-100 dark:bg-zinc-800 animate-pulse"
+                style={{
+                  width: `${[88, 72, 95, 68, 80][i]}%`,
+                  animationDelay: `${(i + 12) * 0.05}s`,
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
-function ResultPane({
-  children,
-  isCompleted,
-}: {
-  children: React.ReactNode;
-  isCompleted: boolean;
-}) {
+function ResultPane({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative group h-full flex flex-col">
       <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-blue-500 via-violet-500 to-emerald-500 blur-sm opacity-15 dark:opacity-20 group-hover:opacity-25 transition-opacity duration-700" />
-      <div
-        className={`relative h-full rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl shadow-lg overflow-hidden flex flex-col transition-all duration-300 ${
-          isCompleted ? "p-5 justify-start" : "p-8 items-center justify-center"
-        }`}
-      >
+      <div className="relative h-full rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl shadow-lg overflow-hidden flex flex-col p-5">
         {children}
       </div>
     </div>
   );
 }
+
+const TRANSITION = { duration: 0.3, ease: "easeInOut" } as const;
 
 export function DemoActiveWorkspace({
   status,
@@ -105,45 +99,81 @@ export function DemoActiveWorkspace({
   error,
   currentFile,
   onReset,
-  onRerun,
   onStop,
 }: DemoActiveWorkspaceProps) {
-  const filename = currentFile?.name ?? "document.pdf";
-  const isCompleted = status === "completed";
+  const filename = result?.filename ?? currentFile?.name ?? "document.pdf";
 
   return (
-    <div className="flex-1 flex flex-col px-4 md:px-6 py-4">
+    <div className="flex-1 flex flex-col w-[95vw] mx-auto py-4">
       <div
-        className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 w-full"
         style={{ minHeight: "calc(100vh - 100px)" }}
       >
-        <div className="lg:sticky lg:top-24 h-[calc(100vh-116px)]">
-          <PdfPane pdfUrl={result?.pdfUrl} filename={filename} currentFile={currentFile} />
+        <div className="lg:sticky lg:top-24 h-[calc(100vh-116px)] min-w-0">
+          <PdfPane pdfUrl={result?.pdfUrl} filename={filename} />
         </div>
 
-        <div className="h-[calc(100vh-116px)]">
-          <ResultPane isCompleted={isCompleted}>
-            {status === "uploading" && (
-              <UploadProgress progress={uploadProgress} filename={filename} />
-            )}
-            {status === "scanning" && (
-              <ScanningView
-                filename={filename}
-                runId={runId}
-                pagesProcessed={result?.pages?.length ?? 0}
-                totalPages={result?.totalPages ?? 0}
-                onStop={onStop}
-              />
-            )}
-            {status === "completed" && result && (
-              <ResultsView result={result} onReset={onReset} onRerun={onRerun} />
-            )}
-            {status === "error" && (
-              <ErrorView
-                message={error ?? "An unexpected error occurred."}
-                onReset={onReset}
-              />
-            )}
+        <div className="h-[calc(100vh-116px)] w-full flex-1 min-w-0">
+          <ResultPane>
+            <AnimatePresence mode="wait">
+              {status === "uploading" && (
+                <motion.div
+                  key="uploading"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={TRANSITION}
+                  className="w-full h-full flex items-center justify-center"
+                >
+                  <UploadProgress progress={uploadProgress} filename={filename} />
+                </motion.div>
+              )}
+              {status === "scanning" && (
+                <motion.div
+                  key="scanning"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={TRANSITION}
+                  className="w-full h-full flex items-center justify-center"
+                >
+                  <ScanningView
+                    filename={filename}
+                    runId={runId}
+                    pagesProcessed={result?.pages?.length ?? 0}
+                    totalPages={result?.totalPages ?? 0}
+                    onStop={onStop}
+                  />
+                </motion.div>
+              )}
+              {status === "completed" && result && (
+                <motion.div
+                  key="completed"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={TRANSITION}
+                  className="w-full h-full flex flex-col"
+                >
+                  <ResultsView result={result} onReset={onReset} />
+                </motion.div>
+              )}
+              {status === "error" && (
+                <motion.div
+                  key="error"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={TRANSITION}
+                  className="w-full h-full flex items-center justify-center"
+                >
+                  <ErrorView
+                    message={error ?? "An unexpected error occurred."}
+                    onReset={onReset}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </ResultPane>
         </div>
       </div>

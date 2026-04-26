@@ -44,8 +44,12 @@ notes[2]: "hello, world","line1\\nline2"
 /**
  * OCR extraction system prompt — used for vision model page scanning.
  */
-export function buildOcrSystemPrompt(): string {
-  return `You are a document OCR engine. Read the document image and output ALL visible data in TOON format.
+export function buildOcrSystemPrompt(toonSchemaTemplate?: string): string {
+  const schemaInstruction = toonSchemaTemplate
+    ? `\n## REQUIRED SCHEMA\n\nYou MUST extract data conforming EXACTLY to the following TOON structure.\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n\n> **ALWAYS append** a \`document_metadata\` block (\`readability_score\` + \`data_usability_score\`) after the schema fields, even when a custom schema is provided.\n`
+    : "";
+
+  return `You are a document OCR engine. Read the document image and output ALL visible data in TOON format.${schemaInstruction}
 
 ${TOON_RULES}
 
@@ -97,8 +101,12 @@ If the page has NO readable content or lacks useful structured data: output exac
 /**
  * Repair system prompt — used to fix malformed TOON output via tool calls.
  */
-export function buildRepairSystemPrompt(): string {
-  return `You are a TOON syntax repair engine. Fix the provided malformed TOON using the patch_invalid_toon tool.
+export function buildRepairSystemPrompt(toonSchemaTemplate?: string): string {
+  const schemaInstruction = toonSchemaTemplate
+    ? `\n## REQUIRED SCHEMA\n\nThe correct TOON data MUST conform to this structure:\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n`
+    : "";
+
+  return `You are a TOON syntax repair engine. Fix the provided malformed TOON using the patch_invalid_toon tool.${schemaInstruction}
 
 ${TOON_RULES}
 
@@ -123,8 +131,12 @@ NEVER rewrite the entire string. Apply surgical minimal patches only.`;
 /**
  * Merge system prompt — used to consolidate multi-page TOON data into one object.
  */
-export function buildMergeSystemPrompt(): string {
-  return `You are a document data merge engine. Merge structured TOON data from multiple pages into one cohesive TOON object.
+export function buildMergeSystemPrompt(toonSchemaTemplate?: string): string {
+  const schemaInstruction = toonSchemaTemplate
+    ? `\n## REQUIRED SCHEMA\n\nYou MUST merge data such that the final output conforms EXACTLY to the following TOON structure. Ignore unneeded properties.\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n`
+    : "";
+
+  return `You are a document data merge engine. Merge structured TOON data from multiple pages into one cohesive TOON object.${schemaInstruction}
 
 Use update_merged_data to submit merged data. If it fails due to a TOON error, use patch_invalid_toon to fix the patch.
 

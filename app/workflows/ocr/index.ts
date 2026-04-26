@@ -48,6 +48,11 @@ export async function ocrWorkflow(
       ocrModelConfig = await dbGetOcrModel(job.ocrModelId);
     }
 
+    // Dynamically import jsonSchemaToToon to avoid workflow serialization issues if needed
+    // or we can import it statically. We'll import it statically at the top.
+    const schemaToToonModule = await import("@/lib/schema-to-toon");
+    const toonSchemaTemplate = job.jsonSchema ? schemaToToonModule.jsonSchemaToToon(JSON.parse(job.jsonSchema)) : undefined;
+
     let pageImages = await dbGetExistingPages(jobId);
 
     if (pageImages.length === 0 || !pageImages.every(p => p.pageBlobUrl)) {
@@ -90,7 +95,7 @@ export async function ocrWorkflow(
         throw new FatalError("Workflow stopped by user");
       }
 
-      let result = await runOcrOnPage(pageBlobUrl, pageNumber, jobId, job.fileHash, ocrModelConfig, stopState);
+      let result = await runOcrOnPage(pageBlobUrl, pageNumber, jobId, job.fileHash, ocrModelConfig, stopState, toonSchemaTemplate);
       await dbSaveOcrPageResult(jobId, pageNumber, result);
 
       if (stopState.current) {
@@ -98,7 +103,7 @@ export async function ocrWorkflow(
       }
 
       if (result.data.parse_error) {
-        result = await repairOcrPageData(result, jobId, job.fileHash, ocrModelConfig, stopState);
+        result = await repairOcrPageData(result, jobId, job.fileHash, ocrModelConfig, stopState, toonSchemaTemplate);
         await dbSaveRepairPageResult(jobId, pageNumber, result);
       }
       pages.push(result);
@@ -117,7 +122,7 @@ export async function ocrWorkflow(
         `[${new Date().toISOString()}] Single-page document — merge step skipped`
       );
     } else {
-      const mergeRes = await mergePageData(pages, jobId, job.fileHash, ocrModelConfig, stopState);
+      const mergeRes = await mergePageData(pages, jobId, job.fileHash, ocrModelConfig, stopState, toonSchemaTemplate);
       merged = mergeRes.merged;
       await dbSaveJobResult(jobId, merged, mergeRes.log, mergeRes.usage);
     }

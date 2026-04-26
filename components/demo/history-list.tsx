@@ -10,6 +10,7 @@ export interface HistoryJob {
   filename: string;
   status: "pending" | "running" | "completed" | "failed";
   createdAt: string;
+  jsonSchema?: string;
 }
 
 interface HistoryListProps {
@@ -42,7 +43,8 @@ function JobRow({
   const isActive = ACTIVE_STATUSES.has(job.status);
   const cfg = STATUS_CONFIG[job.status] ?? STATUS_CONFIG.failed;
 
-  const handleStop = async () => {
+  const handleStop = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     setIsStopping(true);
     try {
       await onStop(job);
@@ -51,12 +53,42 @@ function JobRow({
     }
   };
 
+  const handleRerun = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onRerun(job.id, job.filename);
+  };
+
+  const handleView = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onView(job.id, job.filename);
+  };
+
+  const handleRowClick = () => {
+    if (job.status === "completed") {
+      onView(job.id, job.filename);
+    }
+  };
+
   return (
-    <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/60 bg-white/40 dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-all shadow-sm">
+    <div
+      onClick={handleRowClick}
+      className={`flex items-center justify-between gap-4 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/60 transition-all shadow-sm ${
+        job.status === "completed"
+          ? "bg-white/40 dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer"
+          : "bg-white/40 dark:bg-zinc-900/40 opacity-80 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+      }`}
+    >
       <div className="flex items-center gap-3 min-w-0">
         <span className={`shrink-0 size-2 rounded-full ${cfg.dot}`} />
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">{job.filename}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">{job.filename}</p>
+            {job.jsonSchema && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                Schema
+              </span>
+            )}
+          </div>
           <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
             {new Date(job.createdAt).toLocaleString()}
           </p>
@@ -65,13 +97,15 @@ function JobRow({
 
       <div className="shrink-0 flex items-center gap-2">
         <span className={`text-xs font-semibold hidden sm:inline ${cfg.text}`}>{cfg.label}</span>
-        <button
-          onClick={() => onView(job.id, job.filename)}
-          className="h-8 w-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all"
-          aria-label={`View ${job.filename}`}
-        >
-          <HugeiconsIcon icon={ViewIcon} size={14} />
-        </button>
+        {job.status === "completed" && (
+          <button
+            onClick={handleView}
+            className="h-8 w-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all"
+            aria-label={`View ${job.filename}`}
+          >
+            <HugeiconsIcon icon={ViewIcon} size={14} />
+          </button>
+        )}
         {isActive ? (
           <button
             onClick={handleStop}
@@ -85,15 +119,15 @@ function JobRow({
               <HugeiconsIcon icon={StopIcon} size={14} />
             )}
           </button>
-        ) : (
+        ) : job.status !== "completed" ? (
           <button
-            onClick={() => onRerun(job.id, job.filename)}
+            onClick={handleRerun}
             className="h-8 w-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300 transition-all"
             aria-label={`Rerun ${job.filename}`}
           >
             <HugeiconsIcon icon={RefreshIcon} size={14} />
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );

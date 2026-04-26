@@ -44,6 +44,7 @@ export const jobs = pgTable(
     ocrModelId: uuid("ocr_model_id").references(() => ocrModels.id, { onDelete: "set null" }),
     workflowRunId: text("workflow_run_id"),
     totalPages: integer("total_pages"),
+    jsonSchema: text("json_schema"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

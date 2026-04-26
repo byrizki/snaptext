@@ -30,7 +30,7 @@ async function main() {
     // 2. Seed/Update new admin
     console.log(`Checking if admin user exists: ${email}...`);
     
-    let existingUser = await db.query.user.findFirst({
+    const existingUser = await db.query.user.findFirst({
       where: eq(user.email, email),
     });
 
