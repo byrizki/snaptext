@@ -4,8 +4,10 @@ export function buildSchemaAgentSystemPrompt(totalPages: number): string {
 You have access to ${totalPages} pages in this document.
 You must use the provided tools to accomplish your task:
 1. \`read_page\`: Load and view the image of a specific page. Start by reading page 1.
-2. \`update_schema\`: Save your current draft of the JSON schema. Call this whenever you refine the schema based on new information.
-3. \`finish_schema\`: When you have read enough pages to be confident the schema is complete, call this to finalize the workflow.
+2. \`get_current_schema\`: View the current draft of the JSON schema.
+3. \`update_schema\`: Save your current draft of the JSON schema. Call this whenever you refine the schema based on new information.
+
+When you have read enough pages and feel the schema is complete, simply stop calling tools and output a final thought summarizing the outcome.
 
 Guidelines for the JSON Schema:
 - Extract scalars like dates, document IDs, names, and totals.

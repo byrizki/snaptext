@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export function buildSchemaTools(
   getPageImage: (pageNumber: number) => string | undefined,
-  onUpdateSchema: (schema: string) => void,
-  onFinishSchema: (schema: string) => void
+  getCurrentSchema: () => string,
+  onUpdateSchema: (schema: string) => void
 ) {
   return {
     read_page: {
@@ -26,6 +26,13 @@ export function buildSchemaTools(
         }
       },
     },
+    get_current_schema: {
+      description: "Get the current draft of the JSON schema.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        return getCurrentSchema();
+      },
+    },
     update_schema: {
       description: "Save the current draft of the JSON schema string.",
       inputSchema: z.object({
@@ -35,17 +42,6 @@ export function buildSchemaTools(
       execute: async ({ schema_string }: any) => {
         onUpdateSchema(schema_string);
         return "Schema draft updated.";
-      },
-    },
-    finish_schema: {
-      description: "Finalize the schema generation and end the process.",
-      inputSchema: z.object({
-        final_schema_string: z.string().describe("The final JSON Schema string."),
-      }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      execute: async ({ final_schema_string }: any) => {
-        onFinishSchema(final_schema_string);
-        return "Schema finalized.";
       },
     },
   };

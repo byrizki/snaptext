@@ -65,16 +65,14 @@ export async function runSchemaGenerationAgent(
   // Use Gemini Flash 2.5 natively via the text/vision model setup
   const { model, providerConfig } = getAiModel(OCR_VISION_MODEL, {}, fileHash);
 
-  let finalSchema = "{}";
   let currentSchema = "{}";
-  let isFinished = false;
 
   const getPageImage = (num: number) => pages.find((p) => p.pageNumber === num)?.pageBlobUrl;
 
   const tools = buildSchemaTools(
     getPageImage,
-    (s) => { currentSchema = s; },
-    (s) => { finalSchema = s; isFinished = true; }
+    () => currentSchema,
+    (s) => { currentSchema = s; }
   );
 
   const agent = new DurableAgent({
@@ -90,13 +88,18 @@ export async function runSchemaGenerationAgent(
     messages: [
       {
         role: "user",
-        content: `Start by reading page 1 of the document. Build the JSON schema iteratively and call finish_schema when done.`,
+        content: `Start by reading page 1 of the document. Build the JSON schema iteratively and stop when done.`,
       },
     ],
     writable: getWritable({ namespace: 'schema-gen' }),
     stopWhen: (stepRes) => {
-      if (isFinished) return true;
       if (stepRes.steps.length >= 15) return true;
+
+      const lastStep = stepRes.steps[stepRes.steps.length - 1];
+      // Stop if the last step didn't make any tool calls (the agent just replied with text)
+      if (!lastStep.toolCalls || lastStep.toolCalls.length === 0) {
+        return true;
+      }
       return false;
     },
   });
@@ -106,8 +109,7 @@ export async function runSchemaGenerationAgent(
     // iterate
   }
 
-  // Fallback to currentSchema if finish_schema wasn't called but it reached token/step limit
-  const resultSchema = isFinished ? finalSchema : currentSchema;
+  const resultSchema = currentSchema;
 
   try {
     JSON.parse(resultSchema);
