@@ -3,6 +3,8 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { CodeCircleIcon, Presentation02Icon } from "@hugeicons/core-free-icons";
 import { motion, AnimatePresence } from "framer-motion";
 import { GuiSchemaEditor } from "./gui-schema-editor";
+import Editor from "@monaco-editor/react";
+import { useTheme } from "next-themes";
 
 export function SchemaEditor({
   schema,
@@ -12,9 +14,10 @@ export function SchemaEditor({
   onChange: (s: string) => void;
 }) {
   const [mode, setMode] = useState<"raw" | "gui">("gui");
+  const { resolvedTheme } = useTheme();
 
-  const handleRawChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
+  const handleRawChange = (value: string | undefined) => {
+    onChange(value || "");
   };
 
   return (
@@ -54,13 +57,22 @@ export function SchemaEditor({
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
+            className="w-full h-64 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden"
           >
-            <textarea
-              className="w-full h-48 p-3 text-xs font-mono bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-y"
+            <Editor
+              height="100%"
+              defaultLanguage="json"
+              theme={resolvedTheme === "dark" ? "vs-dark" : "light"}
               value={schema}
               onChange={handleRawChange}
-              placeholder={'{\n  "type": "object",\n  "properties": {\n    "field_name": { "type": "string" }\n  }\n}'}
-              spellCheck={false}
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                fontSize: 12,
+                tabSize: 2,
+                wordWrap: "on",
+                formatOnPaste: true,
+              }}
             />
           </motion.div>
         ) : (

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete01Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 type FieldType = "string" | "number" | "boolean" | "object" | "array";
 
@@ -50,7 +52,7 @@ function treeToSchemaStr(tree: FieldDef[]): string {
 function buildProperties(tree: FieldDef[]): Record<string, unknown> {
   const props: Record<string, unknown> = {};
   for (const field of tree) {
-    if (!field.key.trim()) continue;
+    // allow empty string keys temporarily while user types
     const prop: Record<string, unknown> = { type: field.type };
     if (field.description) prop.description = field.description;
 
@@ -172,34 +174,35 @@ function FieldRow({ field, onChange, onDelete }: { field: FieldDef; onChange: (f
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-12 gap-2 items-center">
         <div className="col-span-4">
-          <input
+          <Input
             type="text"
             placeholder="fieldName"
             value={field.key}
             onChange={(e) => handleChange({ key: e.target.value })}
-            className="w-full h-8 px-2.5 text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+            className="h-8 text-xs font-mono rounded-md"
           />
         </div>
         <div className="col-span-3">
-          <select
+          <NativeSelect
             value={field.type}
             onChange={(e) => handleChange({ type: e.target.value as FieldType })}
-            className="w-full h-8 px-2 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+            className="w-full"
+            size="sm"
           >
-            <option value="string">String</option>
-            <option value="number">Number</option>
-            <option value="boolean">Boolean</option>
-            <option value="object">Object</option>
-            <option value="array">Array (of Objects)</option>
-          </select>
+            <NativeSelectOption value="string">String</NativeSelectOption>
+            <NativeSelectOption value="number">Number</NativeSelectOption>
+            <NativeSelectOption value="boolean">Boolean</NativeSelectOption>
+            <NativeSelectOption value="object">Object</NativeSelectOption>
+            <NativeSelectOption value="array">Array (of Objects)</NativeSelectOption>
+          </NativeSelect>
         </div>
         <div className="col-span-4">
-          <input
+          <Input
             type="text"
             placeholder="Description..."
             value={field.description || ""}
             onChange={(e) => handleChange({ description: e.target.value })}
-            className="w-full h-8 px-2.5 text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="h-8 text-xs rounded-md"
           />
         </div>
         <div className="col-span-1 flex justify-end">
