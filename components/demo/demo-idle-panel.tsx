@@ -6,7 +6,7 @@ import { ModelSelector } from "@/components/demo/model-selector";
 import { UploadZone } from "@/components/demo/upload-zone";
 import { HistoryList } from "@/components/demo/history-list";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { SparklesIcon, Settings01Icon } from "@hugeicons/core-free-icons";
+import { SparklesIcon } from "@hugeicons/core-free-icons";
 import { SchemaEditor } from "./schema-editor";
 
 interface DemoIdlePanelProps {
@@ -88,7 +88,7 @@ export function DemoIdlePanel({
           </div>
         </motion.div>
 
-        <div className="w-full max-w-2xl relative">
+        <div className={`w-full relative transition-all duration-300 ${showAdvanced && activeTab === 'upload' ? 'max-w-5xl' : 'max-w-2xl'}`}>
           <AnimatePresence mode="wait">
             {activeTab === 'upload' ? (
               <motion.div 
@@ -104,47 +104,53 @@ export function DemoIdlePanel({
                 
                 <div className="relative rounded-[30px] border border-white/40 dark:border-white/10 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-2xl shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5">
                   {/* Top Toolbar */}
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-black/20">
+                  <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-black/20 gap-4">
                     <div className="flex items-center gap-3">
                       <div className="flex gap-1.5">
                         <div className="w-3 h-3 rounded-full bg-red-400/80" />
                         <div className="w-3 h-3 rounded-full bg-amber-400/80" />
                         <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
                       </div>
-                      <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-widest ml-2">
+                      <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-widest ml-2 hidden sm:inline-block">
                         SnapText Engine
                       </span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Model:</span>
-                      <ModelSelector value={selectedModelId} onChange={onModelChange} />
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Use Schema:</span>
+                        <button
+                          onClick={() => setShowAdvanced(!showAdvanced)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showAdvanced ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                          role="switch"
+                          aria-checked={showAdvanced}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAdvanced ? 'translate-x-6' : 'translate-x-1'}`}
+                          />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-zinc-500 dark:text-zinc-400 font-medium hidden sm:inline-block">Model:</span>
+                        <ModelSelector value={selectedModelId} onChange={onModelChange} />
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Main Upload Area */}
-                  <div className="p-2 sm:p-4">
-                    <UploadZone onFileSelect={(file) => onFileSelect(file, showAdvanced ? jsonSchema : undefined)} />
-                  </div>
-
-                  {/* Advanced Settings Toggle */}
-                  <div className="px-6 py-3 border-t border-zinc-200/50 dark:border-zinc-800/50 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col gap-4">
-                    <button
-                      onClick={() => setShowAdvanced(!showAdvanced)}
-                      className="flex items-center gap-2 text-xs font-semibold text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors w-fit"
-                    >
-                      <HugeiconsIcon icon={Settings01Icon} size={14} className={showAdvanced ? "rotate-90 transition-transform" : "transition-transform"} />
-                      {showAdvanced ? "Hide Advanced Settings" : "Advanced Settings"}
-                    </button>
+                  {/* Main Content Area */}
+                  <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-zinc-200/50 dark:divide-zinc-800/50">
+                    <div className={`p-2 sm:p-4 flex-1 transition-all duration-300 ${showAdvanced ? 'lg:w-1/2' : 'w-full'}`}>
+                      <UploadZone onFileSelect={(file) => onFileSelect(file, showAdvanced ? jsonSchema : undefined)} />
+                    </div>
 
                     <AnimatePresence>
                       {showAdvanced && (
                         <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden"
+                          initial={{ width: 0, opacity: 0 }}
+                          animate={{ width: "auto", opacity: 1 }}
+                          exit={{ width: 0, opacity: 0 }}
+                          className="flex-1 lg:w-1/2 bg-zinc-50/50 dark:bg-zinc-900/50 overflow-hidden"
                         >
-                          <div className="pt-2 pb-4">
+                          <div className="h-full p-4 min-w-[300px]">
                             {isLoaded && <SchemaEditor schema={jsonSchema} onChange={handleSchemaChange} />}
                           </div>
                         </motion.div>
