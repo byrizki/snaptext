@@ -77,7 +77,13 @@ export async function GET() {
         let cost = 0;
 
         // 1. Primary Model (Vision) Token Cost (defaults to OCR_VISION_MODEL if ocrModels lookup fails)
-        const visionModelId = (job.provider ? `@${job.provider}/` : '') + (job.modelId || OCR_VISION_MODEL.split('/').slice(1).join('/'));
+        // If ocrModels exists, modelId is likely saved as "google/gemini-2.5-flash" (the provider prefix is added or handled differently sometimes, wait in route we do `getProviderPrefixedModelId` when saving model which prepends @vercel/?)
+        // Let's just use job.modelId if present since we saved it as providerPrefixed in ocrModels
+        // Wait, let's look at app/api/admin/models/route.ts
+        //   modelId: getProviderPrefixedModelId(data.provider, data.modelId)
+        // So job.modelId IS ALREADY provider prefixed! like "@vercel/google/gemini-1.5-flash"
+        const visionModelId = job.modelId || OCR_VISION_MODEL;
+
         const visionPricing = VERCEL_AI_GATEWAY_PRICING[visionModelId as keyof typeof VERCEL_AI_GATEWAY_PRICING] || { input: 0, output: 0 };
 
         cost += (pagesPromptTokens / 1_000_000) * visionPricing.input;
