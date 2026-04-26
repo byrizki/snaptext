@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { getDb, jobResults, jobs, jobPages, ocrModels } from "@/db";
 import { eq, sql } from "drizzle-orm";
@@ -60,7 +59,10 @@ export async function GET() {
         totalTokensAll += pagesPromptTokens + resultPromptTokens + pagesCompletionTokens + resultCompletionTokens + pagesSecondModelInput + resultSecondModelInput + pagesSecondModelOutput + resultSecondModelOutput;
 
         // 1. Primary Model (Vision) Token Cost
-        const visionModelId = (stat.provider ? `@${stat.provider}/` : '') + (stat.modelId || OCR_VISION_MODEL.split('/').slice(1).join('/'));
+        const visionModelId = stat.modelId
+            ? (stat.provider ? `@${stat.provider}/` : '') + stat.modelId
+            : OCR_VISION_MODEL;
+
         const visionPricing = VERCEL_AI_GATEWAY_PRICING[visionModelId as keyof typeof VERCEL_AI_GATEWAY_PRICING] || { input: 0, output: 0 };
 
         totalCostAll += (pagesPromptTokens / 1_000_000) * visionPricing.input;
