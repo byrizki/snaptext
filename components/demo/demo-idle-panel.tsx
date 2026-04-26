@@ -6,7 +6,7 @@ import { ModelSelector } from "@/components/demo/model-selector";
 import { UploadZone } from "@/components/demo/upload-zone";
 import { HistoryList } from "@/components/demo/history-list";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { SparklesIcon } from "@hugeicons/core-free-icons";
+import { SparklesIcon, CodeCircleIcon, Presentation02Icon } from "@hugeicons/core-free-icons";
 import { SchemaEditor } from "./schema-editor";
 
 interface DemoIdlePanelProps {
@@ -29,6 +29,7 @@ export function DemoIdlePanel({
   const [activeTab, setActiveTab] = useState<"upload" | "history">("upload");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [jsonSchema, setJsonSchema] = useState("");
+  const [editorMode, setEditorMode] = useState<"raw" | "gui">("gui");
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -81,11 +82,14 @@ export function DemoIdlePanel({
         animate="visible"
         className="w-full flex flex-col items-center gap-12"
       >
-        <motion.div variants={itemVariants} className="text-center space-y-6 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/20 bg-blue-500/5 text-blue-600 dark:text-blue-400 text-sm font-medium mb-2 shadow-inner">
+        <motion.div variants={itemVariants} className="flex flex-col items-center gap-4 max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/20 bg-blue-500/5 text-blue-600 dark:text-blue-400 text-sm font-medium shadow-inner">
             <HugeiconsIcon icon={SparklesIcon} className="w-4 h-4" />
             <span>AI-Powered Document Intelligence</span>
           </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-500 max-w-md text-center leading-relaxed">
+            By uploading files, you agree that logs and documents may be recorded for model evaluation and quality improvement.
+          </p>
         </motion.div>
 
         <motion.div 
@@ -165,12 +169,39 @@ export function DemoIdlePanel({
                       <div className="absolute -inset-0.5 rounded-[32px] bg-linear-to-r from-violet-500 via-fuchsia-500 to-pink-500 blur-lg opacity-20 dark:opacity-40 group-hover:opacity-40 dark:group-hover:opacity-60 transition-opacity duration-700" />
                       
                       <div className="relative h-full flex flex-col rounded-[30px] border border-white/40 dark:border-white/10 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-2xl shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5">
-                        <div className="px-6 py-4 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-black/20 flex items-center gap-3">
-                          <HugeiconsIcon icon={SparklesIcon} className="w-5 h-5 text-violet-500" />
-                          <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Schema Configuration</h3>
+                        <div className="px-6 py-4 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-black/20 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <HugeiconsIcon icon={SparklesIcon} className="w-5 h-5 text-violet-500" />
+                            <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Output Schema</h3>
+                          </div>
+                          
+                          <div className="flex bg-zinc-100/50 dark:bg-zinc-800/50 p-1 rounded-lg border border-zinc-200/50 dark:border-zinc-700/30">
+                            <button
+                              onClick={() => setEditorMode("gui")}
+                              className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all flex items-center gap-1.5 ${
+                                editorMode === "gui"
+                                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                              }`}
+                            >
+                              <HugeiconsIcon icon={Presentation02Icon} size={12} />
+                              GUI
+                            </button>
+                            <button
+                              onClick={() => setEditorMode("raw")}
+                              className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all flex items-center gap-1.5 ${
+                                editorMode === "raw"
+                                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                              }`}
+                            >
+                              <HugeiconsIcon icon={CodeCircleIcon} size={12} />
+                              Raw
+                            </button>
+                          </div>
                         </div>
                         <div className="p-4 sm:p-6 flex-1 bg-zinc-50/50 dark:bg-zinc-900/50 overflow-y-auto">
-                          {isLoaded && <SchemaEditor schema={jsonSchema} onChange={handleSchemaChange} />}
+                          {isLoaded && <SchemaEditor schema={jsonSchema} onChange={handleSchemaChange} mode={editorMode} />}
                         </div>
                       </div>
                     </motion.div>
