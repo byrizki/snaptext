@@ -1,7 +1,12 @@
+import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
-import { generateObject } from "ai";
-import { z } from "zod";
-import { google } from "@ai-sdk/google";
+import { start } from "workflow/api";
+import { getDb, jobs, adminSettings } from "@/db";
+import { eq, count, gte } from "drizzle-orm";
+import { createHash } from "crypto";
+import { schemaGenWorkflow } from "@/app/workflows/schema-gen";
+
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
@@ -23,39 +28,76 @@ export async function POST(request: Request) {
     }
 
     const fileBuffer = await file.arrayBuffer();
+    const fileHash = createHash("sha256").update(Buffer.from(fileBuffer)).digest("hex");
+    const db = getDb();
 
-    // Use Gemini 1.5 Flash natively since it supports PDFs
-    const model = google("gemini-1.5-flash");
+    // Global daily scan limit checking
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
+    const [settings] = await db.select().from(adminSettings).limit(1);
+    const dailyLimit = settings ? settings.dailyScanLimit : 20;
 
-    const { object } = await generateObject({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      model: model as any,
-      system: `Analyze the provided document and determine all the structured data points it contains.
-Create a comprehensive JSON Schema (draft-07) representing the document's structure.
-- Extract scalars like dates, names, totals.
-- Extract nested objects for things like vendor details.
-- Extract arrays of objects for line items.
-Do not invent fields that do not exist in the document. Do not include $schema.
-Ensure the returned object strictly follows JSON Schema structure.`,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Generate a JSON schema for this document." },
-            { type: "file", data: fileBuffer, mimeType: "application/pdf" } as never
-          ]
-        }
-      ],
-      schema: z.object({
-        type: z.literal("object"),
+    const [result] = await db.select({ value: count() }).from(jobs).where(gte(jobs.createdAt, today));
+    const currentCount = result ? Number(result.value) : 0;
 
-        properties: z.record(z.string(), z.any()),
-        required: z.array(z.string()).optional()
-      }),
+    if (currentCount >= dailyLimit) {
+      return NextResponse.json(
+        { error: `Global daily scan limit of ${dailyLimit} reached. Please try again tomorrow.` },
+        { status: 429 }
+      );
+    }
+
+    const [activeJob] = await db
+      .select()
+      .from(jobs)
+      .where(eq(jobs.fileHash, fileHash))
+      .limit(1);
+
+    if (activeJob && (activeJob.status === "pending" || activeJob.status === "running")) {
+      return NextResponse.json({
+        jobId: activeJob.id,
+        runId: activeJob.workflowRunId ?? "",
+        pdfUrl: activeJob.pdfBlobUrl,
+        deduplicated: true,
+      });
+    }
+
+    let pdfBlobUrl = "";
+    if (activeJob) {
+      pdfBlobUrl = activeJob.pdfBlobUrl;
+    } else {
+      const uploadResult = await put(
+        `uploads/${fileHash}.pdf`,
+        fileBuffer,
+        { access: "public", contentType: "application/pdf" }
+      );
+      pdfBlobUrl = uploadResult.url;
+    }
+
+    const [job] = await db
+      .insert(jobs)
+      .values({
+        filename: file.name,
+        fileSize: file.size,
+        fileHash,
+        pdfBlobUrl,
+        status: "pending",
+      })
+      .returning({ id: jobs.id });
+
+    const run = await start(schemaGenWorkflow, [job.id, pdfBlobUrl]);
+
+    await db
+      .update(jobs)
+      .set({ workflowRunId: run.runId })
+      .where(eq(jobs.id, job.id));
+
+    return NextResponse.json({
+      jobId: job.id,
+      runId: run.runId,
+      pdfUrl: pdfBlobUrl,
     });
-
-    return NextResponse.json({ schema: object });
   } catch (err: unknown) {
     const error = err as Error;
     console.error("Schema generation failed:", error);

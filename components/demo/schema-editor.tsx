@@ -41,12 +41,36 @@ export function SchemaEditor({
 
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || "Failed to generate schema");
+        throw new Error(error.error || "Failed to start schema generation");
       }
 
-      const data = await res.json();
-      onChange(JSON.stringify(data.schema, null, 2));
-      toast.success("Schema generated successfully!");
+      const { runId } = await res.json();
+
+      // Poll for completion
+      let attempts = 0;
+      while (attempts < 60) { // 60 attempts = ~2-3 mins depending on interval
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        const statusRes = await fetch(`/api/demo/schema-generate/status/${runId}`);
+        const statusData = await statusRes.json();
+
+        if (statusData.status === "completed") {
+          let parsedSchema;
+          try {
+             parsedSchema = JSON.parse(statusData.schema);
+          } catch {
+             parsedSchema = {};
+          }
+          onChange(JSON.stringify(parsedSchema, null, 2));
+          toast.success("Schema generated successfully!");
+          break;
+        } else if (statusData.status === "failed" || statusData.status === "cancelled") {
+          throw new Error(statusData.error || "Schema generation failed");
+        }
+        attempts++;
+      }
+
+      if (attempts >= 60) throw new Error("Schema generation timed out");
+
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "An unknown error occurred.");
     } finally {
