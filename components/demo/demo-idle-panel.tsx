@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { ModelSelector } from "@/components/demo/model-selector";
 import { UploadZone } from "@/components/demo/upload-zone";
@@ -28,19 +28,27 @@ export function DemoIdlePanel({
 }: DemoIdlePanelProps) {
   const [activeTab, setActiveTab] = useState<"upload" | "history">("upload");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [jsonSchema, setJsonSchema] = useState(`{
-  "type": "object",
-  "properties": {
-    "document_type": { "type": "string" },
-    "total_amount": { "type": "number" },
-    "vendor": {
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" }
-      }
+  const [jsonSchema, setJsonSchema] = useState("");
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("snaptext_json_schema");
+    if (saved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setJsonSchema(saved);
+      setShowAdvanced(true);
     }
-  }
-}`);
+    setIsLoaded(true);
+  }, []);
+
+  const handleSchemaChange = (newSchema: string) => {
+    setJsonSchema(newSchema);
+    if (newSchema) {
+      localStorage.setItem("snaptext_json_schema", newSchema);
+    } else {
+      localStorage.removeItem("snaptext_json_schema");
+    }
+  };
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -137,7 +145,7 @@ export function DemoIdlePanel({
                           className="overflow-hidden"
                         >
                           <div className="pt-2 pb-4">
-                            <SchemaEditor schema={jsonSchema} onChange={setJsonSchema} />
+                            {isLoaded && <SchemaEditor schema={jsonSchema} onChange={handleSchemaChange} />}
                           </div>
                         </motion.div>
                       )}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CodeCircleIcon, Presentation02Icon } from "@hugeicons/core-free-icons";
 import { motion, AnimatePresence } from "framer-motion";
+import { GuiSchemaEditor } from "./gui-schema-editor";
 
 export function SchemaEditor({
   schema,
@@ -68,17 +69,9 @@ export function SchemaEditor({
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
-            className="p-8 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/50"
+            className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-lg border border-zinc-200 dark:border-zinc-800 p-3"
           >
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              GUI Mode is under construction. Please use Raw JSON mode.
-            </p>
-            <button
-              onClick={() => setMode("raw")}
-              className="mt-4 text-xs font-semibold text-blue-500 hover:text-blue-600 underline underline-offset-2"
-            >
-              Switch to Raw Mode
-            </button>
+            <GuiSchemaEditor schema={schema} onChange={onChange} />
           </motion.div>
         )}
       </AnimatePresence>
