@@ -204,6 +204,14 @@ export function ResultsView({ result, onReset, onRerun }: ResultsViewProps) {
                 {result.modelName}
               </div>
             )}
+            {result.hasSchema && (
+              <div className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 shadow-xs">
+                <svg viewBox="0 0 24 24" fill="none" className="size-3.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 7V4h16v3M9 20h6M12 4v16" />
+                </svg>
+                Schema
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

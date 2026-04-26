@@ -13,6 +13,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const formData = await request.formData();
   const file = formData.get("file");
   const ocrModelId = formData.get("ocrModelId") as string | null;
+  const jsonSchema = formData.get("jsonSchema") as string | null;
 
   if (!file || !(file instanceof File)) {
     return NextResponse.json(
@@ -95,6 +96,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       fileHash,
       pdfBlobUrl,
       ocrModelId: ocrModelId || null,
+      jsonSchema: jsonSchema || null,
       status: "pending",
     })
     .returning({ id: jobs.id });

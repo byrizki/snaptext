@@ -17,6 +17,7 @@ export interface OcrResult {
   modelName?: string;
   createdAt?: string;
   updatedAt?: string;
+  hasSchema?: boolean;
 }
 
 export interface UseOcrPipelineReturn {
@@ -26,7 +27,7 @@ export interface UseOcrPipelineReturn {
   result: OcrResult | null;
   error: string | null;
   currentFile: File | null;
-  startOcr: (file: File, ocrModelId?: string) => Promise<void>;
+  startOcr: (file: File, ocrModelId?: string, jsonSchema?: string) => Promise<void>;
   rerunOcr: (jobId: string, filename: string) => Promise<void>;
   viewJob: (jobId: string, filename: string) => Promise<void>;
   stopJob: (runId: string) => Promise<void>;
@@ -97,9 +98,10 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
               data: p.parsedData ?? {},
             })),
             merged: json.result?.mergedData ?? {},
-            modelName: (json as any).modelName,
+            modelName: (json as { modelName?: string }).modelName,
             createdAt: json.job.createdAt,
             updatedAt: json.job.updatedAt,
+            hasSchema: (json as { hasSchema?: boolean }).hasSchema,
           };
           setResult(mappedResult);
         }
@@ -154,7 +156,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
   );
 
   const startOcr = useCallback(
-    async (file: File, ocrModelId?: string) => {
+    async (file: File, ocrModelId?: string, jsonSchema?: string) => {
       clearPollTimer();
       setStatus("uploading");
       setUploadProgress(0);
@@ -171,6 +173,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         const formData = new FormData();
         formData.append("file", file);
         if (ocrModelId) formData.append("ocrModelId", ocrModelId);
+        if (jsonSchema) formData.append("jsonSchema", jsonSchema);
 
         const response = await fetch("/api/demo/ocr", {
           method: "POST",

@@ -47,7 +47,7 @@ export default function DemoPage() {
               <DemoIdlePanel
                 selectedModelId={selectedModelId}
                 onModelChange={setSelectedModelId}
-                onFileSelect={(file) => startOcr(file, selectedModelId)}
+                onFileSelect={(file, schema) => startOcr(file, selectedModelId, schema)}
                 onRerun={rerunOcr}
                 onView={viewJob}
                 onStop={stopJob}

@@ -6,12 +6,13 @@ import { ModelSelector } from "@/components/demo/model-selector";
 import { UploadZone } from "@/components/demo/upload-zone";
 import { HistoryList } from "@/components/demo/history-list";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { SparklesIcon } from "@hugeicons/core-free-icons";
+import { SparklesIcon, Settings01Icon } from "@hugeicons/core-free-icons";
+import { SchemaEditor } from "./schema-editor";
 
 interface DemoIdlePanelProps {
   selectedModelId: string;
   onModelChange: (id: string) => void;
-  onFileSelect: (file: File) => void;
+  onFileSelect: (file: File, schema?: string) => void;
   onRerun: (jobId: string, filename: string) => Promise<void>;
   onView: (jobId: string, filename: string) => Promise<void>;
   onStop: (jobId: string) => Promise<void>;
@@ -26,6 +27,20 @@ export function DemoIdlePanel({
   onStop,
 }: DemoIdlePanelProps) {
   const [activeTab, setActiveTab] = useState<"upload" | "history">("upload");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [jsonSchema, setJsonSchema] = useState(`{
+  "type": "object",
+  "properties": {
+    "document_type": { "type": "string" },
+    "total_amount": { "type": "number" },
+    "vendor": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      }
+    }
+  }
+}`);
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -100,7 +115,33 @@ export function DemoIdlePanel({
                   
                   {/* Main Upload Area */}
                   <div className="p-2 sm:p-4">
-                    <UploadZone onFileSelect={onFileSelect} />
+                    <UploadZone onFileSelect={(file) => onFileSelect(file, showAdvanced ? jsonSchema : undefined)} />
+                  </div>
+
+                  {/* Advanced Settings Toggle */}
+                  <div className="px-6 py-3 border-t border-zinc-200/50 dark:border-zinc-800/50 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col gap-4">
+                    <button
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="flex items-center gap-2 text-xs font-semibold text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors w-fit"
+                    >
+                      <HugeiconsIcon icon={Settings01Icon} size={14} className={showAdvanced ? "rotate-90 transition-transform" : "transition-transform"} />
+                      {showAdvanced ? "Hide Advanced Settings" : "Advanced Settings"}
+                    </button>
+
+                    <AnimatePresence>
+                      {showAdvanced && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="pt-2 pb-4">
+                            <SchemaEditor schema={jsonSchema} onChange={setJsonSchema} />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               </motion.div>

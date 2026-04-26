@@ -83,6 +83,7 @@ export async function runOcrOnPage(
   fileHash: string | null,
   ocrModelConfig?: OcrModel,
   stopState?: { current: boolean },
+  toonSchemaTemplate?: string,
 ): Promise<OcrPageResult & { log: string }> {
   try {
     console.log(
@@ -100,7 +101,7 @@ export async function runOcrOnPage(
 
     const agent = new DurableAgent({
       model: model as any,
-      instructions: buildOcrSystemPrompt(),
+      instructions: buildOcrSystemPrompt(toonSchemaTemplate),
       temperature,
       maxOutputTokens: maxTokens,
       providerOptions: providerConfig,
@@ -201,6 +202,7 @@ export async function repairOcrPageData(
   fileHash: string | null,
   ocrModelConfig?: OcrModel,
   stopState?: { current: boolean },
+  toonSchemaTemplate?: string,
 ): Promise<OcrPageResult & { log: string }> {
   try {
     const { pageNumber, rawToon, data: initialData } = pageResult;
@@ -230,7 +232,7 @@ export async function repairOcrPageData(
     const currentToon = () => rawToon;
     const agent = new DurableAgent({
       model: fixModel,
-      instructions: buildRepairSystemPrompt(),
+      instructions: buildRepairSystemPrompt(toonSchemaTemplate),
       temperature,
       providerOptions: providerConfig,
       maxOutputTokens: maxTokens,
@@ -324,6 +326,7 @@ export async function mergePageData(
   fileHash: string | null,
   ocrModelConfig?: OcrModel,
   stopState?: { current: boolean },
+  toonSchemaTemplate?: string,
 ): Promise<{ merged: Record<string, unknown>; usage: any; log: string }> {
   try {
     console.log(
@@ -350,7 +353,7 @@ export async function mergePageData(
       .map((p) => `### Page ${p.pageNumber}\n\`\`\`\n${encode(p.data)}\n\`\`\``)
       .join("\n\n");
 
-    const systemPrompt = `${buildMergeSystemPrompt()}
+    const systemPrompt = `${buildMergeSystemPrompt(toonSchemaTemplate)}
 
 The initial merged data (from Page 1) is currently:
 \`\`\`

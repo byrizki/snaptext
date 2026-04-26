@@ -10,6 +10,7 @@ export interface HistoryJob {
   filename: string;
   status: "pending" | "running" | "completed" | "failed";
   createdAt: string;
+  jsonSchema?: string;
 }
 
 interface HistoryListProps {
@@ -56,7 +57,14 @@ function JobRow({
       <div className="flex items-center gap-3 min-w-0">
         <span className={`shrink-0 size-2 rounded-full ${cfg.dot}`} />
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">{job.filename}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">{job.filename}</p>
+            {job.jsonSchema && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                Schema
+              </span>
+            )}
+          </div>
           <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
             {new Date(job.createdAt).toLocaleString()}
           </p>
