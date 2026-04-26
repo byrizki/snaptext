@@ -15,6 +15,13 @@
       "when": 1777093119624,
       "tag": "0001_mute_kinsey_walden",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777164720056,
+      "tag": "0002_simple_joshua_kane",
+      "breakpoints": true
     }
   ]
 }

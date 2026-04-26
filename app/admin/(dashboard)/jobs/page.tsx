@@ -43,15 +43,16 @@ export default function JobHistoryPage() {
               <TableHead>Job ID</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Model</TableHead>
+              <TableHead>Cost</TableHead>
               <TableHead>Duration</TableHead>
               <TableHead className="text-right">Created At</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">Loading jobs...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Loading jobs...</TableCell></TableRow>
             ) : paginatedJobs.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">No jobs found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No jobs found.</TableCell></TableRow>
             ) : (
               paginatedJobs.map((job: any) => (
                 <TableRow key={job.id} className="group hover:bg-muted/10 transition-colors">
@@ -65,11 +66,14 @@ export default function JobHistoryPage() {
                   <TableCell>
                     {job.model ? (
                       <Badge variant="secondary" className="font-medium bg-primary/10 text-primary hover:bg-primary/20">
-                        {job.model.name}
+                        {job.model.name || job.model}
                       </Badge>
                     ) : (
                       <span className="text-muted-foreground text-sm">Unknown</span>
                     )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {job.cost ? `$${job.cost}` : "-"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {job.processingDuration ? `${(job.processingDuration / 1000).toFixed(1)}s` : "-"}
