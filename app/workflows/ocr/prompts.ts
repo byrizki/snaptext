@@ -46,7 +46,7 @@ notes[2]: "hello, world","line1\\nline2"
  */
 export function buildOcrSystemPrompt(toonSchemaTemplate?: string): string {
   const schemaInstruction = toonSchemaTemplate
-    ? `\n## REQUIRED SCHEMA\n\nYou MUST extract data conforming EXACTLY to the following TOON structure.\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n`
+    ? `\n## REQUIRED SCHEMA\n\nYou MUST extract data conforming EXACTLY to the following TOON structure.\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n\n> **ALWAYS append** a \`document_metadata\` block (\`readability_score\` + \`data_usability_score\`) after the schema fields, even when a custom schema is provided.\n`
     : "";
 
   return `You are a document OCR engine. Read the document image and output ALL visible data in TOON format.${schemaInstruction}
