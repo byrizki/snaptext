@@ -34,11 +34,7 @@ export function ScanningView({
     totalPages > 0 ? Math.round((pagesProcessed / totalPages) * 100) : null;
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="relative w-full flex flex-col items-center gap-8"
-    >
+    <div className="relative flex flex-col w-full items-center gap-8">
       <div className="relative w-56 bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xl ring-1 ring-black/5 dark:ring-white/5">
         <div className="p-5 space-y-3 relative z-10">
           <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 1 }} className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
@@ -135,6 +131,6 @@ export function ScanningView({
         </button>
       )}
 
-    </motion.div>
+    </div>
   );
 }

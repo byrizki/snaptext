@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 export function Header() {
   const pathname = usePathname();
-  const isDemo = pathname === "/demo";
+  const isDemo = pathname.includes("/demo");
 
   return (
     <header className="fixed top-0 inset-x-0 z-50 h-20 border-b border-zinc-200/50 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl transition-colors text-foreground">
@@ -28,7 +28,7 @@ export function Header() {
             "text-[14px] font-medium transition-colors",
             isDemo ? "text-blue-600 dark:text-blue-400 font-semibold" : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
           )}>Demo</Link>
-          <Link href="#pricing" className="text-[14px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors">Pricing</Link>
+          <Link href={isDemo ? "/#pricing" : "#pricing"} className="text-[14px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors">Pricing</Link>
         </nav>
         
         <div className="flex items-center gap-4">

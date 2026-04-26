@@ -7,7 +7,7 @@ interface ErrorViewProps {
 
 export function ErrorView({ message, onReset }: ErrorViewProps) {
   return (
-    <div className="w-full max-w-sm text-center animate-fade-in">
+    <div className="w-full flex flex-col items-center max-w-sm text-center">
       <div className="size-18 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 flex items-center justify-center mx-auto mb-6">
         <svg
           viewBox="0 0 24 24"
