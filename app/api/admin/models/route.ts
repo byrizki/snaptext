@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { getDb, ocrModels } from "@/db";
 import { getModelId, getProviderPrefixedModelId } from "@/lib/provider-mapping";
+import { ocrModelSchema } from "@/lib/validations";
+import { z } from "zod";
 
 export async function GET() {
   const db = getDb();
@@ -15,7 +17,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const data = await request.json();
+    const rawData = await request.json();
+    const data = ocrModelSchema.parse(rawData);
     const db = getDb();
 
     const [model] = await db
@@ -33,6 +36,9 @@ export async function POST(request: Request) {
     return NextResponse.json(model);
   } catch (error: any) {
     console.error("Failed to create model", error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.issues }, { status: 400 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

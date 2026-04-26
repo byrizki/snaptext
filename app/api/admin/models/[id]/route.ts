@@ -3,11 +3,14 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb, ocrModels } from "@/db";
 import { getProviderPrefixedModelId } from "@/lib/provider-mapping";
+import { ocrModelSchema } from "@/lib/validations";
+import { z } from "zod";
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const data = await request.json();
+    const rawData = await request.json();
+    const data = ocrModelSchema.parse(rawData);
     const db = getDb();
     
     const [model] = await db.update(ocrModels).set({
@@ -24,6 +27,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json(model);
   } catch (error: any) {
     console.error("Failed to update model", error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.issues }, { status: 400 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
