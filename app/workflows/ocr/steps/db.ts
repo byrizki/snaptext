@@ -172,17 +172,14 @@ export async function dbSaveRepairPageResult(
     where: and(eq(jobPages.jobId, jobId), eq(jobPages.pageNumber, pageNumber)),
   });
 
-  const totalInput = (existingPage?.promptTokens ?? 0) + result.usage.promptTokens;
-  const totalOutput = (existingPage?.completionTokens ?? 0) + result.usage.completionTokens;
   const prevLog = existingPage?.log ? existingPage.log + "\n" : "";
 
   await db
     .update(jobPages)
     .set({
       parsedData: result.data,
-      promptTokens: totalInput,
-      completionTokens: totalOutput,
-      totalTokens: totalInput + totalOutput,
+      secondModelInput: (existingPage?.secondModelInput ?? 0) + result.usage.promptTokens,
+      secondModelOutput: (existingPage?.secondModelOutput ?? 0) + result.usage.completionTokens,
       log: prevLog + result.log,
     })
     .where(and(eq(jobPages.jobId, jobId), eq(jobPages.pageNumber, pageNumber)));
@@ -205,9 +202,8 @@ export async function dbSaveJobResult(
       jobId,
       mergedData,
       model: OCR_TEXT_MODEL,
-      promptTokens: usage?.promptTokens ?? 0,
-      completionTokens: usage?.completionTokens ?? 0,
-      totalTokens: usage?.totalTokens ?? 0,
+      secondModelInput: usage?.promptTokens ?? 0,
+      secondModelOutput: usage?.completionTokens ?? 0,
       finishReason: usage?.finishReason ?? "",
       rawResponse: usage?.rawResponse ?? "",
       log,
@@ -217,9 +213,8 @@ export async function dbSaveJobResult(
       set: {
         mergedData,
         model: OCR_TEXT_MODEL,
-        promptTokens: usage?.promptTokens ?? 0,
-        completionTokens: usage?.completionTokens ?? 0,
-        totalTokens: usage?.totalTokens ?? 0,
+        secondModelInput: usage?.promptTokens ?? 0,
+        secondModelOutput: usage?.completionTokens ?? 0,
         finishReason: usage?.finishReason ?? "",
         rawResponse: usage?.rawResponse ?? "",
         log,

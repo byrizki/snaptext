@@ -20,6 +20,11 @@ export default function AdminDashboardPage() {
   );
   const models = Array.isArray(modelsData) ? modelsData : [];
 
+  const { data: statsData } = useSWR(
+    "/api/admin/stats",
+    (url: string) => fetch(url).then((r) => r.json())
+  );
+
   // Generate fake data for the chart based on jobs if available, else static
   const chartData = [
     { time: '00:00', value: 20 },
@@ -42,8 +47,8 @@ export default function AdminDashboardPage() {
         {[
           { title: "Active Models", value: models.length.toString(), icon: AiBrain01Icon, trend: "Configured", color: "text-primary" },
           { title: "Total Jobs", value: jobs.length.toString(), icon: Database01Icon, trend: "Processed", color: "text-blue-500" },
-          { title: "Avg Latency", value: "1.2s", icon: Clock01Icon, trend: "-0.4s from last hour", color: "text-emerald-500" },
-          { title: "Success Rate", value: "99.8%", icon: Analytics01Icon, trend: "+0.1% from last hour", color: "text-emerald-500" },
+          { title: "Total Tokens", value: statsData?.totalTokens ? statsData.totalTokens.toLocaleString() : "0", icon: Clock01Icon, trend: "All time", color: "text-emerald-500" },
+          { title: "Total Cost", value: statsData?.totalCost ? `$${statsData.totalCost}` : "$0.0000", icon: Analytics01Icon, trend: "All time", color: "text-emerald-500" },
         ].map((stat, i) => (
           <Card key={i} className="bg-card/40 backdrop-blur-xl border-white/10 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
