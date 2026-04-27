@@ -138,9 +138,8 @@ export async function ocrWorkflow(
       merged,
     };
   } catch (err) {
-    await finalizeJob(jobId, "failed");
-    throw new FatalError(
-      err instanceof Error ? err.message : "OCR workflow failed unexpectedly"
-    );
+    const errorMessage = err instanceof Error ? err.message : "OCR workflow failed unexpectedly";
+    await finalizeJob(jobId, "failed", errorMessage);
+    throw new FatalError(errorMessage);
   }
 }

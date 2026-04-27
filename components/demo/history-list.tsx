@@ -139,7 +139,7 @@ export function HistoryList({ onRerun, onView, onStop }: HistoryListProps) {
   const [page, setPage] = useState(1);
   
   const { data, error, isLoading, mutate } = useSWR<{ data: HistoryJob[], meta: { totalPages: number, page: number } }>(
-    `/api/demo/ocr/history?page=${page}&limit=5`,
+    `/api/ocr/history?page=${page}&limit=5`,
     fetcher,
     { keepPreviousData: true }
   );

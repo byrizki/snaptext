@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import { getDb, jobResults, jobs, jobPages, ocrModels } from "@/db";
+import { getDb, jobResults, jobs, jobPages, ocrModels, user } from "@/db";
 import { desc, eq, sql } from "drizzle-orm";
 import { VERCEL_AI_GATEWAY_PRICING } from "@/lib/constants";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "@/app/workflows/ocr/models";
@@ -12,13 +12,20 @@ export async function GET() {
     const jobsWithMetrics = await db
       .select({
         id: jobs.id,
+        filename: jobs.filename,
         status: jobs.status,
+        error: jobs.error,
         createdAt: jobs.createdAt,
         updatedAt: jobs.updatedAt,
         totalPages: jobs.totalPages,
         modelName: ocrModels.name,
         modelId: ocrModels.modelId,
         provider: ocrModels.provider,
+        
+        // User Details
+        userName: user.name,
+        userEmail: user.email,
+        userImage: user.image,
 
         // Final merged token counts from jobResults
         resultPromptTokens: jobResults.promptTokens,
@@ -38,11 +45,16 @@ export async function GET() {
       .leftJoin(ocrModels, eq(jobs.ocrModelId, ocrModels.id))
       .leftJoin(jobResults, eq(jobs.id, jobResults.jobId))
       .leftJoin(jobPages, eq(jobs.id, jobPages.jobId))
+      .leftJoin(user, eq(jobs.userId, user.id))
       .groupBy(
         jobs.id,
+        jobs.filename,
         ocrModels.name,
         ocrModels.modelId,
         ocrModels.provider,
+        user.name,
+        user.email,
+        user.image,
         jobResults.promptTokens,
         jobResults.completionTokens,
         jobResults.totalTokens,
@@ -97,10 +109,17 @@ export async function GET() {
 
         return {
             id: job.id,
+            filename: job.filename,
             status: job.status,
+            error: job.error,
             createdAt: job.createdAt,
             updatedAt: job.updatedAt,
             totalPages: job.totalPages,
+            user: {
+                name: job.userName,
+                email: job.userEmail,
+                image: job.userImage
+            },
             model: job.modelName ? { name: job.modelName } : null,
             promptTokens,
             completionTokens,

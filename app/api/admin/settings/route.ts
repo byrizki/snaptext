@@ -1,39 +1,77 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import { getDb, adminSettings } from "@/db";
+import { getDb, scanQuotas } from "@/db";
+import { eq } from "drizzle-orm";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+
+async function getQuotaByType(type: "global" | "registered") {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(scanQuotas)
+    .where(eq(scanQuotas.type, type))
+    .limit(1);
+  return row ?? null;
+}
 
 export async function GET() {
   try {
-    const db = getDb();
-    const [settings] = await db.query.adminSettings.findMany({ limit: 1 });
-    
-    // Default fallback if not set
-    if (!settings) {
-      return NextResponse.json({ global_daily_scan_limit: "20" });
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || (session.user as any).role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    return NextResponse.json({ global_daily_scan_limit: String(settings.dailyScanLimit) });
+    const [guest, registered] = await Promise.all([
+      getQuotaByType("global"),
+      getQuotaByType("registered"),
+    ]);
+
+    return NextResponse.json({
+      guest: guest
+        ? { count: guest.count, resetPeriod: guest.resetPeriod }
+        : { count: 5, resetPeriod: "daily" },
+      registered: registered
+        ? { count: registered.count, resetPeriod: registered.resetPeriod }
+        : { count: 50, resetPeriod: "daily" },
+    });
   } catch (error: any) {
     console.error("Failed to fetch settings", error);
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || (session.user as any).role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const data = await request.json();
     const db = getDb();
 
-    const limit = parseInt(data.global_daily_scan_limit, 10);
-    if (isNaN(limit)) {
-      throw new Error("Invalid limit");
-    }
+    const saveQuota = async (type: "global" | "registered", quotaData: { count: number | string; resetPeriod?: string }) => {
+      const count = parseInt(String(quotaData.count), 10);
+      if (isNaN(count)) throw new Error(`Invalid count for ${type}`);
 
-    const [existing] = await db.query.adminSettings.findMany({ limit: 1 });
-    if (existing) {
-      await db.update(adminSettings).set({ dailyScanLimit: limit, updatedAt: new Date() });
-    } else {
-      await db.insert(adminSettings).values({ dailyScanLimit: limit });
+      const resetPeriod = quotaData.resetPeriod === "monthly" ? "monthly" : "daily";
+      const existing = await getQuotaByType(type);
+
+      if (existing) {
+        await db
+          .update(scanQuotas)
+          .set({ count, resetPeriod, updatedAt: new Date() })
+          .where(eq(scanQuotas.id, existing.id));
+      } else {
+        await db.insert(scanQuotas).values({ type, userId: null, count, resetPeriod });
+      }
+    };
+
+    if (data.guest) await saveQuota("global", data.guest);
+    if (data.registered) await saveQuota("registered", data.registered);
+
+    if (!data.guest && !data.registered && data.count !== undefined) {
+      await saveQuota("global", data);
     }
 
     return NextResponse.json({ success: true });
@@ -42,3 +80,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
+
