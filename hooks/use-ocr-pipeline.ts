@@ -12,6 +12,7 @@ export interface OcrResult {
   runId: string;
   pdfUrl: string;
   totalPages: number;
+  completedPages: number;
   pages: OcrPageResult[];
   merged: Record<string, unknown>;
   modelName?: string;
@@ -82,6 +83,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           status: string;
           filename: string;
           totalPages: number;
+          completedPages: number;
           pdfUrl: string;
           createdAt: string;
           updatedAt: string;
@@ -94,7 +96,8 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           runId: json.runId || json.id,
           pdfUrl: json.pdfUrl,
           totalPages: json.totalPages ?? 0,
-          pages: [], // per-page results excluded
+          completedPages: json.completedPages ?? 0,
+          pages: [],
           merged: json.data ?? {},
           createdAt: json.createdAt,
           updatedAt: json.updatedAt,

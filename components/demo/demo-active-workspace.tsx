@@ -140,7 +140,7 @@ export function DemoActiveWorkspace({
                   <ScanningView
                     filename={filename}
                     runId={runId}
-                    pagesProcessed={result?.pages?.length ?? 0}
+                    pagesProcessed={result?.completedPages ?? 0}
                     totalPages={result?.totalPages ?? 0}
                     onStop={onStop}
                   />

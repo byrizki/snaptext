@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { eq } from "drizzle-orm";
+import { and, count, eq, isNotNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getRun } from "workflow/api";
 
-import { getDb, jobResults, jobs } from "@/db";
+import { getDb, jobPages, jobResults, jobs } from "@/db";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -67,6 +67,13 @@ export async function GET(
       })
     : null;
 
+  const [completedPagesRow] = job
+    ? await db
+        .select({ count: count() })
+        .from(jobPages)
+        .where(and(eq(jobPages.jobId, job.id), isNotNull(jobPages.parsedData)))
+    : [{ count: 0 }];
+
   if (status === "failed" || status === "cancelled") {
     return NextResponse.json({
       id: job?.id || id,
@@ -83,6 +90,7 @@ export async function GET(
     status,
     filename: job?.filename,
     totalPages: job?.totalPages ?? 0,
+    completedPages: completedPagesRow?.count ?? 0,
     pdfUrl: job?.pdfBlobUrl,
     createdAt: job?.createdAt,
     updatedAt: job?.updatedAt,
