@@ -295,7 +295,7 @@ export async function repairOcrPage(
     );
     const base64Image = await fetchImageBase64(pageBlobUrl);
 
-    const modelId = ocrModelConfig?.modelId ?? OCR_VISION_MODEL;
+    const modelId = "@vercel/google/gemini-2.5-flash-lite-preview-09-2025";
     const temperature = ocrModelConfig?.temperature;
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};

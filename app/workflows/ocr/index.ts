@@ -87,7 +87,7 @@ export async function ocrWorkflow(
           stopState,
           toonSchemaTemplate,
         ),
-      { concurrency: 1 },
+      { concurrency: 5 },
     );
     const pages = pagesResults.filter((p): p is OcrPageResult => p !== null);
 

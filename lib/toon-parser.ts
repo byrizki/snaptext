@@ -171,17 +171,29 @@ function parseCsvLine(line: string): string[] {
 }
 
 function castValue(val: string): any {
-  if (val === "null") return null;
-  if (val === "true") return true;
-  if (val === "false") return false;
-  if (!isNaN(Number(val)) && val !== "") return Number(val);
-  
-  // Handle escaped newlines
-  if (val.includes("\\n")) {
-    return val.replace(/\\n/g, "\n");
+  let result = val;
+  let wasQuoted = false;
+
+  // Remove surrounding quotes if they exist
+  if (result.startsWith('"') && result.endsWith('"') && result.length >= 2) {
+    result = result.slice(1, -1).replace(/""/g, '"');
+    wasQuoted = true;
+  }
+
+  // Only perform type coercion if the value was not explicitly quoted
+  if (!wasQuoted) {
+    if (result === "null") return null;
+    if (result === "true") return true;
+    if (result === "false") return false;
+    if (!isNaN(Number(result)) && result !== "") return Number(result);
   }
   
-  return val;
+  // Handle escaped newlines
+  if (result.includes("\\n")) {
+    result = result.replace(/\\n/g, "\n");
+  }
+  
+  return result;
 }
 
 function createError(message: string, line: number, key?: string, context?: string): ToonParseError {
