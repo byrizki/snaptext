@@ -25,9 +25,7 @@ export async function extractPdfPageImages(
       };
     }
 
-    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    pdfjs.GlobalWorkerOptions.workerSrc = "";
-    await definePDFJSModule(() => Promise.resolve(pdfjs));
+    await definePDFJSModule(() => import("pdfjs-dist/legacy/build/pdf.mjs"));
 
     const response = await fetch(pdfUrl);
     const pdfBuffer = await response.arrayBuffer();
