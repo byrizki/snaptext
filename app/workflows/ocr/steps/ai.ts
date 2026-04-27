@@ -12,6 +12,8 @@ import { buildOcrSystemPrompt } from "../prompts";
 import type { OcrPageResult } from "../types";
 import { buildToonTools } from "../tools";
 import { dbSaveLlmLogsBatch, dbSaveOcrPageResult } from "./db";
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { getModelId } from "@/lib/provider-mapping";
 
 const predefinedProvider = {
   google: {
@@ -33,6 +35,20 @@ function getAiModel(
     return {
       model: actualModelId,
       providerConfig: { ...predefinedProvider, [providerId]: config },
+    };
+  }
+
+  if (modelId.startsWith("@nvidia/")) {
+    const actualModelId = modelId.slice("@nvidia/".length);
+    const provider = createOpenAICompatible({
+      apiKey: process.env.NVIDIA_NIM_API_KEY,
+      name: 'nim',
+      baseURL: 'https://integrate.api.nvidia.com/v1',
+    });
+
+    return {
+      model: async () => provider.chatModel(getModelId(actualModelId)),
+      providerConfig: { ...predefinedProvider },
     };
   }
 
@@ -142,7 +158,7 @@ export async function runOcrOnPage(
             totalTokens: event.usage.totalTokens ?? 0,
           },
           pageNumber,
-          rawResponse: event.text || (event.toolCalls ? JSON.stringify(event.toolCalls) : ""),
+          rawResponse: event.reasoningText ||  event.text || (event.toolCalls ? JSON.stringify(event.toolCalls) : ""),
         });
       },
     });
