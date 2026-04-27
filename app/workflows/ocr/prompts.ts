@@ -24,21 +24,24 @@ tags[3]: typescript,llm,ocr
 phones[2]: +1-555-0100,+1-555-0101
 
 ### Object arrays — MUST declare count [N] AND {headers}
+# Formatting: key[N]{header1,header2}:
+# Followed by N lines of comma-separated values (CSV style)
 line_items[2]{id,description,qty,unit_price,total}:
   1,Widget A,2,15.00,30.00
   2,Widget B,1,25.00,25.00
 
 ### Quoting — quote values containing commas, colons, or newlines
-notes[2]: "hello, world","line1\\nline2"
+notes[2]: "hello, world","line1\nline2"
 
 ### Important rules
 - Numbers unquoted: total: 1250.00  NOT  total: "1250.00"
 - Booleans unquoted: active: true  NOT  active: "true"
 - Null unquoted: value: null  NOT  value: "null"
 - Array count mandatory: tags[3]: a,b,c  NOT  tags: a,b,c
-- Object arrays need headers: items[2]{id,name}:  NOT  items[2]:
-- Row count MUST match [N]: if line_items[3] is declared, write EXACTLY 3 rows — no more, no fewer
-- No backticks, no markdown fences, no preamble, no trailing text`;
+- Object arrays MUST have {headers}: items[2]{id,name}:  NOT  items[2]:
+- Row count MUST match [N]: if line_items[3] is declared, write EXACTLY 3 rows.
+- Header count MUST match columns: if {id,name} is declared, each line MUST have 2 values.
+- No backticks, no markdown fences, no preamble, no trailing text. Output RAW TOON.`;
 
 /**
  * Shared output example used in both OCR and text-extraction prompts.
@@ -50,6 +53,7 @@ document_id: "INV-2023-001"
 date: "2023-10-27"
 is_paid: false
 total_amount: 1040.50
+currency: "USD"
 
 document_metadata:
   readability_score: 95
@@ -58,16 +62,30 @@ document_metadata:
 issuer:
   name: "Acme Corp"
   tax_id: "US123456789"
+  phone: "+1-555-0199"
   address:
+    street: "123 Tech Lane"
     city: "San Francisco"
+    state: "CA"
+    zip: "94105"
     country: "USA"
 
-items[2]{id, description, quantity, unit_price, total}:
+recipient:
+  name: "Global Logistics Ltd"
+  address:
+    city: "London"
+    country: "UK"
+
+items[3]{id, description, quantity, unit_price, total}:
   1, "Premium Widget", 2, 500.00, 1000.00
   2, "Shipping", 1, 40.50, 40.50
+  3, "Tax Adjustment", 1, 0.00, 0.00
+
+additional_accounts[2]{bank_name, account_no, currency}:
+  "JPMorgan Chase", "88273645", "USD"
+  "Barclays Bank", "UK-99283", "GBP"
 
 tags[3]: "urgent", "electronics", "b2b"
-
 notes: "Thank you for your business. Please pay within 30 days."`;
 
 /**
@@ -88,11 +106,13 @@ function buildExtractionInstructions(): string {
 2. Identify all sections: header, parties, line items, totals, notes, footer.
 3. Extract ONLY useful, structured business data. EXCLUDE generic page headers/footers (e.g. "Page 1 of 2"), unreadable text, watermarks, or boilerplate disclaimers.
 4. Group the extracted data into proper, logical nested structures (e.g., nested objects for vendor details, customer info, etc.) and use common, standardized structural naming conventions (e.g., snake_case keys).
-4. IF ${skipCondition}, skip it immediately by returning exactly \`empty: true\`.
-5. Include a \`document_metadata\` object containing \`readability_score\` (0-100) and \`data_usability_score\` (0-100) ${metadataNote}.
-6. Write TOON from top to bottom.
-7. Count line items precisely — set [N] correctly.
-8. Output ONLY TOON — nothing before or after.
+5. DECOMPOSE complex or combined data into granular fields whenever possible (e.g., separate currency from amount, split addresses into street/city/state/zip, separate country codes from phone numbers).
+6. DO NOT TRANSLATE the page content. Extract the text exactly as it appears in its original language.
+7. IF ${skipCondition}, skip it immediately by returning exactly \`empty: true\`.
+8. Include a \`document_metadata\` object containing \`readability_score\` (0-100) and \`data_usability_score\` (0-100) ${metadataNote}.
+9. Write TOON from top to bottom.
+10. Count line items precisely — set [N] correctly.
+11. Output ONLY TOON — nothing before or after.
 
 If ${noContentNote}: output exactly \`empty: true\``;
 }
@@ -117,34 +137,3 @@ ${EXTRACTION_EXAMPLE}
 
 ${buildExtractionInstructions()}`;
 }
-
-/**
- * Repair system prompt — used to fix malformed TOON output via tool calls.
- */
-export function buildRepairSystemPrompt(toonSchemaTemplate?: string): string {
-  const schemaInstruction = toonSchemaTemplate
-    ? `\n## REQUIRED SCHEMA\n\nThe correct TOON data MUST conform to this structure:\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n`
-    : "";
-
-  return `You are a TOON syntax repair engine. Fix the provided malformed TOON using the patch_invalid_toon tool.${schemaInstruction}
-
-${TOON_RULES}
-
----
-
-## REPAIR TOOL USAGE
-
-Arguments:
-- searchString: the EXACT broken substring (copy character-for-character)
-- replaceString: the corrected replacement
-
-Workflow:
-1. Read the TOON string and the error message.
-2. Identify the minimal broken snippet.
-3. Call patch_invalid_toon with searchString + replaceString.
-4. If still invalid, patch again.
-5. Stop only when the tool confirms success.
-
-NEVER rewrite the entire string. Apply surgical minimal patches only.`;
-}
-

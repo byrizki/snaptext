@@ -1,34 +1,104 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { decodeToon } from "@/lib/toon-parser";
 import { z } from "zod";
-import { decode, encode } from "@toon-format/toon";
 
+type ParseResult =
+  | { success: true }
+  | { success: false; error: string; hint: string };
 
-export function buildFixToonTool(getInitialToon: () => string, setFixedData: (val: Record<string, unknown>) => void) {
-  return {
-    description: "Apply a text patch to the current invalid TOON string to fix syntax errors.",
+function tryParseToon(
+  toon: string,
+  onParsed: (rawToon: string, data: Record<string, unknown>) => void,
+): ParseResult {
+  try {
+    const trimmed = toon.trim();
+    const data =
+      trimmed === "empty: true"
+        ? { empty: true }
+        : (decodeToon(trimmed) as Record<string, unknown>);
+    onParsed(toon, data);
+    console.log("✅ [TOON] Parse successful");
+    return { success: true };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    console.log(`❌ [TOON] Parse failed: ${err}`);
+    return {
+      success: false,
+      error,
+      hint: "Use patch_toon to fix the specific broken part — no need to re-submit the full TOON.",
+    };
+  }
+}
+
+export function buildToonTools(
+  onParsed: (rawToon: string, data: Record<string, unknown>) => void,
+  stopState?: { current: boolean },
+  initialToon?: string,
+) {
+  let currentToon = initialToon ?? "";
+
+  const validate_toon = {
+    description:
+      "Submit your complete TOON output for validation. Call this first with your full TOON. If it fails, use patch_toon to fix specific issues without resubmitting the entire output.",
     inputSchema: z.object({
-      searchString: z.string().describe("The exact text snippet that contains the error to replace."),
-      replaceString: z.string().describe("The corrected text snippet to substitute.")
+      toon: z.string().describe("Your complete TOON-formatted output"),
     }),
-    execute: async ({ searchString, replaceString, ...rest }: any) => {
-      console.log('[BuildFixToon] searchString: %s, replaceString: %s', searchString, replaceString);
-      console.log('[BuildFixToon] Rest: %s', JSON.stringify(rest));
-
-      if (!getInitialToon().includes(searchString)) {
-        console.log('[BuildFixToon] Failed: The exact string snippet was not found');
-        return `Failed: The exact string snippet was not found. Please ensure the searchString matches exactly.`;
+    execute: async ({ toon }: { toon: string }): Promise<ParseResult> => {
+      if (stopState?.current) {
+        return { success: false, error: "Workflow stopped by user", hint: "Stop processing immediately." };
       }
-      
-      try {
-        const trimmed = getInitialToon().replace(searchString, replaceString).trim();
-        const data = trimmed === "empty: true" ? { empty: true } : (decode(trimmed) as Record<string, unknown>);
-        setFixedData(data);
-        console.log("[BuildFixToon] Patch applied successfully and TOON parsed correctly! You may now finish.");
-        return "Patch applied successfully and TOON parsed correctly! You may now finish.";
-      } catch (err) {
-        console.log(`[BuildFixToon] Patch applied successfully. However, the TOON is STILL invalid: ${err instanceof Error ? err.message : String(err)}. Please apply another patch.`);
-        return `Patch applied successfully. However, the TOON is STILL invalid: ${err instanceof Error ? err.message : String(err)}. Please apply another patch.`;
-      }
-    }
+      console.log(`[Tool] validate_toon called (length: ${toon.length})`);
+      currentToon = toon;
+      return tryParseToon(toon, onParsed);
+    },
   };
+
+  const patch_toon = {
+    description:
+      "Fix a specific broken part of the previously submitted TOON by replacing an exact substring. More token-efficient than re-submitting the full output. CRITICAL: Your 'search' string MUST exactly match the characters in the current TOON, including invisible spaces and newlines.",
+    inputSchema: z.object({
+      search: z
+        .string()
+        .describe(
+          "The exact substring to find. IMPORTANT: Keep this as short as possible (1-2 lines or a specific phrase) to avoid invisible whitespace mismatch errors.",
+        ),
+      replace: z.string().describe("The corrected replacement string"),
+    }),
+    execute: async ({
+      search,
+      replace,
+    }: {
+      search: string;
+      replace: string;
+    }): Promise<ParseResult> => {
+      if (stopState?.current) {
+        return { success: false, error: "Workflow stopped by user", hint: "Stop processing immediately." };
+      }
+      console.log(`[Tool] patch_toon called`);
+      console.log(`  - Search:  "${search}"`);
+      console.log(`  - Replace: "${replace}"`);
+
+      if (!currentToon) {
+        console.warn("⚠️ [Tool] patch_toon called but no TOON available");
+        return {
+          success: false,
+          error: "No TOON available to patch.",
+          hint: "Call validate_toon with the complete corrected TOON output first.",
+        };
+      }
+      if (!currentToon.includes(search)) {
+        console.warn("⚠️ [Tool] patch_toon failed: Search string not found");
+        const contextLines = currentToon.split("\n").slice(0, 5).join("\n");
+        return {
+          success: false,
+          error: "Search string not found in current TOON. This is usually caused by invisible indentation, trailing spaces, or quoting differences.",
+          hint: `Try again with a MUCH SHORTER and more unique search string — ideally just one distinctive keyword or number from the broken line. Here are the first 5 lines of the current TOON for reference:\n${contextLines}`,
+        };
+      }
+      currentToon = currentToon.replace(search, replace);
+      console.log("🔄 [Tool] Patch applied, re-validating...");
+      return tryParseToon(currentToon, onParsed);
+    },
+  };
+
+  return { validate_toon, patch_toon };
 }
