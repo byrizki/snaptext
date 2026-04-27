@@ -7,9 +7,12 @@ import { ocrWorkflow } from "@/app/workflows/ocr";
 
 export const maxDuration = 60;
 
-export async function POST(request: Request): Promise<NextResponse> {
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
   try {
-    const { jobId } = await request.json() as { jobId?: string };
+    const { id: jobId } = await params;
 
     if (!jobId) {
       return NextResponse.json(

@@ -59,6 +59,12 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
     currentIntervalRef.current = POLL_INTERVAL_MS;
   }, []);
 
+  const getViewParam = useCallback(() => {
+    return typeof window !== "undefined" && window.location.pathname.startsWith("/dashboard")
+      ? ""
+      : "?view=demo";
+  }, []);
+
   const pollStatus = useCallback(
     async function poll(id: string, attempt = 0) {
       if (attempt >= MAX_POLL_ATTEMPTS) {
@@ -68,7 +74,8 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
       }
 
       try {
-        const response = await fetch(`/api/demo/ocr/status/${id}`);
+        const viewParam = getViewParam();
+        const response = await fetch(`/api/ocr/${id}${viewParam}`);
         const json = (await response.json()) as {
           status: string;
           job?: {
@@ -155,7 +162,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         );
       }
     },
-    [],
+    [getViewParam],
   );
 
   const startOcr = useCallback(
@@ -178,7 +185,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         if (ocrModelId) formData.append("ocrModelId", ocrModelId);
         if (jsonSchema) formData.append("jsonSchema", jsonSchema);
 
-        const response = await fetch("/api/demo/ocr", {
+        const response = await fetch("/api/ocr", {
           method: "POST",
           body: formData,
         });
@@ -203,7 +210,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         setError(err instanceof Error ? err.message : "An unexpected error occurred.");
       }
     },
-    [clearPollTimer, pollStatus]
+    [clearPollTimer, pollStatus, getViewParam]
   );
 
   const rerunOcr = useCallback(
@@ -218,12 +225,8 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
       setCurrentFile(new File([], filename));
 
       try {
-        const response = await fetch("/api/demo/ocr/rerun", {
+        const response = await fetch(`/api/ocr/${jobId}/rerun`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ jobId }),
         });
 
         if (!response.ok) {
@@ -241,7 +244,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         setError(err instanceof Error ? err.message : "An unexpected error occurred.");
       }
     },
-    [clearPollTimer, pollStatus]
+    [clearPollTimer, pollStatus, getViewParam]
   );
 
   const viewJob = useCallback(
@@ -260,13 +263,11 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
   );
 
   const stopJob = useCallback(
-    async (id: string) => {
+    async (jobId: string) => {
       clearPollTimer();
       try {
-        await fetch("/api/demo/ocr/stop", {
+        await fetch(`/api/ocr/${jobId}/stop`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId: id }),
         });
       } catch (err) {
         console.error("Failed to stop job:", err);
@@ -277,7 +278,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
       setError(null);
       setCurrentFile(null);
     },
-    [clearPollTimer],
+    [clearPollTimer, getViewParam],
   );
 
   const reset = useCallback(() => {

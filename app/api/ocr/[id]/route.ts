@@ -6,34 +6,36 @@ import { getRun } from "workflow/api";
 import { getDb, jobPages, jobResults, jobs, ocrModels } from "@/db";
 
 interface RouteParams {
-  params: Promise<{ runId: string }>;
+  params: Promise<{ id: string }>;
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: RouteParams
 ): Promise<NextResponse> {
-  const { runId } = await params;
+  const { id } = await params;
+  const { searchParams } = new URL(request.url);
+  const view = searchParams.get("view"); // e.g., 'demo'
 
-  if (!runId) {
-    return NextResponse.json({ error: "Missing runId" }, { status: 400 });
+  if (!id) {
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
   const db = getDb();
 
   // Determine whether the param is a Vercel workflow run ID or a DB job UUID.
-  const isWorkflowRunId = runId.startsWith("wrun_");
+  const isWorkflowRunId = id.startsWith("wrun_");
 
   let job = await db.query.jobs.findFirst({
     where: isWorkflowRunId
-      ? eq(jobs.workflowRunId, runId)
-      : eq(jobs.id, runId),
+      ? eq(jobs.workflowRunId, id)
+      : eq(jobs.id, id),
   });
 
   // If looking up by jobId failed (shouldn't happen), try workflowRunId as fallback.
   if (!job && !isWorkflowRunId) {
     job = await db.query.jobs.findFirst({
-      where: eq(jobs.workflowRunId, runId),
+      where: eq(jobs.workflowRunId, id),
     });
   }
 
@@ -46,7 +48,7 @@ export async function GET(
 
   try {
     // If we have a job, use its workflowRunId, otherwise assume the param itself is the runId.
-    const run = getRun(job?.workflowRunId ?? runId);
+    const run = getRun(job?.workflowRunId ?? id);
     status = await run.status;
     workflowResult = await run.returnValue;
   } catch (error: any) {
@@ -80,16 +82,43 @@ export async function GET(
 
   if (status === "failed" || status === "cancelled") {
     return NextResponse.json({
-      runId,
+      runId: id,
       status,
-      job,
-      pages,
-      error: "Workflow did not complete successfully.",
+      error: job?.error || "Workflow did not complete successfully.",
+    });
+  }
+
+  if (view === "demo") {
+    const safeJob = job ? {
+      pdfBlobUrl: job.pdfBlobUrl,
+      totalPages: job.totalPages,
+      filename: job.filename,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+    } : undefined;
+
+    const safePages = pages.map(p => ({
+      pageNumber: p.pageNumber,
+      toonOutput: p.toonOutput,
+      parsedData: p.parsedData,
+    }));
+
+    const safeResult = result ? {
+      mergedData: result.mergedData,
+    } : undefined;
+
+    return NextResponse.json({
+      runId: id,
+      status,
+      job: safeJob,
+      pages: safePages,
+      result: safeResult,
+      hasSchema: !!job?.jsonSchema,
     });
   }
 
   return NextResponse.json({
-    runId,
+    runId: id,
     status,
     job,
     pages,

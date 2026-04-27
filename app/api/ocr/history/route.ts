@@ -1,6 +1,8 @@
-import { count, desc } from "drizzle-orm";
+import { count, desc, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb, jobs } from "@/db";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 export async function GET(req: Request) {
   try {
@@ -11,13 +13,19 @@ export async function GET(req: Request) {
 
     const db = getDb();
     
+    const session = await auth.api.getSession({ headers: await headers() });
+    const userId = session?.user?.id ?? null;
+
+    const condition = userId ? eq(jobs.userId, userId) : isNull(jobs.userId);
+
     const [history, countResult] = await Promise.all([
       db.query.jobs.findMany({
+        where: condition,
         orderBy: [desc(jobs.createdAt)],
         limit,
         offset,
       }),
-      db.select({ count: count() }).from(jobs)
+      db.select({ count: count() }).from(jobs).where(condition)
     ]);
 
     const total = countResult[0].count;
