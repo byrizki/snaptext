@@ -1,20 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { OcrModel } from "@/db";
 import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
-import type { LanguageModelV3 } from '@ai-sdk/provider';
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { decode, encode } from "@toon-format/toon";
 import { DurableAgent } from "@workflow/ai/agent";
 import { stepCountIs } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
-import { getWritable } from "workflow";
+import { getStepMetadata, getWritable, RetryableError, sleep } from "workflow";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
 import {
-  buildMergeSystemPrompt,
   buildOcrSystemPrompt,
   buildRepairSystemPrompt,
 } from "../prompts";
-import { buildFixToonTool, buildMergeTools } from "../tools";
+import { buildFixToonTool } from "../tools";
 import type { OcrPageResult } from "../types";
+import { dbSaveOcrPageResult, dbSaveRepairPageResult } from "./db";
+import { type DeepSeekLanguageModelOptions } from "@ai-sdk/deepseek";
 
 const predefinedProvider = {
   google: {
@@ -28,7 +29,7 @@ function getAiModel(
   modelId: string,
   config: Record<string, unknown> = {},
   fileHash?: string | null,
-): { model: string | (() => Promise<LanguageModelV3>), providerConfig: any } {
+): { model: string | (() => Promise<LanguageModelV3>); providerConfig: any } {
   if (modelId.startsWith("@vercel/")) {
     const actualModelId = modelId.slice("@vercel/".length);
     const [providerId] = actualModelId.split("/");
@@ -56,15 +57,18 @@ function getAiModel(
   });
 
   return {
-    model: async () => gateway(actualModelId, {
-      sessionAffinity: fileHash || undefined,
-      ...config,
-    }),
+    model: async () =>
+      gateway(actualModelId, {
+        sessionAffinity: fileHash || undefined,
+        ...config,
+      }),
     providerConfig: predefinedProvider,
   };
 }
 
-export async function fetchPageImageBase64(pageBlobUrl: string): Promise<string> {
+export async function fetchPageImageBase64(
+  pageBlobUrl: string,
+): Promise<string> {
   "use step";
   const imageResponse = await fetch(pageBlobUrl);
   if (!imageResponse.ok) {
@@ -124,7 +128,7 @@ export async function runOcrOnPage(
           ],
         },
       ],
-      writable: getWritable({ namespace: 'ocr-run' }),
+      writable: getWritable({ namespace: "ocr-run" }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
         return {};
@@ -134,8 +138,14 @@ export async function runOcrOnPage(
     const steps = streamRes.steps;
     const lastStep = steps[steps.length - 1];
     const rawToon = lastStep?.text || "";
-    const inputTokens = steps.reduce((acc, step) => acc + (step.usage?.inputTokens ?? 0), 0);
-    const outputTokens = steps.reduce((acc, step) => acc + (step.usage?.outputTokens ?? 0), 0);
+    const inputTokens = steps.reduce(
+      (acc, step) => acc + (step.usage?.inputTokens ?? 0),
+      0,
+    );
+    const outputTokens = steps.reduce(
+      (acc, step) => acc + (step.usage?.outputTokens ?? 0),
+      0,
+    );
     const finishReason = lastStep?.finishReason ?? "";
 
     let data: Record<string, unknown> = {};
@@ -187,14 +197,23 @@ export async function runOcrOnPage(
       error,
     );
     const e = error as any;
-    const msg = e?.message || '';
+    const msg = e?.message || "";
     const status = e?.status || e?.statusCode;
-    if (status === 429 || msg.includes('429') || msg.includes('Too Many Requests') || msg.toLowerCase().includes('rate limit')) {
-      throw new Error("Rate limited by AI provider (429). Please try again later.");
+    if (
+      status === 429 ||
+      msg.includes("429") ||
+      msg.includes("Too Many Requests") ||
+      msg.toLowerCase().includes("rate limit")
+    ) {
+      throw new Error(
+        "Rate limited by AI provider (429). Please try again later.",
+      );
     }
     throw error;
   }
 }
+
+
 
 export async function repairOcrPageData(
   pageResult: OcrPageResult,
@@ -251,7 +270,7 @@ export async function repairOcrPageData(
         },
       ],
       stopWhen: stepCountIs(10),
-      writable: getWritable({ namespace: 'ocr-repair' }),
+      writable: getWritable({ namespace: "ocr-repair" }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
         return {};
@@ -311,135 +330,98 @@ export async function repairOcrPageData(
       error,
     );
     const e = error as any;
-    const msg = e?.message || '';
+    const msg = e?.message || "";
     const status = e?.status || e?.statusCode;
-    if (status === 429 || msg.includes('429') || msg.includes('Too Many Requests') || msg.toLowerCase().includes('rate limit')) {
-      throw new Error("Rate limited by AI provider (429). Please try again later.");
+    if (
+      status === 429 ||
+      msg.includes("429") ||
+      msg.includes("Too Many Requests") ||
+      msg.toLowerCase().includes("rate limit")
+    ) {
+      throw new Error(
+        "Rate limited by AI provider (429). Please try again later.",
+      );
     }
     throw error;
   }
 }
 
-export async function mergePageData(
-  pages: OcrPageResult[],
+export async function processOcrPage(
+  page: {
+    pageNumber: number;
+    pageBlobUrl: string;
+    parsedData?: Record<string, unknown> | null;
+    toonOutput?: string | null;
+    model?: string | null;
+    promptTokens?: number | null;
+    completionTokens?: number | null;
+    totalTokens?: number | null;
+    finishReason?: string | null;
+  },
   jobId: string,
   fileHash: string | null,
   ocrModelConfig?: OcrModel,
   stopState?: { current: boolean },
   toonSchemaTemplate?: string,
-): Promise<{ merged: Record<string, unknown>; usage: any; log: string }> {
+): Promise<OcrPageResult | null> {
+  "use step";
+  const { pageNumber, pageBlobUrl } = page;
+
+  if (!pageBlobUrl) return null;
+
+  if (page.parsedData) {
+    return {
+      pageNumber,
+      pageBlobUrl,
+      rawToon: page.toonOutput ?? "",
+      data: page.parsedData,
+      model: page.model ?? "",
+      usage: {
+        promptTokens: page.promptTokens ?? 0,
+        completionTokens: page.completionTokens ?? 0,
+        totalTokens: page.totalTokens ?? 0,
+      },
+      finishReason: page.finishReason ?? "",
+    };
+  }
+
   try {
     console.log(
-      `[Step] mergePageData started for ${pages.length} pages for jobId: ${jobId}`,
+      `[Step] Running OCR on page ${pageNumber} using image for jobId: ${jobId}`,
     );
-    if (pages.length === 0) {
-      console.log(
-        `[Step] mergePageData skipped (no pages) for jobId: ${jobId}`,
+    let result = await runOcrOnPage(
+      pageBlobUrl,
+      pageNumber,
+      jobId,
+      fileHash,
+      ocrModelConfig,
+      stopState,
+      toonSchemaTemplate,
+    );
+
+    await dbSaveOcrPageResult(jobId, pageNumber, result);
+
+    if (result.data.parse_error) {
+      result = await repairOcrPageData(
+        result,
+        jobId,
+        fileHash,
+        ocrModelConfig,
+        stopState,
+        toonSchemaTemplate,
       );
-      return { merged: {}, usage: undefined, log: "No pages to merge" };
+      await dbSaveRepairPageResult(jobId, pageNumber, result);
     }
 
-    const modelId = OCR_TEXT_MODEL;
-    const temperature = ocrModelConfig?.temperature;
-    const maxTokens = ocrModelConfig?.maxOutputTokens;
-    const config = ocrModelConfig?.config ?? {};
-
-    const { model, providerConfig } = getAiModel(modelId, config, fileHash);
-    const startedAt = "N/A";
-
-    let merged = pages[0].data;
-    const subsequentPages = pages
-      .slice(1)
-      .map((p) => `### Page ${p.pageNumber}\n\`\`\`\n${encode(p.data)}\n\`\`\``)
-      .join("\n\n");
-
-    const systemPrompt = `${buildMergeSystemPrompt(toonSchemaTemplate)}
-
-The initial merged data (from Page 1) is currently:
-\`\`\`
-${encode(merged)}
-\`\`\`
-
-You will receive the data for subsequent pages.`;
-
-    let inputTokens = 0;
-    let outputTokens = 0;
-    let finishReason = "";
-    let rawResponse = "";
-
-    let pendingPatchToon = "";
-    const getPendingPatch = () => pendingPatchToon;
-    const setPendingPatch = (val: string) => { pendingPatchToon = val; };
-
-    const agent = new DurableAgent({
-      model: model as any,
-      instructions: systemPrompt,
-      providerOptions: providerConfig,
-      temperature,
-      maxOutputTokens: maxTokens,
-      tools: {
-        ...buildMergeTools(
-          getPendingPatch,
-          setPendingPatch,
-          () => merged,
-          (val) => {
-            merged = val;
-          },
-        ),
-      },
-    });
-
-    const streamRes = await agent.stream({
-      messages: [
-        {
-          role: "user",
-          content: `Here are the subsequent pages to merge:\n\n${subsequentPages}`,
-        },
-      ],
-      stopWhen: stepCountIs(pages.length + 10),
-      writable: getWritable({ namespace: 'ocr-merge' }),
-      prepareStep: () => {
-        if (stopState?.current) return { toolChoice: "none" };
-        return {};
-      },
-    });
-
-    const steps = streamRes.steps;
-
-    for (const step of steps) {
-      inputTokens += step.usage.inputTokens ?? 0;
-      outputTokens += step.usage.outputTokens ?? 0;
-      finishReason = step.finishReason;
-      rawResponse += step.text + "\n";
-    }
-
-    const log = [
-      `[${startedAt}] Merge started — ${pages.length} pages — model: ${modelId}`,
-      `[N/A] Raw response: ${rawResponse}`,
-      `[N/A] Merge complete — finish_reason: ${finishReason}`,
-      `[N/A] Tokens — input: ${inputTokens}, output: ${outputTokens}`,
-      `[N/A] Merged JSON generated via TOON tool calls loop`,
-    ].join("\n");
-
-    console.log(`[Step] mergePageData completed for jobId: ${jobId}`);
-    return {
-      merged,
-      usage: {
-        promptTokens: inputTokens,
-        completionTokens: outputTokens,
-        totalTokens: inputTokens + outputTokens,
-        finishReason,
-        rawResponse,
-      },
-      log,
-    };
-  } catch (error) {
-    console.error(`🔥 Error in mergePageData step for jobId: ${jobId}`, error);
-        const e = error as any;
-    const msg = e?.message || '';
-    const status = e?.status || e?.statusCode;
-    if (status === 429 || msg.includes('429') || msg.includes('Too Many Requests') || msg.toLowerCase().includes('rate limit')) {
-      throw new Error("Rate limited by AI provider (429). Please try again later.");
+    return result;
+  } catch (error: any) {
+    if (error.message?.includes("429")) {
+      const { attempt } = getStepMetadata();
+      const delayMs = 30000 + (attempt - 1) * 10000;
+      throw new RetryableError(
+        "Rate limited by AI provider (429). Please try again later.",
+        { retryAfter: `${delayMs}ms` }
+      );
     }
     throw error;
   }
