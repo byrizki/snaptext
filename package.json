@@ -13,6 +13,7 @@
     "db:cleanup": "tsx scripts/cleanup-ocr.ts"
   },
   "dependencies": {
+    "@ai-sdk/deepseek": "^2.0.29",
     "@ai-sdk/google": "^3.0.64",
     "@ai-sdk/google-vertex": "^4.0.112",
     "@ai-sdk/mistral": "^3.0.30",
@@ -39,6 +40,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.2",
     "embla-carousel-react": "^8.6.0",
+    "es-toolkit": "^1.46.0",
     "framer-motion": "^12.38.0",
     "input-otp": "^1.4.2",
     "next": "16.2.4",

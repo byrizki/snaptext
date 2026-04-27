@@ -1,6 +1,5 @@
 /**
  * TOON format rules — shared across all prompts.
- * Designed to be maximally compact and unambiguous for low-intelligence models.
  */
 const TOON_RULES = `## TOON Format (Token-Oriented Object Notation)
 
@@ -42,20 +41,9 @@ notes[2]: "hello, world","line1\\nline2"
 - No backticks, no markdown fences, no preamble, no trailing text`;
 
 /**
- * OCR extraction system prompt — used for vision model page scanning.
+ * Shared output example used in both OCR and text-extraction prompts.
  */
-export function buildOcrSystemPrompt(toonSchemaTemplate?: string): string {
-  const schemaInstruction = toonSchemaTemplate
-    ? `\n## REQUIRED SCHEMA\n\nYou MUST extract data conforming EXACTLY to the following TOON structure.\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n\n> **ALWAYS append** a \`document_metadata\` block (\`readability_score\` + \`data_usability_score\`) after the schema fields, even when a custom schema is provided.\n`
-    : "";
-
-  return `You are a document OCR engine. Read the document image and output ALL visible data in TOON format.${schemaInstruction}
-
-${TOON_RULES}
-
----
-
-## OUTPUT EXAMPLE
+const EXTRACTION_EXAMPLE = `## OUTPUT EXAMPLE
 
 document_type: "invoice"
 document_id: "INV-2023-001"
@@ -80,22 +68,54 @@ items[2]{id, description, quantity, unit_price, total}:
 
 tags[3]: "urgent", "electronics", "b2b"
 
-notes: "Thank you for your business. Please pay within 30 days."
+notes: "Thank you for your business. Please pay within 30 days."`;
 
----
+/**
+ * Shared extraction instruction steps.
+ */
+function buildExtractionInstructions(): string {
+  const readVerb = "read the entire image";
+  const skipCondition =
+    "the page is primarily terms and conditions, dense legal jargon, or large unstructured text blocks without key-value business data";
+  const metadataNote =
+    "assessing the visual quality and structured data value of the page";
+  const noContentNote =
+    "the page has NO readable content or lacks useful structured data";
 
-## INSTRUCTIONS
+  return `## INSTRUCTIONS
 
-1. Carefully read the entire image before writing anything.
+1. Carefully ${readVerb} before writing anything.
 2. Identify all sections: header, parties, line items, totals, notes, footer.
 3. Extract ONLY useful, structured business data. EXCLUDE generic page headers/footers (e.g. "Page 1 of 2"), unreadable text, watermarks, or boilerplate disclaimers.
-4. IF the page is primarily terms and conditions, dense legal jargon, or large unstructured text blocks without key-value business data, skip it immediately by returning exactly \`empty: true\`.
-5. Include a \`document_metadata\` object containing \`readability_score\` (0-100) and \`data_usability_score\` (0-100) assessing the visual quality and structured data value of the page.
+4. Group the extracted data into proper, logical nested structures (e.g., nested objects for vendor details, customer info, etc.) and use common, standardized structural naming conventions (e.g., snake_case keys).
+4. IF ${skipCondition}, skip it immediately by returning exactly \`empty: true\`.
+5. Include a \`document_metadata\` object containing \`readability_score\` (0-100) and \`data_usability_score\` (0-100) ${metadataNote}.
 6. Write TOON from top to bottom.
 7. Count line items precisely — set [N] correctly.
 8. Output ONLY TOON — nothing before or after.
 
-If the page has NO readable content or lacks useful structured data: output exactly \`empty: true\``;
+If ${noContentNote}: output exactly \`empty: true\``;
+}
+
+/**
+ * OCR extraction system prompt — used for vision model page scanning.
+ */
+export function buildOcrSystemPrompt(toonSchemaTemplate?: string): string {
+  const schemaInstruction = toonSchemaTemplate
+    ? `\n## REQUIRED SCHEMA\n\nYou MUST extract data conforming EXACTLY to the following TOON structure.\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n\n> **ALWAYS append** a \`document_metadata\` block (\`readability_score\` + \`data_usability_score\`) after the schema fields, even when a custom schema is provided.\n`
+    : "";
+
+  return `You are a document OCR engine. Read the document image and output ALL visible data in TOON format.${schemaInstruction}
+
+${TOON_RULES}
+
+---
+
+${EXTRACTION_EXAMPLE}
+
+---
+
+${buildExtractionInstructions()}`;
 }
 
 /**
@@ -128,36 +148,3 @@ Workflow:
 NEVER rewrite the entire string. Apply surgical minimal patches only.`;
 }
 
-/**
- * Merge system prompt — used to consolidate multi-page TOON data into one object.
- */
-export function buildMergeSystemPrompt(toonSchemaTemplate?: string): string {
-  const schemaInstruction = toonSchemaTemplate
-    ? `\n## REQUIRED SCHEMA\n\nYou MUST merge data such that the final output conforms EXACTLY to the following TOON structure. Ignore unneeded properties.\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n`
-    : "";
-
-  return `You are a document data merge engine. Merge structured TOON data from multiple pages into one cohesive TOON object.${schemaInstruction}
-
-Use update_merged_data to submit merged data. If it fails due to a TOON error, use patch_invalid_toon to fix the patch.
-
-${TOON_RULES}
-
----
-
-## MERGE RULES
-
-1. LINE ITEMS: Combine all line_items arrays across all pages. Remove exact duplicates. Recount [N].
-2. SCALARS (date, total, vendor…): Use the value from the FIRST page it appears. If pages conflict, prefer the most complete/specific value.
-3. TOTAL: Do NOT sum totals across pages — total is the document's final amount, not a page sum.
-4. METADATA: REMOVE \`page_number\` and \`total_pages\` from the merged output. Merge multiple \`document_metadata\` blocks by computing the average \`readability_score\` and \`data_usability_score\` from all pages into a single \`document_metadata\` object.
-5. PRESERVE all other fields — do not discard any data.
-
----
-
-## INSTRUCTIONS
-
-1. Review the current merged data (Page 1) from the system context.
-2. For each subsequent page, call update_merged_data with a TOON patch of new/updated fields.
-3. If a tool call returns a TOON error, immediately call patch_invalid_toon to fix it.
-4. Stop after all pages are merged.`;
-}
