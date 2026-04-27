@@ -77,47 +77,34 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         const viewParam = getViewParam();
         const response = await fetch(`/api/ocr/${id}${viewParam}`);
         const json = (await response.json()) as {
+          id: string;
+          runId: string;
           status: string;
-          job?: {
-            pdfBlobUrl: string;
-            totalPages?: number;
-            createdAt?: string;
-            updatedAt?: string;
-            filename?: string;
-          };
-          pages?: {
-            pageNumber: number;
-            toonOutput?: string;
-            parsedData?: Record<string, unknown>;
-          }[];
-          result?: {
-            mergedData?: Record<string, unknown>;
-          };
-          error?: string;
+          filename: string;
+          totalPages: number;
+          pdfUrl: string;
+          createdAt: string;
+          updatedAt: string;
+          hasSchema: boolean;
+          data: Record<string, unknown> | null;
+          error: string | null;
         };
 
-        if (json.job) {
-          const mappedResult: OcrResult = {
-            runId: id,
-            pdfUrl: json.job.pdfBlobUrl,
-            totalPages: json.job.totalPages ?? 0,
-            pages: (json.pages ?? []).map((p) => ({
-              pageNumber: p.pageNumber,
-              rawToon: p.toonOutput ?? "",
-              data: p.parsedData ?? {},
-            })),
-            merged: json.result?.mergedData ?? {},
-            modelName: (json as { modelName?: string }).modelName,
-            createdAt: json.job.createdAt,
-            updatedAt: json.job.updatedAt,
-            hasSchema: (json as { hasSchema?: boolean }).hasSchema,
-            filename: json.job.filename,
-          };
-          setResult(mappedResult);
-        }
+        const mappedResult: OcrResult = {
+          runId: json.runId || json.id,
+          pdfUrl: json.pdfUrl,
+          totalPages: json.totalPages ?? 0,
+          pages: [], // per-page results excluded
+          merged: json.data ?? {},
+          createdAt: json.createdAt,
+          updatedAt: json.updatedAt,
+          hasSchema: json.hasSchema,
+          filename: json.filename,
+        };
+        setResult(mappedResult);
 
         if (json.status === "completed") {
-          const mergedData = json.result?.mergedData || {};
+          const mergedData = json.data || {};
           const hasEmptyFlag = mergedData.empty === true;
           const dataKeys = Object.keys(mergedData).filter(k => k !== 'document_metadata');
           
@@ -137,8 +124,8 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           return;
         }
 
-        // Fingerprint to detect progress: status + pages count + presence of result
-        const currentFingerprint = `${json.status}-${json.pages?.length || 0}-${!!json.result}`;
+        // Fingerprint to detect progress: status + presence of result
+        const currentFingerprint = `${json.status}-${!!json.data}`;
 
         // Defer with increasing timing when returning same status fingerprint
         if (currentFingerprint === lastStatusRef.current) {

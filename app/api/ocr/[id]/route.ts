@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getRun } from "workflow/api";
 
-import { getDb, jobPages, jobResults, jobs, ocrModels } from "@/db";
+import { getDb, jobResults, jobs } from "@/db";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -40,17 +40,11 @@ export async function GET(
   }
 
   let status = "unknown";
-  let workflowResult = null;
-
-  const ocrModel = job?.ocrModelId 
-    ? await db.query.ocrModels.findFirst({ where: eq(ocrModels.id, job.ocrModelId) })
-    : null;
 
   try {
     // If we have a job, use its workflowRunId, otherwise assume the param itself is the runId.
     const run = getRun(job?.workflowRunId ?? id);
     status = await run.status;
-    workflowResult = await run.returnValue;
   } catch (error: any) {
     // If the workflow run is not found (e.g., deleted or expired), fallback to the DB status
     if (error.name === "WorkflowRunNotFoundError" || error.message?.includes("not found")) {
@@ -67,13 +61,6 @@ export async function GET(
     status = "failed";
   }
 
-  const pages = job
-    ? await db.query.jobPages.findMany({
-        where: eq(jobPages.jobId, job.id),
-        orderBy: (t, { asc }) => [asc(t.pageNumber)],
-      })
-    : [];
-
   const result = job
     ? await db.query.jobResults.findFirst({
         where: eq(jobResults.jobId, job.id),
@@ -82,49 +69,25 @@ export async function GET(
 
   if (status === "failed" || status === "cancelled") {
     return NextResponse.json({
-      runId: id,
+      id: job?.id || id,
+      runId: job?.workflowRunId || id,
       status,
+      filename: job?.filename ?? null,
       error: job?.error || "Workflow did not complete successfully.",
     });
   }
 
-  if (view === "demo") {
-    const safeJob = job ? {
-      pdfBlobUrl: job.pdfBlobUrl,
-      totalPages: job.totalPages,
-      filename: job.filename,
-      createdAt: job.createdAt,
-      updatedAt: job.updatedAt,
-    } : undefined;
-
-    const safePages = pages.map(p => ({
-      pageNumber: p.pageNumber,
-      toonOutput: p.toonOutput,
-      parsedData: p.parsedData,
-    }));
-
-    const safeResult = result ? {
-      mergedData: result.mergedData,
-    } : undefined;
-
-    return NextResponse.json({
-      runId: id,
-      status,
-      job: safeJob,
-      pages: safePages,
-      result: safeResult,
-      hasSchema: !!job?.jsonSchema,
-    });
-  }
-
   return NextResponse.json({
-    runId: id,
+    id: job?.id || id,
+    runId: job?.workflowRunId || id,
     status,
-    job,
-    pages,
-    result,
-    workflowResult,
-    modelName: ocrModel?.name,
+    filename: job?.filename,
+    totalPages: job?.totalPages ?? 0,
+    pdfUrl: job?.pdfBlobUrl,
+    createdAt: job?.createdAt,
+    updatedAt: job?.updatedAt,
     hasSchema: !!job?.jsonSchema,
+    data: result?.mergedData ?? null,
+    error: job?.error ?? null,
   });
 }
