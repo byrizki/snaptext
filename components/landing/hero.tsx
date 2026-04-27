@@ -47,7 +47,7 @@ export function Hero() {
         className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto"
       >
         <Link href="/demo" className="h-14 w-full sm:w-auto px-10 rounded-2xl bg-blue-600 text-white text-[17px] font-semibold flex items-center justify-center hover:bg-blue-500 transition-all shadow-lg hover:shadow-blue-500/25 group">
-          Live Demo
+          Try It Now
           <svg viewBox="0 0 24 24" fill="none" className="ml-2 size-5 group-hover:translate-x-1 transition-transform" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
@@ -55,35 +55,6 @@ export function Hero() {
         <Link href="/dashboard" className="h-14 w-full sm:w-auto px-10 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-[17px] font-semibold flex items-center justify-center hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
           Get Started
         </Link>
-      </motion.div>
-      
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.4 }}
-        className="mt-24 w-full max-w-4xl mx-auto rounded-[2rem] border border-zinc-200/50 dark:border-zinc-800/80 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-2xl overflow-hidden shadow-2xl dark:shadow-[0_0_50px_rgba(0,0,0,0.5)] relative"
-      >
-        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-        <div className="flex items-center gap-2 px-6 py-4 border-b border-zinc-200/50 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/50 backdrop-blur-md">
-          <div className="flex gap-2">
-            <div className="size-3 rounded-full bg-red-400 dark:bg-red-500/80 shadow-sm" />
-            <div className="size-3 rounded-full bg-amber-400 dark:bg-yellow-500/80 shadow-sm" />
-            <div className="size-3 rounded-full bg-emerald-400 dark:bg-emerald-500/80 shadow-sm" />
-          </div>
-          <div className="ml-4 text-[13px] font-mono font-medium text-zinc-500">extraction.ts</div>
-        </div>
-        <div className="p-8 md:p-10 overflow-x-auto text-left text-[15px] md:text-base leading-[1.8]">
-          <pre className="font-mono text-zinc-800 dark:text-zinc-300">
-            <span className="text-violet-600 dark:text-violet-400">import</span> {"{ "} SnapText {" }"} <span className="text-violet-600 dark:text-violet-400">from</span> <span className="text-emerald-600 dark:text-emerald-400">&quot;@snaptext/sdk&quot;</span>;
-            {"\n\n"}
-            <span className="text-blue-600 dark:text-blue-400">const</span> client = <span className="text-violet-600 dark:text-violet-400">new</span> SnapText({"{ "} apiKey: process.env.SNAPTEXT_KEY {" }"});
-            {"\n\n"}
-            <span className="text-zinc-400 dark:text-zinc-500">{"// Extract directly to structured JSON"}</span>{"\n"}
-            <span className="text-blue-600 dark:text-blue-400">const</span> data = <span className="text-violet-600 dark:text-violet-400">await</span> client.extract(<span className="text-emerald-600 dark:text-emerald-400">&quot;./invoice.pdf&quot;</span>, {"{\n"}
-            {"  "}schema: {"{ "} totalAmount: <span className="text-emerald-600 dark:text-emerald-400">&quot;number&quot;</span>, vendorName: <span className="text-emerald-600 dark:text-emerald-400">&quot;string&quot;</span> {" }\n"}
-            {"}"});
-          </pre>
-        </div>
       </motion.div>
     </section>
   );

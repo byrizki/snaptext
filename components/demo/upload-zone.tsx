@@ -4,12 +4,15 @@ import { useCallback, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { File01Icon, Upload03Icon } from "@hugeicons/core-free-icons";
+import Link from "next/link";
 
 interface UploadZoneProps {
   onFileSelect: (file: File) => void;
+  quota?: { limit: number; used: number; remaining: number; isAnonymous: boolean } | null;
+  isLoadingQuota?: boolean;
 }
 
-export function UploadZone({ onFileSelect }: UploadZoneProps) {
+export function UploadZone({ onFileSelect, quota, isLoadingQuota }: UploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -97,6 +100,26 @@ export function UploadZone({ onFileSelect }: UploadZoneProps) {
               />
             )}
           </AnimatePresence>
+
+          {isLoadingQuota ? (
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-8 bg-zinc-200/50 dark:bg-zinc-800/50 rounded-full animate-pulse z-20 backdrop-blur-md" />
+          ) : quota ? (
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-max max-w-[200px] sm:max-w-none text-[11px] font-medium bg-white/50 dark:bg-zinc-800/50 backdrop-blur-md border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 rounded-full shadow-sm whitespace-nowrap z-20">
+              {quota.limit > 1000000 ? (
+                <span className="text-emerald-600 dark:text-emerald-400">Unlimited scans available</span>
+              ) : (
+                <span className="text-zinc-600 dark:text-zinc-300">
+                  <span className={quota.remaining > 0 ? "text-blue-600 dark:text-blue-400" : "text-red-500"}>{quota.remaining}</span> / {quota.limit} scans remaining today.
+                  {quota.isAnonymous && (
+                    <Link href="/signup" className="ml-1.5 text-blue-600 dark:text-blue-400 hover:underline">
+                      Sign up for more &rarr;
+                    </Link>
+                  )}
+                </span>
+              )}
+            </div>
+          ) : null}
+
           <div
             className={`relative size-20 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm border ${
               isDragging

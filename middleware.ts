@@ -2,10 +2,12 @@ import { betterFetch } from "@better-fetch/fetch";
 import { NextResponse, type NextRequest } from "next/server";
 
 export default async function authMiddleware(request: NextRequest) {
-    const isAdminUI = request.nextUrl.pathname.startsWith('/admin') && request.nextUrl.pathname !== '/admin/login';
+    const isAdminUI = request.nextUrl.pathname.startsWith('/dashboard/admin');
     const isAdminAPI = request.nextUrl.pathname.startsWith('/api/admin');
 
-    if (isAdminUI || isAdminAPI) {
+    const isDashboardUI = request.nextUrl.pathname.startsWith('/dashboard') && !isAdminUI;
+
+    if (isAdminUI || isAdminAPI || isDashboardUI) {
         const { data: session } = await betterFetch<any>(
             "/api/auth/get-session",
             {
@@ -20,12 +22,19 @@ export default async function authMiddleware(request: NextRequest) {
             if (isAdminAPI) {
                 return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
             }
-            return NextResponse.redirect(new URL("/admin/login", request.url));
+            return NextResponse.redirect(new URL("/login", request.url));
+        }
+
+        if ((isAdminUI || isAdminAPI) && session?.user?.role !== "admin") {
+            if (isAdminUI) {
+                return NextResponse.redirect(new URL("/dashboard", request.url));
+            }
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
     }
     return NextResponse.next();
 }
 
 export const config = {
-    matcher: ["/admin/:path*", "/api/admin/:path*"],
+    matcher: ["/api/admin/:path*", "/dashboard/:path*"],
 };

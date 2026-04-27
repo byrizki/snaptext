@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import { getDb, jobResults, jobs, jobPages, ocrModels } from "@/db";
-import { eq, sql } from "drizzle-orm";
+import { getDb, jobResults, jobs, jobPages, ocrModels, user } from "@/db";
+import { eq, ne, sql } from "drizzle-orm";
 import { VERCEL_AI_GATEWAY_PRICING } from "@/lib/constants";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "@/app/workflows/ocr/models";
 
@@ -41,6 +41,11 @@ export async function GET() {
         jobResults.secondModelOutput
       );
 
+    const [{ count: userCount }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(user)
+      .where(ne(user.role, "admin"));
+
     let totalTokensAll = 0;
     let totalCostAll = 0;
 
@@ -76,7 +81,8 @@ export async function GET() {
 
     return NextResponse.json({
         totalTokens: totalTokensAll,
-        totalCost: totalCostAll.toFixed(4)
+        totalCost: totalCostAll.toFixed(4),
+        totalUsers: Number(userCount),
     });
   } catch (error: any) {
     console.error("Failed to fetch stats", error);

@@ -2,8 +2,13 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 export function Footer() {
+  const pathname = usePathname();
+  const isDemo = pathname.includes("/demo");
+  const isContact = pathname.includes("/contact");
+
   return (
     <footer className="border-t border-zinc-200/50 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-950 relative z-10 transition-colors">
       <div className="max-w-7xl mx-auto px-6 py-16 md:py-20">
@@ -22,25 +27,26 @@ export function Footer() {
           <div>
             <h4 className="text-zinc-900 dark:text-zinc-50 font-semibold mb-5 text-[15px]">Product</h4>
             <ul className="space-y-3 text-[15px] text-zinc-500 dark:text-zinc-400">
-              <li><Link href="#features" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Features</Link></li>
-              <li><Link href="/demo" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Demo</Link></li>
-              <li><Link href="#pricing" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Pricing</Link></li>
+              <li><Link href={isDemo || isContact ? "/#features" : "#features"} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Features</Link></li>
+              <li><Link href={isDemo || isContact ? "/#models" : "#models"} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Models</Link></li>
+              <li><Link href={isDemo || isContact ? "/#pricing" : "#pricing"} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Pricing</Link></li>
+              <li><Link href={isDemo || isContact ? "/#faq" : "#faq"} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">FAQ</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="text-zinc-900 dark:text-zinc-50 font-semibold mb-5 text-[15px]">Developers</h4>
+            <h4 className="text-zinc-900 dark:text-zinc-50 font-semibold mb-5 text-[15px]">Resources</h4>
             <ul className="space-y-3 text-[15px] text-zinc-500 dark:text-zinc-400">
+              <li><Link href="/demo" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Interactive Demo</Link></li>
+              <li><Link href="/contact" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Contact Sales</Link></li>
               <li><Link href="#docs" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Documentation</Link></li>
-              <li><Link href="#api" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">API Reference</Link></li>
-              <li><Link href="#status" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Status</Link></li>
             </ul>
           </div>
         </div>
         <div className="pt-8 border-t border-zinc-200/50 dark:border-zinc-800/80 flex flex-col md:flex-row items-center justify-between gap-6">
           <p className="text-zinc-500 text-sm">© {new Date().getFullYear()} <span className="font-semibold"><span className="text-blue-600 dark:text-blue-500">Snap</span><span className="text-violet-600 dark:text-violet-500">Text</span></span> Inc. All rights reserved.</p>
           <div className="flex items-center gap-6 text-sm text-zinc-500">
-            <Link href="#" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">Privacy Policy</Link>
-            <Link href="#" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">Terms of Service</Link>
+            <Link href="/privacy-policy" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">Privacy Policy</Link>
+            <Link href="/terms-of-service" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">Terms of Service</Link>
           </div>
         </div>
       </div>

@@ -23,6 +23,7 @@
     "@better-fetch/fetch": "^1.1.21",
     "@hugeicons/core-free-icons": "^4.1.1",
     "@hugeicons/react": "^1.1.6",
+    "@monaco-editor/react": "^4.7.0",
     "@napi-rs/canvas": "^0.1.99",
     "@toon-format/toon": "^2.1.0",
     "@vercel/blob": "^2.3.3",

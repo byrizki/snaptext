@@ -3,15 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb, ocrModels } from "@/db";
 import { getModelId, getProviderPrefixedModelId } from "@/lib/provider-mapping";
-
-const createModelSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  provider: z.string().min(1, "Provider is required").default("vercel"),
-  modelId: z.string().min(1, "Model ID is required"),
-  temperature: z.number().min(0).max(2).default(0.3),
-  maxOutputTokens: z.number().int().positive().default(4096),
-  config: z.record(z.string(), z.unknown()).default({}),
-});
+import { ocrModelSchema } from "@/lib/validations";
 
 export async function GET() {
   const db = getDb();
@@ -25,9 +17,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const rawData = await request.json();
 
-    const validationResult = createModelSchema.safeParse(body);
+    const validationResult = ocrModelSchema.safeParse(rawData);
 
     if (!validationResult.success) {
       return NextResponse.json(
@@ -54,6 +46,9 @@ export async function POST(request: Request) {
     return NextResponse.json(model);
   } catch (error: any) {
     console.error("Failed to create model", error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.issues }, { status: 400 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

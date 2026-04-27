@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { BackgroundGrid } from "@/components/landing/background-grid";
 import { Header } from "@/components/landing/header";
 import { Footer } from "@/components/landing/footer";
@@ -10,6 +11,7 @@ import { DemoActiveWorkspace } from "@/components/demo/demo-active-workspace";
 import { useOcrPipeline } from "@/hooks/use-ocr-pipeline";
 
 export default function DemoPage() {
+  const router = useRouter();
   const {
     status,
     uploadProgress,
@@ -19,10 +21,15 @@ export default function DemoPage() {
     currentFile,
     startOcr,
     rerunOcr,
-    viewJob,
     stopJob,
     reset,
   } = useOcrPipeline();
+
+  useEffect(() => {
+    if (runId && (status === "scanning" || status === "completed")) {
+      router.push(`/demo/jobs/${runId}`);
+    }
+  }, [runId, status, router]);
 
   const [selectedModelId, setSelectedModelId] = useState<string>("");
 
@@ -47,9 +54,9 @@ export default function DemoPage() {
               <DemoIdlePanel
                 selectedModelId={selectedModelId}
                 onModelChange={setSelectedModelId}
-                onFileSelect={(file) => startOcr(file, selectedModelId)}
+                onFileSelect={(file, schema) => startOcr(file, selectedModelId, schema)}
                 onRerun={rerunOcr}
-                onView={viewJob}
+                onView={async (jobId) => router.push(`/demo/jobs/${jobId}`)}
                 onStop={stopJob}
               />
               <Footer />
@@ -71,9 +78,6 @@ export default function DemoPage() {
                 error={error}
                 currentFile={currentFile}
                 onReset={reset}
-                onRerun={() =>
-                  rerunOcr(result!.runId, currentFile?.name ?? "document.pdf")
-                }
                 onStop={() => runId && stopJob(runId)}
               />
             </motion.div>

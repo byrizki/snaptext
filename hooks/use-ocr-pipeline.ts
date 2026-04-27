@@ -17,6 +17,8 @@ export interface OcrResult {
   modelName?: string;
   createdAt?: string;
   updatedAt?: string;
+  hasSchema?: boolean;
+  filename?: string;
 }
 
 export interface UseOcrPipelineReturn {
@@ -26,7 +28,7 @@ export interface UseOcrPipelineReturn {
   result: OcrResult | null;
   error: string | null;
   currentFile: File | null;
-  startOcr: (file: File, ocrModelId?: string) => Promise<void>;
+  startOcr: (file: File, ocrModelId?: string, jsonSchema?: string) => Promise<void>;
   rerunOcr: (jobId: string, filename: string) => Promise<void>;
   viewJob: (jobId: string, filename: string) => Promise<void>;
   stopJob: (runId: string) => Promise<void>;
@@ -57,6 +59,12 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
     currentIntervalRef.current = POLL_INTERVAL_MS;
   }, []);
 
+  const getViewParam = useCallback(() => {
+    return typeof window !== "undefined" && window.location.pathname.startsWith("/dashboard")
+      ? ""
+      : "?view=demo";
+  }, []);
+
   const pollStatus = useCallback(
     async function poll(id: string, attempt = 0) {
       if (attempt >= MAX_POLL_ATTEMPTS) {
@@ -66,46 +74,37 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
       }
 
       try {
-        const response = await fetch(`/api/demo/ocr/status/${id}`);
+        const viewParam = getViewParam();
+        const response = await fetch(`/api/ocr/${id}${viewParam}`);
         const json = (await response.json()) as {
+          id: string;
+          runId: string;
           status: string;
-          job?: {
-            pdfBlobUrl: string;
-            totalPages?: number;
-            createdAt?: string;
-            updatedAt?: string;
-          };
-          pages?: {
-            pageNumber: number;
-            toonOutput?: string;
-            parsedData?: Record<string, unknown>;
-          }[];
-          result?: {
-            mergedData?: Record<string, unknown>;
-          };
-          error?: string;
+          filename: string;
+          totalPages: number;
+          pdfUrl: string;
+          createdAt: string;
+          updatedAt: string;
+          hasSchema: boolean;
+          data: Record<string, unknown> | null;
+          error: string | null;
         };
 
-        if (json.job) {
-          const mappedResult: OcrResult = {
-            runId: id,
-            pdfUrl: json.job.pdfBlobUrl,
-            totalPages: json.job.totalPages ?? 0,
-            pages: (json.pages ?? []).map((p) => ({
-              pageNumber: p.pageNumber,
-              rawToon: p.toonOutput ?? "",
-              data: p.parsedData ?? {},
-            })),
-            merged: json.result?.mergedData ?? {},
-            modelName: (json as any).modelName,
-            createdAt: json.job.createdAt,
-            updatedAt: json.job.updatedAt,
-          };
-          setResult(mappedResult);
-        }
+        const mappedResult: OcrResult = {
+          runId: json.runId || json.id,
+          pdfUrl: json.pdfUrl,
+          totalPages: json.totalPages ?? 0,
+          pages: [], // per-page results excluded
+          merged: json.data ?? {},
+          createdAt: json.createdAt,
+          updatedAt: json.updatedAt,
+          hasSchema: json.hasSchema,
+          filename: json.filename,
+        };
+        setResult(mappedResult);
 
         if (json.status === "completed") {
-          const mergedData = json.result?.mergedData || {};
+          const mergedData = json.data || {};
           const hasEmptyFlag = mergedData.empty === true;
           const dataKeys = Object.keys(mergedData).filter(k => k !== 'document_metadata');
           
@@ -125,8 +124,8 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           return;
         }
 
-        // Fingerprint to detect progress: status + pages count + presence of result
-        const currentFingerprint = `${json.status}-${json.pages?.length || 0}-${!!json.result}`;
+        // Fingerprint to detect progress: status + presence of result
+        const currentFingerprint = `${json.status}-${!!json.data}`;
 
         // Defer with increasing timing when returning same status fingerprint
         if (currentFingerprint === lastStatusRef.current) {
@@ -150,11 +149,11 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         );
       }
     },
-    [],
+    [getViewParam],
   );
 
   const startOcr = useCallback(
-    async (file: File, ocrModelId?: string) => {
+    async (file: File, ocrModelId?: string, jsonSchema?: string) => {
       clearPollTimer();
       setStatus("uploading");
       setUploadProgress(0);
@@ -171,8 +170,9 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         const formData = new FormData();
         formData.append("file", file);
         if (ocrModelId) formData.append("ocrModelId", ocrModelId);
+        if (jsonSchema) formData.append("jsonSchema", jsonSchema);
 
-        const response = await fetch("/api/demo/ocr", {
+        const response = await fetch("/api/ocr", {
           method: "POST",
           body: formData,
         });
@@ -185,18 +185,19 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           throw new Error(err.error ?? "Upload failed");
         }
 
-        const json = await response.json() as { runId: string };
-        setRunId(json.runId);
+        const json = await response.json() as { jobId: string; runId: string };
+        const idToTrack = json.jobId || json.runId;
+        setRunId(idToTrack);
         setStatus("scanning");
 
-        await pollStatus(json.runId);
+        await pollStatus(idToTrack);
       } catch (err) {
         clearInterval(progressInterval);
         setStatus("error");
         setError(err instanceof Error ? err.message : "An unexpected error occurred.");
       }
     },
-    [clearPollTimer, pollStatus]
+    [clearPollTimer, pollStatus, getViewParam]
   );
 
   const rerunOcr = useCallback(
@@ -211,12 +212,8 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
       setCurrentFile(new File([], filename));
 
       try {
-        const response = await fetch("/api/demo/ocr/rerun", {
+        const response = await fetch(`/api/ocr/${jobId}/rerun`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ jobId }),
         });
 
         if (!response.ok) {
@@ -224,16 +221,17 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           throw new Error(err.error ?? "Rerun failed");
         }
 
-        const json = await response.json() as { runId: string };
-        setRunId(json.runId);
+        const json = await response.json() as { jobId: string; runId: string };
+        const idToTrack = json.jobId || json.runId;
+        setRunId(idToTrack);
 
-        await pollStatus(json.runId);
+        await pollStatus(idToTrack);
       } catch (err) {
         setStatus("error");
         setError(err instanceof Error ? err.message : "An unexpected error occurred.");
       }
     },
-    [clearPollTimer, pollStatus]
+    [clearPollTimer, pollStatus, getViewParam]
   );
 
   const viewJob = useCallback(
@@ -252,13 +250,11 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
   );
 
   const stopJob = useCallback(
-    async (id: string) => {
+    async (jobId: string) => {
       clearPollTimer();
       try {
-        await fetch("/api/demo/ocr/stop", {
+        await fetch(`/api/ocr/${jobId}/stop`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId: id }),
         });
       } catch (err) {
         console.error("Failed to stop job:", err);
@@ -269,7 +265,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
       setError(null);
       setCurrentFile(null);
     },
-    [clearPollTimer],
+    [clearPollTimer, getViewParam],
   );
 
   const reset = useCallback(() => {
