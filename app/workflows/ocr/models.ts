@@ -1,6 +1,6 @@
 export const OCR_VISION_MODEL = "@vercel/moonshotai/kimi-k2.5";
 
-export const OCR_TEXT_MODEL = "@vercel/google/gemini-2.5-flash-lite";
+export const OCR_TEXT_MODEL = "@vercel/deepseek/deepseek-v4-flash";
 
 export const OCR_MODEL_TEMPERATURE = 0.3;
 

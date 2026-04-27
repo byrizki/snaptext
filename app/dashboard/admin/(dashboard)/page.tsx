@@ -2,11 +2,13 @@
 "use client";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Database01Icon, AiBrain01Icon, Analytics01Icon, Clock01Icon, Coins01Icon, UserGroupIcon } from "@hugeicons/core-free-icons";
+import { Database01Icon, AiBrain01Icon, Analytics01Icon, Clock01Icon, Coins01Icon, UserGroupIcon, ReloadIcon } from "@hugeicons/core-free-icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 export default function AdminDashboardPage() {
   const { data: jobsData = [] } = useSWR(
@@ -25,6 +27,35 @@ export default function AdminDashboardPage() {
     "/api/admin/stats",
     (url: string) => fetch(url).then((r) => r.json())
   );
+
+  const [rerunningIds, setRerunningIds] = useState<Set<string>>(new Set());
+
+  const handleRerun = async (jobId: string) => {
+    try {
+      setRerunningIds((prev) => {
+        const next = new Set(prev);
+        next.add(jobId);
+        return next;
+      });
+      
+      const res = await fetch(`/api/ocr/${jobId}/rerun`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to rerun job");
+      }
+      
+      toast.success("Job restarted successfully");
+      await mutate("/api/admin/jobs");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to restart job");
+    } finally {
+      setRerunningIds((prev) => {
+        const next = new Set(prev);
+        next.delete(jobId);
+        return next;
+      });
+    }
+  };
 
   // Generate chart data based on actual jobs grouping by day
   const chartData = useMemo(() => {
@@ -161,6 +192,27 @@ export default function AdminDashboardPage() {
                     <span className="text-zinc-500">
                       {new Date(job.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>
+                    {job.status === "failed" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-1.5 text-[9px] uppercase tracking-wider font-bold ml-2 shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRerun(job.id);
+                        }}
+                        disabled={rerunningIds.has(job.id)}
+                      >
+                        {rerunningIds.has(job.id) ? (
+                          <div className="size-3 border-2 border-zinc-300 dark:border-zinc-600 border-t-zinc-700 dark:border-t-zinc-300 rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <HugeiconsIcon icon={ReloadIcon} size={10} className="mr-1" />
+                            Rerun
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

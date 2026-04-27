@@ -9,6 +9,7 @@ export interface OcrPageResult {
   pageBlobUrl: string;
   rawToon: string;
   data: Record<string, unknown>;
+  rawMarkdown?: string;
   model: string;
   usage: UsageData;
   finishReason: string;

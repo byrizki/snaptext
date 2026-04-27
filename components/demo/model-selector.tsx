@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import useSWR from "swr";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { UnfoldMoreIcon } from "@hugeicons/core-free-icons";
@@ -20,15 +21,14 @@ interface ModelSelectorProps {
 export function ModelSelector({ value, onChange }: ModelSelectorProps) {
   const { data: models, error, isLoading, isValidating, mutate } = useSWR<OcrModel[]>(
     "/api/models",
-    (url) => fetch(url).then((res) => res.json()),
-    {
-      onSuccess: (data) => {
-        if (data.length > 0 && !value) {
-          onChange(data[0].id);
-        }
-      },
-    }
+    (url: string) => fetch(url).then((res) => res.json())
   );
+
+  useEffect(() => {
+    if (models && models.length > 0 && !value) {
+      onChange(models[0].id);
+    }
+  }, [models, value, onChange]);
 
   if (error) {
     return (

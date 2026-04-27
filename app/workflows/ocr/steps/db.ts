@@ -139,7 +139,7 @@ export async function dbSaveNewPages(jobId: string, pages: Array<{ pageNumber: n
 export async function dbSaveOcrPageResult(
   jobId: string,
   pageNumber: number,
-  result: { rawToon: string; data: any; usage: any; finishReason: string; log: string }
+  result: { rawToon: string; data: any; usage: any; finishReason: string; log: string; model?: string }
 ) {
   "use step";
   console.log(`[Step] dbSaveOcrPageResult started for jobId: ${jobId}, page: ${pageNumber}`);
@@ -149,7 +149,7 @@ export async function dbSaveOcrPageResult(
     .set({
       toonOutput: result.rawToon,
       parsedData: result.data,
-      model: OCR_VISION_MODEL,
+      model: result.model || OCR_VISION_MODEL,
       promptTokens: result.usage.promptTokens,
       completionTokens: result.usage.completionTokens,
       totalTokens: result.usage.totalTokens,
@@ -190,7 +190,8 @@ export async function dbSaveJobResult(
   jobId: string,
   mergedData: Record<string, unknown>,
   log: string,
-  usage?: { promptTokens: number; completionTokens: number; totalTokens: number; finishReason: string; rawResponse: string }
+  usage?: { promptTokens: number; completionTokens: number; totalTokens: number; finishReason: string; rawResponse: string },
+  model?: string
 ) {
   "use step";
   console.log(`[Step] dbSaveJobResult started for jobId: ${jobId}`);
@@ -201,7 +202,7 @@ export async function dbSaveJobResult(
     .values({
       jobId,
       mergedData,
-      model: OCR_TEXT_MODEL,
+      model: model || OCR_TEXT_MODEL,
       secondModelInput: usage?.promptTokens ?? 0,
       secondModelOutput: usage?.completionTokens ?? 0,
       finishReason: usage?.finishReason ?? "",
@@ -212,7 +213,7 @@ export async function dbSaveJobResult(
       target: jobResults.jobId,
       set: {
         mergedData,
-        model: OCR_TEXT_MODEL,
+        model: model || OCR_TEXT_MODEL,
         secondModelInput: usage?.promptTokens ?? 0,
         secondModelOutput: usage?.completionTokens ?? 0,
         finishReason: usage?.finishReason ?? "",
