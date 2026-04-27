@@ -25,7 +25,6 @@ export function Header() {
         
         <nav className="hidden md:flex items-center gap-8 bg-zinc-50/80 dark:bg-zinc-900/40 px-6 py-2 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 backdrop-blur-md shadow-sm dark:shadow-none">
           <Link href={isDemo ? "/#features" : "#features"} className="text-[14px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors">Features</Link>
-          <Link href={isDemo ? "/#pricing" : "#pricing"} className="text-[14px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors">Pricing</Link>
           <Link href={isDemo ? "/#faq" : "#faq"} className="text-[14px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors">FAQ</Link>
           <Link href="/demo" className={cn(
             "text-[14px] font-medium transition-colors",
