@@ -8,6 +8,7 @@ import { HistoryList } from "@/components/demo/history-list";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { SparklesIcon, CodeCircleIcon, Presentation02Icon } from "@hugeicons/core-free-icons";
 import { SchemaEditor } from "./schema-editor";
+import Link from "next/link";
 
 interface DemoIdlePanelProps {
   selectedModelId: string;
@@ -31,6 +32,19 @@ export function DemoIdlePanel({
   const [jsonSchema, setJsonSchema] = useState("");
   const [editorMode, setEditorMode] = useState<"raw" | "gui">("gui");
   const [isLoaded, setIsLoaded] = useState(false);
+  const [quota, setQuota] = useState<{ limit: number; used: number; remaining: number; isAnonymous: boolean } | null>(null);
+  const [isLoadingQuota, setIsLoadingQuota] = useState(true);
+
+  useEffect(() => {
+    setIsLoadingQuota(true);
+    fetch("/api/dashboard/quota")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.error) setQuota(data);
+      })
+      .catch(console.error)
+      .finally(() => setIsLoadingQuota(false));
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem("snaptext_json_schema");
@@ -147,9 +161,12 @@ export function DemoIdlePanel({
                       </div>
                     </div>
                     
-                    {/* Main Content Area */}
                     <div className="p-4 sm:p-6 flex-1 flex flex-col justify-center">
-                      <UploadZone onFileSelect={(file) => onFileSelect(file, showAdvanced ? jsonSchema : undefined)} />
+                      <UploadZone 
+                        quota={quota}
+                        isLoadingQuota={isLoadingQuota}
+                        onFileSelect={(file) => onFileSelect(file, showAdvanced ? jsonSchema : undefined)} 
+                      />
                     </div>
                   </div>
                 </motion.div>
