@@ -14,6 +14,7 @@ import { buildToonTools } from "../tools";
 import { dbSaveLlmLogsBatch, dbSaveOcrPageResult } from "./db";
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { getModelId } from "@/lib/provider-mapping";
+import { fetch } from "workflow";
 
 const predefinedProvider = {
   google: {
