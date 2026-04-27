@@ -87,7 +87,7 @@ export async function ocrWorkflow(
           stopState,
           toonSchemaTemplate,
         ),
-      { concurrency: 3 },
+      { concurrency: 1 },
     );
     const pages = pagesResults.filter((p): p is OcrPageResult => p !== null);
 
@@ -96,8 +96,10 @@ export async function ocrWorkflow(
 
     const extractedPages = pages.filter((p) => !p.data.empty);
     const emptyPages = pages.filter((p) => !!p.data.empty);
+    const failedPages = extractedPages.filter((p) => !!p.data.parse_error);
+    const mergeablePages = extractedPages.filter((p) => !p.data.parse_error);
     console.log(
-      `[Workflow] Page results for jobId: ${jobId} — total: ${pages.length}, extracted: ${extractedPages.length}, empty: ${emptyPages.length}`,
+      `[Workflow] Page results for jobId: ${jobId} — total: ${pages.length}, extracted: ${extractedPages.length}, empty: ${emptyPages.length}, failed: ${failedPages.length}, mergeable: ${mergeablePages.length}`,
     );
 
     if (stopState.current) {
@@ -105,19 +107,21 @@ export async function ocrWorkflow(
     }
 
     let merged: Record<string, unknown> = {};
-    if (extractedPages.length === 1) {
-      console.log(`[Workflow] Single extracted page — skipping merge for jobId: ${jobId}`);
-      merged = extractedPages[0].data;
+    if (mergeablePages.length === 0) {
+      console.log(`[Workflow] No mergeable pages — all pages failed or were empty for jobId: ${jobId}`);
+      await dbSaveJobResult(jobId, {}, `[${new Date().toISOString()}] No mergeable pages`);
+    } else if (mergeablePages.length === 1) {
+      console.log(`[Workflow] Single mergeable page — skipping merge for jobId: ${jobId}`);
+      merged = mergeablePages[0].data;
       await dbSaveJobResult(
         jobId,
         merged,
         `[${new Date().toISOString()}] Single-page document`,
-        undefined,
-        extractedPages[0].model,
+        mergeablePages[0].model,
       );
-    } else if (extractedPages.length > 1) {
+    } else {
       console.log(`[Workflow] Running programmatic blind merge for jobId: ${jobId}`);
-      merged = extractedPages.reduce((acc, curr) => {
+      merged = mergeablePages.reduce((acc, curr) => {
         return deepMergeWithArrayConcat(acc, curr.data);
       }, {} as Record<string, unknown>);
 
@@ -127,8 +131,8 @@ export async function ocrWorkflow(
         let readabilityCount = 0;
         let totalUsability = 0;
         let usabilityCount = 0;
-        
-        for (const p of extractedPages) {
+
+        for (const p of mergeablePages) {
           const md = p.data.document_metadata as any;
           if (md) {
             if (typeof md.readability_score === "number") {
@@ -141,7 +145,7 @@ export async function ocrWorkflow(
             }
           }
         }
-        
+
         if (readabilityCount > 0) {
           (merged.document_metadata as any).readability_score = Math.round(totalReadability / readabilityCount);
         }
@@ -150,7 +154,7 @@ export async function ocrWorkflow(
         }
       }
 
-      await dbSaveJobResult(jobId, merged, "Programmatic blind merge completed", undefined, extractedPages[0].model);
+      await dbSaveJobResult(jobId, merged, "Programmatic blind merge completed", mergeablePages[0].model);
     }
 
     await finalizeJob(jobId, "completed");
