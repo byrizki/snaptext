@@ -2,20 +2,16 @@
 import type { OcrModel } from "@/db";
 import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
-import { decode, encode } from "@toon-format/toon";
+import { decodeToon } from "@/lib/toon-parser";
 import { DurableAgent } from "@workflow/ai/agent";
 import { stepCountIs } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
-import { getStepMetadata, getWritable, RetryableError, sleep } from "workflow";
-import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
-import {
-  buildOcrSystemPrompt,
-  buildRepairSystemPrompt,
-} from "../prompts";
-import { buildFixToonTool } from "../tools";
+import { getStepMetadata, getWritable, RetryableError } from "workflow";
+import { OCR_VISION_MODEL } from "../models";
+import { buildOcrSystemPrompt } from "../prompts";
 import type { OcrPageResult } from "../types";
-import { dbSaveOcrPageResult, dbSaveRepairPageResult } from "./db";
-import { type DeepSeekLanguageModelOptions } from "@ai-sdk/deepseek";
+import { buildToonTools } from "../tools";
+import { dbSaveLlmLogsBatch, dbSaveOcrPageResult } from "./db";
 
 const predefinedProvider = {
   google: {
@@ -66,19 +62,16 @@ function getAiModel(
   };
 }
 
-export async function fetchPageImageBase64(
-  pageBlobUrl: string,
-): Promise<string> {
-  "use step";
+async function fetchImageBase64(pageBlobUrl: string): Promise<string> {
   const imageResponse = await fetch(pageBlobUrl);
   if (!imageResponse.ok) {
     throw new Error(
       `Failed to fetch page image: ${imageResponse.status} ${imageResponse.statusText}`,
     );
   }
-  const imageArrayBuffer = await imageResponse.arrayBuffer();
-  return Buffer.from(imageArrayBuffer).toString("base64");
+  return Buffer.from(await imageResponse.arrayBuffer()).toString("base64");
 }
+
 
 export async function runOcrOnPage(
   pageBlobUrl: string,
@@ -88,20 +81,24 @@ export async function runOcrOnPage(
   ocrModelConfig?: OcrModel,
   stopState?: { current: boolean },
   toonSchemaTemplate?: string,
-): Promise<OcrPageResult & { log: string }> {
+): Promise<OcrPageResult & { log: string; llmLogs: any[]; internalError?: any }> {
+  "use step";
+  const llmLogs: any[] = [];
   try {
     console.log(
       `[Step] runOcrOnPage started for jobId: ${jobId}, page: ${pageNumber}`,
     );
+
+    const base64Image = await fetchImageBase64(pageBlobUrl);
+
     const modelId = ocrModelConfig?.modelId ?? OCR_VISION_MODEL;
     const temperature = ocrModelConfig?.temperature;
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};
 
     const { model, providerConfig } = getAiModel(modelId, config, fileHash);
+    console.log(`[Workflow] Using model: ${modelId}, config: ${JSON.stringify(providerConfig)}`);
     const startedAt = "N/A";
-
-    const base64Image = await fetchPageImageBase64(pageBlobUrl);
 
     const agent = new DurableAgent({
       model: model as any,
@@ -128,45 +125,77 @@ export async function runOcrOnPage(
           ],
         },
       ],
+      stopWhen: stepCountIs(1),
       writable: getWritable({ namespace: "ocr-run" }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
         return {};
       },
+      onStepFinish: async (event) => {
+        console.log("onStepFinish", event.text, JSON.stringify(event.toolCalls ?? {}));
+        llmLogs.push({
+          stepName: "ocr_page",
+          model: modelId,
+          usage: {
+            promptTokens: event.usage.inputTokens ?? 0,
+            completionTokens: event.usage.outputTokens ?? 0,
+            totalTokens: event.usage.totalTokens ?? 0,
+          },
+          pageNumber,
+          rawResponse: event.text || (event.toolCalls ? JSON.stringify(event.toolCalls) : ""),
+        });
+      },
     });
 
     const steps = streamRes.steps;
     const lastStep = steps[steps.length - 1];
-    const rawToon = lastStep?.text || "";
-    const inputTokens = steps.reduce(
-      (acc, step) => acc + (step.usage?.inputTokens ?? 0),
-      0,
-    );
-    const outputTokens = steps.reduce(
-      (acc, step) => acc + (step.usage?.outputTokens ?? 0),
-      0,
-    );
+    const inputTokens = steps.reduce((acc, step) => acc + (step.usage?.inputTokens ?? 0), 0);
+    const outputTokens = steps.reduce((acc, step) => acc + (step.usage?.outputTokens ?? 0), 0);
+    const totalTokens = steps.reduce((acc, step) => acc + (step.usage?.totalTokens ?? 0), 0);
     const finishReason = lastStep?.finishReason ?? "";
 
-    let data: Record<string, unknown> = {};
-    let parseError: string | null = null;
-    const attempts = 1;
+    console.log(
+      `[Agent] Stream finished. Steps: ${steps.length}, Tokens: ${totalTokens} (In: ${inputTokens}, Out: ${outputTokens}), Reason: ${finishReason}`,
+    );
 
+    const rawToon = lastStep?.text || "";
+
+    if (finishReason === "length") {
+      const truncationMsg = `Output was truncated by the model (max tokens reached). The TOON is incomplete and cannot be decoded. Increase maxOutputTokens or split the page.`;
+      console.warn(`[OCR] Truncated output on page ${pageNumber} for jobId: ${jobId}`);
+      return {
+        pageNumber,
+        pageBlobUrl,
+        rawToon,
+        data: { parse_error: true, truncation_error: true, error: truncationMsg },
+        model: modelId,
+        usage: { promptTokens: inputTokens, completionTokens: outputTokens, totalTokens },
+        finishReason,
+        log: `[N/A] TRUNCATED: ${truncationMsg}`,
+        llmLogs,
+      };
+    }
+
+    let rawToon_decoded: Record<string, unknown>;
+    let parseError: string | null = null;
     try {
       const trimmed = rawToon.trim();
-      data =
+      rawToon_decoded =
         trimmed === "empty: true"
           ? { empty: true }
-          : (decode(trimmed) as Record<string, unknown>);
+          : (decodeToon(trimmed) as Record<string, unknown>);
     } catch (err) {
       parseError = err instanceof Error ? err.message : String(err);
-      data = { raw_text: rawToon, parse_error: true, error: parseError };
+      console.error("[OCR Error] TOON decode failed:", err);
+      rawToon_decoded = { raw_text: rawToon, parse_error: true, error: parseError };
     }
+
+    const data = rawToon_decoded;
 
     const log = [
       `[${startedAt}] OCR started — model: ${modelId}`,
       `[N/A] Raw response: ${rawToon}`,
-      `[N/A] OCR complete — finish_reason: ${finishReason} (Attempts: ${attempts})`,
+      `[N/A] OCR complete — finish_reason: ${finishReason} (Steps: ${steps.length})`,
       `[N/A] Tokens — input: ${inputTokens}, output: ${outputTokens}`,
       parseError
         ? `[N/A] TOON parse error: ${parseError}`
@@ -182,11 +211,13 @@ export async function runOcrOnPage(
       usage: {
         promptTokens: inputTokens,
         completionTokens: outputTokens,
-        totalTokens: inputTokens + outputTokens,
+        totalTokens,
       },
       finishReason,
       log,
+      llmLogs,
     };
+
     console.log(
       `[Step] runOcrOnPage completed for jobId: ${jobId}, page: ${pageNumber}`,
     );
@@ -205,128 +236,186 @@ export async function runOcrOnPage(
       msg.includes("Too Many Requests") ||
       msg.toLowerCase().includes("rate limit")
     ) {
-      throw new Error(
+      const { attempt } = getStepMetadata();
+      const delayMs = 30000 + (attempt - 1) * 10000;
+      throw new RetryableError(
         "Rate limited by AI provider (429). Please try again later.",
+        { retryAfter: `${delayMs}ms` },
       );
     }
-    throw error;
+    
+    return {
+      pageNumber,
+      pageBlobUrl,
+      rawToon: "",
+      data: { parse_error: true, error: msg },
+      model: ocrModelConfig?.modelId ?? "unknown",
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      finishReason: "error",
+      log: `[Error] ${msg}`,
+      llmLogs,
+      internalError: error,
+    };
   }
 }
 
-
-
-export async function repairOcrPageData(
-  pageResult: OcrPageResult,
+export async function repairOcrPage(
+  pageBlobUrl: string,
+  pageNumber: number,
   jobId: string,
   fileHash: string | null,
+  brokenToon: string,
+  errorMsg: string,
   ocrModelConfig?: OcrModel,
   stopState?: { current: boolean },
   toonSchemaTemplate?: string,
-): Promise<OcrPageResult & { log: string }> {
+): Promise<OcrPageResult & { log: string; llmLogs: any[]; internalError?: any }> {
+  "use step";
+  const llmLogs: any[] = [];
   try {
-    const { pageNumber, rawToon, data: initialData } = pageResult;
     console.log(
-      `[Step] repairOcrPageData started for jobId: ${jobId}, page: ${pageNumber}`,
+      `[Step] repairOcrPage started for jobId: ${jobId}, page: ${pageNumber}`,
     );
-    const parseError = initialData.error as string | undefined;
-    const startedAt = "N/A";
-    let attempts = 1;
+    const base64Image = await fetchImageBase64(pageBlobUrl);
 
-    const modelId = OCR_TEXT_MODEL;
+    const modelId = ocrModelConfig?.modelId ?? OCR_VISION_MODEL;
     const temperature = ocrModelConfig?.temperature;
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};
 
-    const { model: fixModel, providerConfig } = getAiModel(
-      modelId,
-      config,
-      fileHash,
-    );
-    let fixedData: Record<string, unknown> | null = null;
+    const { model, providerConfig } = getAiModel(modelId, config, fileHash);
+    const startedAt = "N/A";
 
-    let inputTokens = 0;
-    let outputTokens = 0;
-    let finishReason = "";
+    let parsedResult: { rawToon: string; data: Record<string, unknown> } | null = null;
+    let parseError: string | null = null;
 
-    const currentToon = () => rawToon;
+    const toonTools = buildToonTools((rawToon, data) => {
+      parsedResult = { rawToon, data };
+      parseError = null;
+    }, stopState, brokenToon);
+
     const agent = new DurableAgent({
-      model: fixModel,
-      instructions: buildRepairSystemPrompt(toonSchemaTemplate),
+      model: model as any,
+      instructions: buildOcrSystemPrompt(toonSchemaTemplate),
       temperature,
-      providerOptions: providerConfig,
       maxOutputTokens: maxTokens,
-      tools: {
-        patch_invalid_toon: buildFixToonTool(currentToon, (d) => {
-          fixedData = d;
-        }),
-      },
+      providerOptions: providerConfig,
+      tools: toonTools,
     });
 
     const streamRes = await agent.stream({
       messages: [
         {
           role: "user",
-          content: `The following TOON data has a syntax error:\n\n\`\`\`\n${rawToon}\n\`\`\`\n\nError: ${parseError || "Unknown error"}\n\nPlease apply patches to fix it.`,
+          content: [
+            {
+              type: "file",
+              data: base64Image,
+              mediaType: "image/png",
+            },
+            {
+              type: "text",
+              text: [
+                `A TOON extraction failed validation. Your job is to fix it and call validate_toon with the COMPLETE corrected TOON.`,
+                ``,
+                `ERROR: ${errorMsg}`,
+                ``,
+                `BROKEN TOON:`,
+                `\`\`\``,
+                brokenToon,
+                `\`\`\``,
+                ``,
+                `INSTRUCTIONS:`,
+                `1. Identify the broken line(s) based on the error message.`,
+                `2. Fix ONLY the broken part — preserve all other lines exactly as-is.`,
+                `3. Call validate_toon with the COMPLETE corrected TOON. Do NOT call patch_toon first.`,
+                `4. If validate_toon still fails, THEN use patch_toon to surgically fix the remaining issue.`,
+              ].join("\n"),
+            },
+          ],
         },
       ],
-      stopWhen: stepCountIs(10),
+      stopWhen: stepCountIs(6),
       writable: getWritable({ namespace: "ocr-repair" }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
         return {};
       },
+      onStepFinish: async (event) => {
+        llmLogs.push({
+          stepName: "ocr_repair",
+          model: modelId,
+          usage: {
+            promptTokens: event.usage.inputTokens ?? 0,
+            completionTokens: event.usage.outputTokens ?? 0,
+            totalTokens: event.usage.totalTokens ?? 0,
+          },
+          pageNumber,
+          rawResponse: event.text || (event.toolCalls ? JSON.stringify(event.toolCalls) : ""),
+        });
+      },
     });
 
     const steps = streamRes.steps;
+    const lastStep = steps[steps.length - 1];
+    const inputTokens = steps.reduce((acc, step) => acc + (step.usage?.inputTokens ?? 0), 0);
+    const outputTokens = steps.reduce((acc, step) => acc + (step.usage?.outputTokens ?? 0), 0);
+    const totalTokens = steps.reduce((acc, step) => acc + (step.usage?.totalTokens ?? 0), 0);
+    const finishReason = lastStep?.finishReason ?? "";
 
-    for (const step of steps) {
-      inputTokens += step.usage.inputTokens ?? 0;
-      outputTokens += step.usage.outputTokens ?? 0;
-      finishReason = step.finishReason;
-      attempts++;
-    }
+    console.log(
+      `[Agent] Repair stream finished. Steps: ${steps.length}, Tokens: ${totalTokens} (In: ${inputTokens}, Out: ${outputTokens}), Reason: ${finishReason}`,
+    );
 
+    let rawToon: string;
     let data: Record<string, unknown>;
-    let finalError: string | null = null;
-    if (fixedData) {
-      data = fixedData;
+
+    if (parsedResult) {
+      console.log(`[OCR Repair] Captured via tool callback`);
+      rawToon = (parsedResult as { rawToon: string; data: Record<string, unknown> }).rawToon;
+      data = (parsedResult as { rawToon: string; data: Record<string, unknown> }).data;
     } else {
-      data = {
-        raw_text: rawToon,
-        parse_error: true,
-        error: "Failed to repair",
-      };
-      finalError = "Failed to repair";
+      console.log(`[OCR Repair] Falling back to manual decode`);
+      rawToon = lastStep?.text || brokenToon;
+      try {
+        const trimmed = rawToon.trim();
+        data =
+          trimmed === "empty: true"
+            ? { empty: true }
+            : (decodeToon(trimmed) as Record<string, unknown>);
+      } catch (err) {
+        parseError = err instanceof Error ? err.message : String(err);
+        data = { raw_text: rawToon, parse_error: true, error: parseError };
+      }
     }
 
     const log = [
-      `[${startedAt}] Repair started — model: ${modelId}`,
-      `[N/A] Raw response: ${rawToon}`,
-      `[N/A] Repair complete — finish_reason: ${finishReason} (Repair attempts: ${attempts - 1})`,
-      `[N/A] Repair Tokens — input: ${inputTokens}, output: ${outputTokens}`,
-      finalError
-        ? `[N/A] Repair failed: ${finalError}`
+      `[${startedAt}] OCR Repair started — model: ${modelId}`,
+      `[N/A] Repair complete — finish_reason: ${finishReason} (Steps: ${steps.length})`,
+      `[N/A] Tokens — input: ${inputTokens}, output: ${outputTokens}`,
+      parseError
+        ? `[N/A] TOON repair parse error: ${parseError}`
         : `[N/A] TOON repaired successfully`,
     ].join("\n");
 
-    const result = {
-      ...pageResult,
+    return {
+      pageNumber,
+      pageBlobUrl,
+      rawToon,
       data,
+      model: modelId,
       usage: {
         promptTokens: inputTokens,
         completionTokens: outputTokens,
-        totalTokens: inputTokens + outputTokens,
+        totalTokens,
       },
       finishReason,
       log,
+      llmLogs,
     };
-    console.log(
-      `[Step] repairOcrPageData completed for jobId: ${jobId}, page: ${pageNumber}`,
-    );
-    return result;
   } catch (error) {
     console.error(
-      `🔥 Error in repairOcrPageData step (page ${pageResult.pageNumber}) for jobId: ${jobId}`,
+      `🔥 Error in repairOcrPage step (page ${pageNumber}) for jobId: ${jobId}`,
       error,
     );
     const e = error as any;
@@ -336,13 +425,29 @@ export async function repairOcrPageData(
       status === 429 ||
       msg.includes("429") ||
       msg.includes("Too Many Requests") ||
+      msg.includes("rate_limit") ||
       msg.toLowerCase().includes("rate limit")
     ) {
-      throw new Error(
+      const { attempt } = getStepMetadata();
+      const delayMs = 30000 + (attempt - 1) * 10000;
+      throw new RetryableError(
         "Rate limited by AI provider (429). Please try again later.",
+        { retryAfter: `${delayMs}ms` },
       );
     }
-    throw error;
+    
+    return {
+      pageNumber,
+      pageBlobUrl,
+      rawToon: brokenToon,
+      data: { parse_error: true, error: msg },
+      model: ocrModelConfig?.modelId ?? "unknown",
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      finishReason: "error",
+      log: `[Error] ${msg}`,
+      llmLogs,
+      internalError: error,
+    };
   }
 }
 
@@ -364,7 +469,6 @@ export async function processOcrPage(
   stopState?: { current: boolean },
   toonSchemaTemplate?: string,
 ): Promise<OcrPageResult | null> {
-  "use step";
   const { pageNumber, pageBlobUrl } = page;
 
   if (!pageBlobUrl) return null;
@@ -377,9 +481,9 @@ export async function processOcrPage(
       data: page.parsedData,
       model: page.model ?? "",
       usage: {
-        promptTokens: page.promptTokens ?? 0,
-        completionTokens: page.completionTokens ?? 0,
-        totalTokens: page.totalTokens ?? 0,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
       },
       finishReason: page.finishReason ?? "",
     };
@@ -389,7 +493,7 @@ export async function processOcrPage(
     console.log(
       `[Step] Running OCR on page ${pageNumber} using image for jobId: ${jobId}`,
     );
-    let result = await runOcrOnPage(
+    let { llmLogs, internalError, ...result } = await runOcrOnPage(
       pageBlobUrl,
       pageNumber,
       jobId,
@@ -399,30 +503,44 @@ export async function processOcrPage(
       toonSchemaTemplate,
     );
 
-    await dbSaveOcrPageResult(jobId, pageNumber, result);
-
-    if (result.data.parse_error) {
-      result = await repairOcrPageData(
-        result,
+    if (result.data.parse_error && !internalError && !result.data.truncation_error) {
+      if (stopState?.current) {
+        console.log(`[Step] Skipping repair — stop requested (page ${pageNumber}, jobId: ${jobId})`);
+      } else {
+      console.log(`[Step] OCR failed validation on page ${pageNumber}, calling repairOcrPage for jobId: ${jobId}`);
+      const repairResponse = await repairOcrPage(
+        pageBlobUrl,
+        pageNumber,
         jobId,
         fileHash,
+        result.rawToon,
+        result.data.error as string,
         ocrModelConfig,
         stopState,
         toonSchemaTemplate,
       );
-      await dbSaveRepairPageResult(jobId, pageNumber, result);
+
+      // Merge logs
+      llmLogs = [...(llmLogs || []), ...(repairResponse.llmLogs || [])];
+      
+      const { llmLogs: _repairLogs, internalError: repairInternalError, ...repairedResult } = repairResponse;
+      result = repairedResult;
+      internalError = repairInternalError;
+      } // end else (not stopped)
+    } // end if (parse_error)
+
+    await dbSaveOcrPageResult(jobId, pageNumber, result);
+
+    if (llmLogs && llmLogs.length > 0) {
+      await dbSaveLlmLogsBatch(jobId, llmLogs);
+    }
+
+    if (internalError) {
+      throw internalError;
     }
 
     return result;
   } catch (error: any) {
-    if (error.message?.includes("429")) {
-      const { attempt } = getStepMetadata();
-      const delayMs = 30000 + (attempt - 1) * 10000;
-      throw new RetryableError(
-        "Rate limited by AI provider (429). Please try again later.",
-        { retryAfter: `${delayMs}ms` }
-      );
-    }
     throw error;
   }
 }
