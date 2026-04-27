@@ -67,3 +67,4 @@ export async function extractPdfPageImages(
     throw error;
   }
 }
+

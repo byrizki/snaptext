@@ -114,11 +114,6 @@ export const jobPages = pgTable(
     toonOutput: text("toon_output"),
     parsedData: jsonb("parsed_data"),
     model: text("model"),
-    promptTokens: integer("prompt_tokens"),
-    completionTokens: integer("completion_tokens"),
-    totalTokens: integer("total_tokens"),
-    secondModelInput: integer("second_model_input"),
-    secondModelOutput: integer("second_model_output"),
     finishReason: text("finish_reason"),
     log: text("log"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -139,11 +134,6 @@ export const jobResults = pgTable(
       .unique(),
     mergedData: jsonb("merged_data"),
     model: text("model"),
-    promptTokens: integer("prompt_tokens"),
-    completionTokens: integer("completion_tokens"),
-    totalTokens: integer("total_tokens"),
-    secondModelInput: integer("second_model_input"),
-    secondModelOutput: integer("second_model_output"),
     finishReason: text("finish_reason"),
     rawResponse: text("raw_response"),
     log: text("log"),
@@ -178,6 +168,28 @@ export const scanQuotas = pgTable(
   ]
 );
 
+export const llmLogs = pgTable(
+  "llm_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    jobPageId: uuid("job_page_id").references(() => jobPages.id, { onDelete: "cascade" }),
+    stepName: text("step_name").notNull(),
+    model: text("model").notNull(),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    rawResponse: text("raw_response"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("llm_logs_job_id_idx").on(t.jobId),
+    index("llm_logs_job_page_id_idx").on(t.jobPageId),
+  ]
+);
+
 export type Job = typeof jobs.$inferSelect;
 export type NewJob = typeof jobs.$inferInsert;
 export type JobPage = typeof jobPages.$inferSelect;
@@ -187,3 +199,5 @@ export type NewOcrModel = typeof ocrModels.$inferInsert;
 export type User = typeof user.$inferSelect;
 export type ScanQuota = typeof scanQuotas.$inferSelect;
 export type NewScanQuota = typeof scanQuotas.$inferInsert;
+export type LlmLog = typeof llmLogs.$inferSelect;
+export type NewLlmLog = typeof llmLogs.$inferInsert;

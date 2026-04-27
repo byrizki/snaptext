@@ -127,13 +127,13 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           return;
         }
 
-        // Fingerprint to detect progress: status + presence of result
-        const currentFingerprint = `${json.status}-${!!json.data}`;
+        // Fingerprint to detect progress: status + presence of result + completed pages
+        const currentFingerprint = `${json.status}-${!!json.data}-${json.completedPages}`;
 
-        // Defer with increasing timing when returning same status fingerprint
+        // Defer with exponentially increasing timing when returning same status fingerprint
         if (currentFingerprint === lastStatusRef.current) {
           currentIntervalRef.current = Math.min(
-            currentIntervalRef.current + 1500,
+            currentIntervalRef.current * 1.5,
             15000,
           );
         } else {

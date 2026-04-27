@@ -54,8 +54,13 @@ export async function POST(
     // Also trigger the modern stopHook to gracefully halt the DurableAgent tool loop
     try {
       await stopHook.resume(`stop:${job.workflowRunId}`, { reason: "User requested stop" });
-    } catch (err) {
-      console.error("[stop] Failed to resume stop hook:", err);
+    } catch (err: any) {
+      // HookNotFoundError is expected if the workflow is already finishing or the hook was never registered in this run
+      if (err?.name === "HookNotFoundError" || err?.message?.includes("Hook not found")) {
+        console.debug("[stop] Stop hook not found (workflow may already be finishing) — skipping");
+      } else {
+        console.error("[stop] Failed to resume stop hook:", err);
+      }
     }
 
     // Mark the DB record as failed immediately so the UI reflects the change

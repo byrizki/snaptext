@@ -1,10 +1,9 @@
+import { BackgroundGrid } from "@/components/landing/background-grid";
+import { FAQ } from "@/components/landing/faq";
+import { Features } from "@/components/landing/features";
+import { Footer } from "@/components/landing/footer";
 import { Header } from "@/components/landing/header";
 import { Hero } from "@/components/landing/hero";
-import { Features } from "@/components/landing/features";
-import { BackgroundGrid } from "@/components/landing/background-grid";
-import { Footer } from "@/components/landing/footer";
-import { Pricing } from "@/components/landing/pricing";
-import { FAQ } from "@/components/landing/faq";
 import { ModelComparison } from "@/components/landing/model-comparison";
 
 export default function Home() {
@@ -16,7 +15,6 @@ export default function Home() {
         <Hero />
         <Features />
         <ModelComparison />
-        <Pricing />
         <FAQ />
       </main>
       <Footer />

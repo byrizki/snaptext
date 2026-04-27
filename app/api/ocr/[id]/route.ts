@@ -84,6 +84,10 @@ export async function GET(
     });
   }
 
+  if (result?.mergedData) {
+    delete (result.mergedData as any).empty;
+  }
+
   return NextResponse.json({
     id: job?.id || id,
     runId: job?.workflowRunId || id,

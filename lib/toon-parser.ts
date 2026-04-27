@@ -1,0 +1,193 @@
+/**
+ * Custom TOON (Token-Oriented Object Notation) Decoder
+ * Provides enhanced error messages with line numbers and context.
+ */
+
+export interface ToonParseError extends Error {
+  line?: number;
+  column?: number;
+  key?: string;
+  context?: string;
+}
+
+export function decodeToon(input: string): Record<string, any> {
+  const lines = input.split(/\r?\n/);
+  const result: Record<string, any> = {};
+  const stack: { obj: Record<string, any>; indent: number }[] = [{ obj: result, indent: -2 }];
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+    if (!trimmedLine || trimmedLine.startsWith("#")) {
+      i++;
+      continue;
+    }
+
+    const indent = line.search(/\S/);
+    const lineNum = i + 1;
+
+    // Pop stack if indent decreased
+    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
+      stack.pop();
+    }
+
+    const currentObj = stack[stack.length - 1].obj;
+
+    // 1. Object Array (Tabular): key[N]{h1,h2}:
+    const tabularMatch = trimmedLine.match(/^([\w_]+)\[(\d+)\]\{([^}]+)\}:$/);
+    if (tabularMatch) {
+      const [, key, countStr, headersStr] = tabularMatch;
+      const count = parseInt(countStr, 10);
+      const headers = headersStr.split(",").map(h => h.trim());
+      const rows: Record<string, any>[] = [];
+
+      i++;
+      for (let r = 0; r < count; r++) {
+        while (i < lines.length && (!lines[i].trim() || lines[i].trim().startsWith("#"))) {
+          i++; // skip empty lines/comments between rows
+        }
+
+        if (i >= lines.length) {
+          throw createError(
+            `Unexpected end of input. Expected ${count} rows for object array '${key}', but only found ${r}.`,
+            lineNum,
+            key
+          );
+        }
+
+        const rowLine = lines[i];
+        const rowValues = parseCsvLine(rowLine.trim());
+
+        if (rowValues.length > headers.length) {
+          throw createError(
+            `Column mismatch in '${key}' at row ${r + 1}. ` +
+            `Expected ${headers.length} columns (${headersStr}), but got ${rowValues.length} values — too many. ` +
+            `A value likely contains an unquoted comma. Parsed values: [${rowValues.map(v => `"${v}"`).join(", ")}]. ` +
+            `Quote any value containing a comma: e.g. "value, with comma".`,
+            i + 1,
+            key,
+            rowLine.trim()
+          );
+        }
+        if (rowValues.length < headers.length) {
+          const missing = headers.length - rowValues.length;
+          const ratio = rowValues.length / headers.length;
+          if (ratio < 0.5) {
+            throw createError(
+              `Row ${r + 1} of '${key}' has only ${rowValues.length} of ${headers.length} expected values \u2014 likely a truncated or broken line. ` +
+              `Parsed values: [${rowValues.map(v => `"${v}"`).join(", ")}].`,
+              i + 1,
+              key,
+              rowLine.trim()
+            );
+          }
+          console.warn(
+            `[TOON] Lenient pad: '${key}' row ${r + 1} has ${rowValues.length} values, expected ${headers.length}. Padding ${missing} missing trailing column(s) with null.`
+          );
+          while (rowValues.length < headers.length) rowValues.push("null");
+        }
+
+        const rowObj: Record<string, any> = {};
+        headers.forEach((h, idx) => {
+          rowObj[h] = castValue(rowValues[idx]);
+        });
+        rows.push(rowObj);
+        i++;
+      }
+      currentObj[key] = rows;
+      continue;
+    }
+
+    // 2. Flat Array: key[N]: val1,val2
+    const flatArrayMatch = trimmedLine.match(/^([\w_]+)\[(\d+)\]:\s*(.*)$/);
+    if (flatArrayMatch) {
+      const [, key, countStr, valStr] = flatArrayMatch;
+      const count = parseInt(countStr, 10);
+      const values = valStr ? parseCsvLine(valStr).map(v => castValue(v)) : [];
+
+      if (values.length !== count) {
+        throw createError(
+          `Array count mismatch for '${key}'. Expected [${count}] items, but found ${values.length}.`,
+          lineNum,
+          key,
+          valStr
+        );
+      }
+
+      currentObj[key] = values;
+      i++;
+      continue;
+    }
+
+    // 3. Scalar or Object Start: key: value or key:
+    const colonIndex = trimmedLine.indexOf(":");
+    if (colonIndex !== -1) {
+      const key = trimmedLine.substring(0, colonIndex).trim();
+      const valueStr = trimmedLine.substring(colonIndex + 1).trim();
+
+      if (valueStr === "") {
+        // Object start
+        const newObj = {};
+        currentObj[key] = newObj;
+        stack.push({ obj: newObj, indent });
+      } else {
+        // Scalar
+        currentObj[key] = castValue(valueStr);
+      }
+      i++;
+      continue;
+    }
+
+    throw createError(`Invalid TOON syntax. Expected 'key: value', 'key:', or 'key[N]:'.`, lineNum, undefined, trimmedLine);
+  }
+
+  return result;
+}
+
+function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function castValue(val: string): any {
+  if (val === "null") return null;
+  if (val === "true") return true;
+  if (val === "false") return false;
+  if (!isNaN(Number(val)) && val !== "") return Number(val);
+  
+  // Handle escaped newlines
+  if (val.includes("\\n")) {
+    return val.replace(/\\n/g, "\n");
+  }
+  
+  return val;
+}
+
+function createError(message: string, line: number, key?: string, context?: string): ToonParseError {
+  const error = new Error(`TOON Decode Error (Line ${line}): ${message}`) as ToonParseError;
+  error.line = line;
+  error.key = key;
+  error.context = context;
+  return error;
+}

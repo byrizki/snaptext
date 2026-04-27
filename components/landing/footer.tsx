@@ -29,7 +29,6 @@ export function Footer() {
             <ul className="space-y-3 text-[15px] text-zinc-500 dark:text-zinc-400">
               <li><Link href={isDemo || isContact ? "/#features" : "#features"} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Features</Link></li>
               <li><Link href={isDemo || isContact ? "/#models" : "#models"} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Models</Link></li>
-              <li><Link href={isDemo || isContact ? "/#pricing" : "#pricing"} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Pricing</Link></li>
               <li><Link href={isDemo || isContact ? "/#faq" : "#faq"} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">FAQ</Link></li>
             </ul>
           </div>

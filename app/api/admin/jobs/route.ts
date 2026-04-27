@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import { getDb, jobResults, jobs, jobPages, ocrModels, user } from "@/db";
+import { getDb, llmLogs, jobs, jobPages, ocrModels, user } from "@/db";
 import { desc, eq, sql } from "drizzle-orm";
 import { VERCEL_AI_GATEWAY_PRICING } from "@/lib/constants";
-import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "@/app/workflows/ocr/models";
+import { OCR_VISION_MODEL } from "@/app/workflows/ocr/models";
 
 export async function GET() {
   try {
     const db = getDb();
 
-    const jobsWithMetrics = await db
+    const jobsData = await db
       .select({
         id: jobs.id,
         filename: jobs.filename,
@@ -21,116 +21,85 @@ export async function GET() {
         modelName: ocrModels.name,
         modelId: ocrModels.modelId,
         provider: ocrModels.provider,
-        
-        // User Details
         userName: user.name,
         userEmail: user.email,
         userImage: user.image,
-
-        // Final merged token counts from jobResults
-        resultPromptTokens: jobResults.promptTokens,
-        resultCompletionTokens: jobResults.completionTokens,
-        resultTotalTokens: jobResults.totalTokens,
-        resultSecondModelInput: jobResults.secondModelInput,
-        resultSecondModelOutput: jobResults.secondModelOutput,
-
-        // Sum of all pages' token counts from jobPages
-        pagesPromptTokens: sql<number>`SUM(${jobPages.promptTokens})`,
-        pagesCompletionTokens: sql<number>`SUM(${jobPages.completionTokens})`,
-        pagesTotalTokens: sql<number>`SUM(${jobPages.totalTokens})`,
-        pagesSecondModelInput: sql<number>`SUM(${jobPages.secondModelInput})`,
-        pagesSecondModelOutput: sql<number>`SUM(${jobPages.secondModelOutput})`,
       })
       .from(jobs)
       .leftJoin(ocrModels, eq(jobs.ocrModelId, ocrModels.id))
-      .leftJoin(jobResults, eq(jobs.id, jobResults.jobId))
-      .leftJoin(jobPages, eq(jobs.id, jobPages.jobId))
       .leftJoin(user, eq(jobs.userId, user.id))
-      .groupBy(
-        jobs.id,
-        jobs.filename,
-        ocrModels.name,
-        ocrModels.modelId,
-        ocrModels.provider,
-        user.name,
-        user.email,
-        user.image,
-        jobResults.promptTokens,
-        jobResults.completionTokens,
-        jobResults.totalTokens,
-        jobResults.secondModelInput,
-        jobResults.secondModelOutput
-      )
       .orderBy(desc(jobs.createdAt))
       .limit(100);
 
-    const jobsWithCosts = jobsWithMetrics.map((job) => {
-        const pagesTotalTokens = Number(job.pagesTotalTokens || 0);
-        const resultTotalTokens = Number(job.resultTotalTokens || 0);
-        const totalTokens = pagesTotalTokens + resultTotalTokens;
+    // Aggregate token usage per job from llm_logs
+    const tokensByJob = await db
+      .select({
+        jobId: llmLogs.jobId,
+        model: llmLogs.model,
+        promptTokens: sql<number>`SUM(${llmLogs.promptTokens})`,
+        completionTokens: sql<number>`SUM(${llmLogs.completionTokens})`,
+        totalTokens: sql<number>`SUM(${llmLogs.totalTokens})`,
+      })
+      .from(llmLogs)
+      .where(
+        sql`${llmLogs.jobId} IN (${sql.join(jobsData.map(j => sql`${j.id}`), sql`, `)})`
+      )
+      .groupBy(llmLogs.jobId, llmLogs.model);
 
-        const pagesPromptTokens = Number(job.pagesPromptTokens || 0);
-        const resultPromptTokens = Number(job.resultPromptTokens || 0);
-        const promptTokens = pagesPromptTokens + resultPromptTokens;
+    // Group token rows by jobId
+    const tokenMap = new Map<string, Array<{ model: string; promptTokens: number; completionTokens: number; totalTokens: number }>>();
+    for (const row of tokensByJob) {
+      if (!tokenMap.has(row.jobId)) tokenMap.set(row.jobId, []);
+      tokenMap.get(row.jobId)!.push({
+        model: row.model,
+        promptTokens: Number(row.promptTokens || 0),
+        completionTokens: Number(row.completionTokens || 0),
+        totalTokens: Number(row.totalTokens || 0),
+      });
+    }
 
-        const pagesCompletionTokens = Number(job.pagesCompletionTokens || 0);
-        const resultCompletionTokens = Number(job.resultCompletionTokens || 0);
-        const completionTokens = pagesCompletionTokens + resultCompletionTokens;
+    const result = jobsData.map((job) => {
+      const rows = tokenMap.get(job.id) ?? [];
 
-        const pagesSecondModelInput = Number(job.pagesSecondModelInput || 0);
-        const resultSecondModelInput = Number(job.resultSecondModelInput || 0);
-        const secondModelInput = pagesSecondModelInput + resultSecondModelInput;
+      let promptTokens = 0;
+      let completionTokens = 0;
+      let totalTokens = 0;
+      let cost = 0;
 
-        const pagesSecondModelOutput = Number(job.pagesSecondModelOutput || 0);
-        const resultSecondModelOutput = Number(job.resultSecondModelOutput || 0);
-        const secondModelOutput = pagesSecondModelOutput + resultSecondModelOutput;
+      for (const row of rows) {
+        promptTokens += row.promptTokens;
+        completionTokens += row.completionTokens;
+        totalTokens += row.totalTokens;
 
-        // Calculate Cost using primary config's model pricing AND the text_model pricing
-        let cost = 0;
+        const pricing = VERCEL_AI_GATEWAY_PRICING[row.model as keyof typeof VERCEL_AI_GATEWAY_PRICING]
+          ?? VERCEL_AI_GATEWAY_PRICING[job.modelId as keyof typeof VERCEL_AI_GATEWAY_PRICING]
+          ?? { input: 0, output: 0 };
+        cost += row.promptTokens * (pricing.input / 1_000_000);
+        cost += row.completionTokens * (pricing.output / 1_000_000);
+      }
 
-        // 1. Primary Model (Vision) Token Cost (defaults to OCR_VISION_MODEL if ocrModels lookup fails)
-        // If ocrModels exists, modelId is likely saved as "google/gemini-2.5-flash" (the provider prefix is added or handled differently sometimes, wait in route we do `getProviderPrefixedModelId` when saving model which prepends @vercel/?)
-        // Let's just use job.modelId if present since we saved it as providerPrefixed in ocrModels
-        // Wait, let's look at app/api/admin/models/route.ts
-        //   modelId: getProviderPrefixedModelId(data.provider, data.modelId)
-        // So job.modelId IS ALREADY provider prefixed! like "@vercel/google/gemini-1.5-flash"
-        const visionModelId = job.modelId || OCR_VISION_MODEL;
-
-        const visionPricing = VERCEL_AI_GATEWAY_PRICING[visionModelId as keyof typeof VERCEL_AI_GATEWAY_PRICING] || { input: 0, output: 0 };
-
-        cost += (pagesPromptTokens / 1_000_000) * visionPricing.input;
-        cost += (pagesCompletionTokens / 1_000_000) * visionPricing.output;
-
-        // 2. Second Model (Text) Token Cost
-        const textPricing = VERCEL_AI_GATEWAY_PRICING[OCR_TEXT_MODEL as keyof typeof VERCEL_AI_GATEWAY_PRICING] || { input: 0, output: 0 };
-
-        cost += (secondModelInput / 1_000_000) * textPricing.input;
-        cost += (secondModelOutput / 1_000_000) * textPricing.output;
-
-        return {
-            id: job.id,
-            filename: job.filename,
-            status: job.status,
-            error: job.error,
-            createdAt: job.createdAt,
-            updatedAt: job.updatedAt,
-            totalPages: job.totalPages,
-            user: {
-                name: job.userName,
-                email: job.userEmail,
-                image: job.userImage
-            },
-            model: job.modelName ? { name: job.modelName } : null,
-            promptTokens,
-            completionTokens,
-            totalTokens,
-            secondModelInput,
-            secondModelOutput,
-            cost: cost.toFixed(4)
-        };
+      return {
+        id: job.id,
+        filename: job.filename,
+        status: job.status,
+        error: job.error,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+        totalPages: job.totalPages,
+        user: {
+          name: job.userName,
+          email: job.userEmail,
+          image: job.userImage,
+        },
+        model: job.modelName ? { name: job.modelName } : null,
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        cost: cost.toFixed(4),
+      };
     });
 
-    return NextResponse.json(jobsWithCosts);
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error("Failed to fetch jobs", error);
     return NextResponse.json({ error: error.message }, { status: 400 });
