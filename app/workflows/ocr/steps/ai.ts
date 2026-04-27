@@ -126,7 +126,7 @@ export async function runOcrOnPage(
         },
       ],
       stopWhen: stepCountIs(1),
-      writable: getWritable({ namespace: "ocr-run" }),
+      writable: getWritable({ namespace: `ocr-run-${pageNumber}` }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
         return {};
@@ -336,7 +336,7 @@ export async function repairOcrPage(
         },
       ],
       stopWhen: stepCountIs(6),
-      writable: getWritable({ namespace: "ocr-repair" }),
+      writable: getWritable({ namespace: `ocr-repair-${pageNumber}` }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
         return {};
