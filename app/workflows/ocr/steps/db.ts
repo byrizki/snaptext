@@ -226,6 +226,7 @@ export async function dbSaveJobResult(
 export async function finalizeJob(
   jobId: string,
   status: "completed" | "failed",
+  error?: string
 ): Promise<void> {
   "use step";
   try {
@@ -233,7 +234,7 @@ export async function finalizeJob(
     const db = getDb();
     await db
       .update(jobs)
-      .set({ status, updatedAt: new Date() })
+      .set({ status, error: error || null, updatedAt: new Date() })
       .where(eq(jobs.id, jobId));
     console.log(`[Step] finalizeJob completed for jobId: ${jobId}`);
   } catch (error) {
