@@ -29,6 +29,8 @@ export async function POST(request: Request) {
         modelId: getProviderPrefixedModelId(data.provider, data.modelId),
         temperature: data.temperature,
         maxOutputTokens: data.maxOutputTokens,
+        inputPrice: data.inputPrice,
+        outputPrice: data.outputPrice,
         config: data.config,
       })
       .returning();

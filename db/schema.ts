@@ -29,6 +29,8 @@ export const ocrModels = pgTable("ocr_models", {
   modelId: text("model_id").notNull(),
   temperature: real("temperature").notNull().default(0.3),
   maxOutputTokens: integer("max_output_tokens").notNull().default(4096),
+  inputPrice: real("input_price").notNull().default(0),
+  outputPrice: real("output_price").notNull().default(0),
   config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

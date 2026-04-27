@@ -6,6 +6,8 @@ export const ocrModelSchema = z.object({
   modelId: z.string().min(1, "Model ID is required"),
   temperature: z.number().min(0).max(2).optional().default(0.3),
   maxOutputTokens: z.number().int().min(1).optional().default(4096),
+  inputPrice: z.number().min(0).optional().default(0),
+  outputPrice: z.number().min(0).optional().default(0),
   config: z.record(z.string(), z.unknown()).optional().default({}),
 });
 

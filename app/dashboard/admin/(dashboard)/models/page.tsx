@@ -21,6 +21,8 @@ type OcrModel = {
   modelId: string;
   temperature: number;
   maxOutputTokens: number;
+  inputPrice: number;
+  outputPrice: number;
   config: any;
 };
 
@@ -46,7 +48,9 @@ export default function ModelsAdminPage() {
     modelId: "",
     temperature: 0.3,
     maxOutputTokens: 4096,
-    config: "{}",
+        inputPrice: 0,
+        outputPrice: 0,
+        config: "{}",
   });
 
   const handleOpenSheet = (model?: OcrModel) => {
@@ -54,6 +58,8 @@ export default function ModelsAdminPage() {
       setEditingModel(model);
       setFormData({
         ...model,
+        inputPrice: model.inputPrice || 0,
+        outputPrice: model.outputPrice || 0,
         config: typeof model.config === 'string' ? model.config : JSON.stringify(model.config || {}, null, 2)
       });
     } else {
@@ -64,6 +70,8 @@ export default function ModelsAdminPage() {
         modelId: "",
         temperature: 0.3,
         maxOutputTokens: 4096,
+        inputPrice: 0,
+        outputPrice: 0,
         config: "{}",
       });
     }
@@ -142,6 +150,8 @@ export default function ModelsAdminPage() {
               <TableHead>Name</TableHead>
               <TableHead>Provider</TableHead>
               <TableHead>Model ID</TableHead>
+              <TableHead>Input Price</TableHead>
+              <TableHead>Output Price</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -156,6 +166,8 @@ export default function ModelsAdminPage() {
                   <TableCell className="font-medium">{model.name}</TableCell>
                   <TableCell className="capitalize text-muted-foreground">{model.provider}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{model.modelId}</TableCell>
+                  <TableCell className="text-muted-foreground">${model.inputPrice?.toFixed(2) || "0.00"}</TableCell>
+                  <TableCell className="text-muted-foreground">${model.outputPrice?.toFixed(2) || "0.00"}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => handleOpenSheet(model)} className="transition-opacity">
                       <HugeiconsIcon icon={PencilEdit02Icon} size={16} />
@@ -236,8 +248,21 @@ export default function ModelsAdminPage() {
               </div>
             </div>
 
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Input Price / 1M</Label>
+                <Input type="number" step="0.01" min="0" value={formData.inputPrice} onChange={(e) => setFormData({ ...formData, inputPrice: parseFloat(e.target.value) || 0 })} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Output Price / 1M</Label>
+                <Input type="number" step="0.01" min="0" value={formData.outputPrice} onChange={(e) => setFormData({ ...formData, outputPrice: parseFloat(e.target.value) || 0 })} />
+              </div>
+            </div>
+
             <div className="grid gap-2">
               <Label>Model Config (JSON)</Label>
+
               <Textarea 
                 value={formData.config} 
                 onChange={(e) => setFormData({ ...formData, config: e.target.value })} 

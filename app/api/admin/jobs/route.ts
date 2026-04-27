@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { getDb, jobResults, jobs, jobPages, ocrModels, user } from "@/db";
 import { desc, eq, sql } from "drizzle-orm";
-import { VERCEL_AI_GATEWAY_PRICING } from "@/lib/constants";
+
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "@/app/workflows/ocr/models";
 
 export async function GET() {
@@ -64,6 +64,15 @@ export async function GET() {
       .orderBy(desc(jobs.createdAt))
       .limit(100);
 
+
+    const allModels = await db.select({ modelId: ocrModels.modelId, provider: ocrModels.provider, inputPrice: ocrModels.inputPrice, outputPrice: ocrModels.outputPrice }).from(ocrModels);
+    const pricingMap = allModels.reduce((acc, model) => {
+      acc[model.modelId] = { input: model.inputPrice || 0, output: model.outputPrice || 0 };
+      if (model.provider === "vercel") acc[`@vercel/${model.modelId}`] = { input: model.inputPrice || 0, output: model.outputPrice || 0 };
+      if (model.provider === "cloudflare") acc[`@cf/${model.modelId}`] = { input: model.inputPrice || 0, output: model.outputPrice || 0 };
+      return acc;
+    }, {} as Record<string, { input: number; output: number }>);
+
     const jobsWithCosts = jobsWithMetrics.map((job) => {
         const pagesTotalTokens = Number(job.pagesTotalTokens || 0);
         const resultTotalTokens = Number(job.resultTotalTokens || 0);
@@ -96,13 +105,13 @@ export async function GET() {
         // So job.modelId IS ALREADY provider prefixed! like "@vercel/google/gemini-1.5-flash"
         const visionModelId = job.modelId || OCR_VISION_MODEL;
 
-        const visionPricing = VERCEL_AI_GATEWAY_PRICING[visionModelId as keyof typeof VERCEL_AI_GATEWAY_PRICING] || { input: 0, output: 0 };
+        const visionPricing = pricingMap[visionModelId as string] || { input: 0, output: 0 };
 
         cost += (pagesPromptTokens / 1_000_000) * visionPricing.input;
         cost += (pagesCompletionTokens / 1_000_000) * visionPricing.output;
 
         // 2. Second Model (Text) Token Cost
-        const textPricing = VERCEL_AI_GATEWAY_PRICING[OCR_TEXT_MODEL as keyof typeof VERCEL_AI_GATEWAY_PRICING] || { input: 0, output: 0 };
+        const textPricing = pricingMap[OCR_TEXT_MODEL as string] || { input: 0, output: 0 };
 
         cost += (secondModelInput / 1_000_000) * textPricing.input;
         cost += (secondModelOutput / 1_000_000) * textPricing.output;
