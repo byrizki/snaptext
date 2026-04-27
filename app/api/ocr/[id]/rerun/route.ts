@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 
-import { getDb, jobs, jobPages, jobResults } from "@/db";
+import { getDb, jobs, jobPages, jobResults, llmLogs } from "@/db";
 import { ocrWorkflow } from "@/app/workflows/ocr";
 
 export const maxDuration = 60;
@@ -54,11 +54,13 @@ export async function POST(
     // can reuse the already-uploaded grayscaled images without re-rendering.
     await db.delete(jobResults).where(eq(jobResults.jobId, actualJobId)).catch(() => {});
 
+    // Clear stale LLM logs so costs are re-accumulated on the fresh run
+    await db.delete(llmLogs).where(eq(llmLogs.jobId, actualJobId)).catch(() => {});
+
     // Reset per-page OCR output fields without deleting the rows (preserves pageBlobUrl)
-    // The workflow will re-run OCR on each page using the existing blob URLs.
     await db
       .update(jobPages)
-      .set({ toonOutput: null, parsedData: null, promptTokens: 0, completionTokens: 0, totalTokens: 0, finishReason: null })
+      .set({ toonOutput: null, parsedData: null, finishReason: null })
       .where(eq(jobPages.jobId, actualJobId))
       .catch(() => {});
 

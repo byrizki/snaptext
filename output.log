@@ -1,0 +1,521 @@
+
+> snaptext@0.1.0 dev /mnt/development/snaptext
+> next dev
+
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.14:3000
+- Environments: .env
+✓ Ready in 731ms
+Discovering workflow directives 7042ms
+Created steps bundle 102ms
+Created intermediate workflow bundle 218ms
+Creating webhook route
+Creating manifest...
+Created manifest with 23 steps, 1 workflow, and 0 classes 280ms
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+[2m2026-04-27T13:55:49.742Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Base URL could not be determined. Please set a valid base URL using the baseURL config option or the BETTER_AUTH_URL environment variable. Without this, callbacks and redirects may not work correctly.
+[2m2026-04-27T13:55:50.966Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Base URL could not be determined. Please set a valid base URL using the baseURL config option or the BETTER_AUTH_URL environment variable. Without this, callbacks and redirects may not work correctly.
+ GET /api/auth/get-session 200 in 6.9s (next.js: 3.2s, application-code: 3.7s)
+ GET /dashboard/scan 200 in 7.6s (next.js: 82ms, proxy.ts: 7.1s, application-code: 350ms)
+[2m2026-04-27T13:55:56.282Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Base URL could not be determined. Please set a valid base URL using the baseURL config option or the BETTER_AUTH_URL environment variable. Without this, callbacks and redirects may not work correctly.
+ GET /api/models 200 in 890ms (next.js: 73ms, application-code: 817ms)
+ GET /api/auth/get-session 200 in 1753ms (next.js: 109ms, application-code: 1643ms)
+ GET /api/dashboard/quota 200 in 2.6s (next.js: 146ms, application-code: 2.5s)
+ GET /api/models 200 in 272ms (next.js: 1944µs, application-code: 270ms)
+ GET /api/models 200 in 253ms (next.js: 2ms, application-code: 251ms)
+ POST /.well-known/workflow/v1/flow 200 in 152ms (next.js: 90ms, application-code: 62ms)
+[Step] initializeJob started for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /api/ocr 200 in 3.5s (next.js: 249ms, application-code: 3.2s)
+[Step] initializeJob completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 932ms (next.js: 144ms, application-code: 788ms)
+ POST /.well-known/workflow/v1/flow 200 in 45ms (next.js: 1855µs, application-code: 43ms)
+[Step] dbGetJob started for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[2m2026-04-27T13:56:19.950Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Base URL could not be determined. Please set a valid base URL using the baseURL config option or the BETTER_AUTH_URL environment variable. Without this, callbacks and redirects may not work correctly.
+ POST /.well-known/workflow/v1/step 200 in 964ms (next.js: 1414µs, application-code: 963ms)
+ POST /.well-known/workflow/v1/flow 200 in 40ms (next.js: 1402µs, application-code: 38ms)
+ GET /api/auth/get-session 200 in 2.4s (next.js: 78ms, application-code: 2.3s)
+ GET /dashboard/scan/54b91814-aba4-4d25-beab-8a5387373314 200 in 3.0s (next.js: 470ms, proxy.ts: 2.5s, application-code: 45ms)
+ POST /.well-known/workflow/v1/step 200 in 1467ms (next.js: 1372µs, application-code: 1466ms)
+ POST /.well-known/workflow/v1/flow 200 in 102ms (next.js: 4ms, application-code: 99ms)
+[Step] dbGetExistingPages started for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] dbGetExistingPages found 0 existing pages for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 892ms (next.js: 2ms, application-code: 890ms)
+ POST /.well-known/workflow/v1/flow 200 in 76ms (next.js: 1634µs, application-code: 74ms)
+[Step] dbFindReusablePages started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, hash: 72f1f6de8b0f407fd93494f9aec74bf2391e16cea12043180e30c73d6c88d439
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 4.5s (next.js: 717ms, application-code: 3.8s)
+[Step] dbFindReusablePages found 5 reusable pages for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 1159ms (next.js: 2ms, application-code: 1157ms)
+ POST /.well-known/workflow/v1/flow 200 in 220ms (next.js: 2ms, application-code: 217ms)
+[Step] dbSaveReusablePages saving 5 pages for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 3.4s (next.js: 82ms, application-code: 3.3s)
+[Step] dbSaveReusablePages completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 2.9s (next.js: 4ms, application-code: 2.9s)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 104ms (next.js: 2ms, application-code: 102ms)
+[Step] runOcrOnPage started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 1
+[Workflow] Using model: @vercel/zai/glm-4.6v, config: {"google":{},"zai":{}}
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 2.1s (next.js: 75ms, application-code: 2.1s)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1839ms (next.js: 74ms, application-code: 1765ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1644ms (next.js: 70ms, application-code: 1574ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1552ms (next.js: 73ms, application-code: 1480ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1690ms (next.js: 68ms, application-code: 1622ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1735ms (next.js: 63ms, application-code: 1672ms)
+onStepFinish 
+document_type: "tariff_book"
+document_id: "tariff_book_2026"
+title: "TARIFF BOOK 2026"
+organization: "Siloam Hospitals Bekasi Timur"
+year: 2026
+
+document_metadata:
+  readability_score: 95
+  data_usability_score: 30
+
+cover_image:
+  description: "Medical imagery showing brain scans on tablet with documents and stethoscope"
+  theme: "healthcare" []
+[Agent] Stream finished. Steps: 1, Tokens: 4010 (In: 3713, Out: 297), Reason: stop
+[Step] runOcrOnPage completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 1
+ POST /.well-known/workflow/v1/step 200 in 15.6s (next.js: 8ms, application-code: 15.6s)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 101ms (next.js: 3ms, application-code: 99ms)
+[Step] dbSaveOcrPageResult started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 1
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1632ms (next.js: 99ms, application-code: 1533ms)
+[Step] dbSaveOcrPageResult completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 1
+ POST /.well-known/workflow/v1/step 200 in 1101ms (next.js: 3ms, application-code: 1098ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 128ms (next.js: 2ms, application-code: 126ms)
+[Step] dbSaveLlmLogsBatch started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, 1 logs
+[Step] dbSaveLlmLogsBatch completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 1836ms (next.js: 5ms, application-code: 1831ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 99ms (next.js: 1751µs, application-code: 98ms)
+[Step] runOcrOnPage started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 2
+[Workflow] Using model: @vercel/zai/glm-4.6v, config: {"google":{},"zai":{}}
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 3.2s (next.js: 127ms, application-code: 3.1s)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1712ms (next.js: 75ms, application-code: 1637ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1883ms (next.js: 62ms, application-code: 1821ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1709ms (next.js: 67ms, application-code: 1642ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1698ms (next.js: 66ms, application-code: 1633ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1721ms (next.js: 74ms, application-code: 1647ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1573ms (next.js: 78ms, application-code: 1495ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1590ms (next.js: 77ms, application-code: 1513ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1783ms (next.js: 68ms, application-code: 1715ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1815ms (next.js: 64ms, application-code: 1751ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1636ms (next.js: 86ms, application-code: 1550ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1542ms (next.js: 63ms, application-code: 1480ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1612ms (next.js: 86ms, application-code: 1526ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1597ms (next.js: 94ms, application-code: 1502ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1706ms (next.js: 81ms, application-code: 1625ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1562ms (next.js: 69ms, application-code: 1492ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1805ms (next.js: 69ms, application-code: 1737ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1629ms (next.js: 86ms, application-code: 1543ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1635ms (next.js: 109ms, application-code: 1526ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1638ms (next.js: 64ms, application-code: 1574ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1703ms (next.js: 113ms, application-code: 1590ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1589ms (next.js: 87ms, application-code: 1502ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1610ms (next.js: 97ms, application-code: 1513ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1605ms (next.js: 81ms, application-code: 1524ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1693ms (next.js: 110ms, application-code: 1583ms)
+[2m2026-04-27T13:58:41.000Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Base URL could not be determined. Please set a valid base URL using the baseURL config option or the BETTER_AUTH_URL environment variable. Without this, callbacks and redirects may not work correctly.
+ GET /api/auth/get-session 200 in 1081ms (next.js: 77ms, application-code: 1004ms)
+[2m2026-04-27T13:58:42.419Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Base URL could not be determined. Please set a valid base URL using the baseURL config option or the BETTER_AUTH_URL environment variable. Without this, callbacks and redirects may not work correctly.
+ GET /api/auth/get-session 200 in 2.1s (next.js: 99ms, application-code: 2.0s)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 2.9s (next.js: 74ms, application-code: 2.8s)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1702ms (next.js: 64ms, application-code: 1639ms)
+onStepFinish 
+document_metadata:
+  readability_score: 95
+  data_usability_score: 95
+document_type: "hospital_tariff"
+effective_date: "2026-01-01"
+hospital_name: "Siloam Hospitals Bekasi Timur"
+administration_fees[10]{no, description, basic, deluxe, ed, executive_suite, opd, opd_executive, standard, vip, vip_deluxe}:
+  1, "ADMINISTRATION FEE", 0, 0, 37000, 0, 37000, 56000, 0, 0, 0
+  2, "ADMINISTRATION FEE ED", 0, 0, 37000, 0, 37000, 56000, 0, 0, 0
+  3, "ADMINISTRATION FEE IPD", 0, 0, 0, 0, 0, 0, 0, 0, 0
+  4, "ADMINISTRATION FEE OPD", 0, 0, 37000, 0, 37000, 56000, 0, 0, 0
+  5, "EMERGENCY SWAB FEE", 0, 0, 155000, 0, 155000, 233000, 0, 0, 0
+  6, "IV LINE ADMINISTRATION", 309000, 309000, 309000, 309000, 309000, 464000, 309000, 309000, 309000
+  7, "SILOAM AT HOME SERVICE FEE", 0, 0, 206000, 206000, 206000, 309000, 0, 0, 0
+  8, "SILOAM CARD", 0, 0, 16000, 0, 16000, 24000, 0, 0, 0
+  9, "SURAT KETERANGAN HASIL COVID-19 TEST", 0, 0, 0, 0, 103000, 155000, 0, 0, 0
+  10, "SURCHARGE IGD", 0, 0, 309000, 0, 0, 0, 0, 0, 0
+bed_rentals[10]{no, description, basic, deluxe, ed, executive_suite, opd, opd_executive, standard, vip, vip_deluxe}:
+  1, "GENERAL WARD / UMUM", 300000, 800000, 0, 1500000, 0, 0, 600000, 1300000, 1300000
+  2, "ICU LEVEL 1", 750000, 750000, 0, 750000, 0, 0, 750000, 750000, 750000
+  3, "INTENSIVE CARE UNIT / ICU", 850000, 850000, 0, 950000, 0, 0, 950000, 950000, 950000
+  4, "ISOLATION ROOM / KAMAR ISOLASI", 900000, 900000, 0, 900000, 0, 0, 900000, 900000, 900000
+  5, "NICU", 850000, 850000, 0, 850000, 0, 0, 850000, 850000, 850000
+  6, "NICU LEVEL 1", 650000, 650000, 0, 650000, 0, 0, 650000, 650000, 650000
+  7, "NURSERY / BAYI", 200000, 200000, 0, 200000, 0, 0, 200000, 200000, 200000
+  8, "ONE DAY CARE", 200000, 200000, 0, 0, 0, 0, 200000, 200000, 0
+  9, "ROOMING IN", 200000, 200000, 0, 200000, 0, 0, 200000, 200000, 200000
+  10, "TEMPORARY BED", 200000, 0, 0, 0, 0, 0, 0, 200000, 0 []
+[Agent] Stream finished. Steps: 1, Tokens: 8189 (In: 3641, Out: 4548), Reason: stop
+[Step] runOcrOnPage completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 2
+ POST /.well-known/workflow/v1/step 200 in 2.1min (next.js: 1693µs, application-code: 2.1min)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 94ms (next.js: 1145µs, application-code: 93ms)
+[Step] dbSaveOcrPageResult started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 2
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1769ms (next.js: 66ms, application-code: 1703ms)
+[Step] dbSaveOcrPageResult completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 2
+ POST /.well-known/workflow/v1/step 200 in 934ms (next.js: 1433µs, application-code: 933ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 145ms (next.js: 1311µs, application-code: 144ms)
+[Step] dbSaveLlmLogsBatch started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, 1 logs
+[Step] dbSaveLlmLogsBatch completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 1178ms (next.js: 1498µs, application-code: 1177ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 74ms (next.js: 1298µs, application-code: 73ms)
+[Step] runOcrOnPage started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 3
+[Workflow] Using model: @vercel/zai/glm-4.6v, config: {"google":{},"zai":{}}
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1641ms (next.js: 65ms, application-code: 1576ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1591ms (next.js: 81ms, application-code: 1510ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1624ms (next.js: 72ms, application-code: 1552ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1563ms (next.js: 72ms, application-code: 1491ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1582ms (next.js: 67ms, application-code: 1515ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1704ms (next.js: 86ms, application-code: 1618ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1654ms (next.js: 90ms, application-code: 1565ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1642ms (next.js: 94ms, application-code: 1549ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1621ms (next.js: 69ms, application-code: 1552ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1587ms (next.js: 70ms, application-code: 1517ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1696ms (next.js: 68ms, application-code: 1628ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1672ms (next.js: 79ms, application-code: 1593ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1616ms (next.js: 74ms, application-code: 1542ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1629ms (next.js: 91ms, application-code: 1538ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 2.2s (next.js: 140ms, application-code: 2.1s)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1659ms (next.js: 72ms, application-code: 1587ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1859ms (next.js: 70ms, application-code: 1789ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1906ms (next.js: 63ms, application-code: 1843ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1797ms (next.js: 69ms, application-code: 1728ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1801ms (next.js: 66ms, application-code: 1734ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1701ms (next.js: 71ms, application-code: 1630ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1781ms (next.js: 65ms, application-code: 1716ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1672ms (next.js: 65ms, application-code: 1607ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1903ms (next.js: 87ms, application-code: 1816ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1710ms (next.js: 77ms, application-code: 1633ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1645ms (next.js: 64ms, application-code: 1580ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1693ms (next.js: 72ms, application-code: 1621ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1663ms (next.js: 66ms, application-code: 1597ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1801ms (next.js: 67ms, application-code: 1733ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1799ms (next.js: 71ms, application-code: 1728ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1663ms (next.js: 67ms, application-code: 1596ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 2.1s (next.js: 69ms, application-code: 2.0s)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1899ms (next.js: 70ms, application-code: 1829ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1812ms (next.js: 66ms, application-code: 1746ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1775ms (next.js: 66ms, application-code: 1709ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1844ms (next.js: 65ms, application-code: 1780ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1610ms (next.js: 67ms, application-code: 1543ms)
+onStepFinish  []
+[Agent] Stream finished. Steps: 1, Tokens: 11833 (In: 3641, Out: 8192), Reason: length
+[OCR] Truncated output on page 3 for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 3.1min (next.js: 1372µs, application-code: 3.1min)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 165ms (next.js: 1214µs, application-code: 164ms)
+[Step] dbSaveOcrPageResult started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 3
+[Step] dbSaveOcrPageResult completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 3
+ POST /.well-known/workflow/v1/step 200 in 569ms (next.js: 1332µs, application-code: 567ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 78ms (next.js: 1224µs, application-code: 77ms)
+[Step] dbSaveLlmLogsBatch started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, 1 logs
+[Step] dbSaveLlmLogsBatch completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 1098ms (next.js: 1262µs, application-code: 1097ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 4 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 97ms (next.js: 1405µs, application-code: 95ms)
+[Step] runOcrOnPage started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 4
+[Workflow] Using model: @vercel/zai/glm-4.6v, config: {"google":{},"zai":{}}
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1873ms (next.js: 67ms, application-code: 1807ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1610ms (next.js: 66ms, application-code: 1544ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1848ms (next.js: 70ms, application-code: 1778ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1740ms (next.js: 67ms, application-code: 1672ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1678ms (next.js: 66ms, application-code: 1612ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1673ms (next.js: 68ms, application-code: 1606ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1879ms (next.js: 80ms, application-code: 1799ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1898ms (next.js: 70ms, application-code: 1827ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1817ms (next.js: 74ms, application-code: 1743ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1729ms (next.js: 66ms, application-code: 1663ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1719ms (next.js: 73ms, application-code: 1645ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1794ms (next.js: 66ms, application-code: 1728ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1731ms (next.js: 73ms, application-code: 1658ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1737ms (next.js: 71ms, application-code: 1666ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1849ms (next.js: 71ms, application-code: 1778ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1606ms (next.js: 78ms, application-code: 1528ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1586ms (next.js: 66ms, application-code: 1520ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1819ms (next.js: 66ms, application-code: 1753ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1700ms (next.js: 69ms, application-code: 1631ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1825ms (next.js: 67ms, application-code: 1758ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1716ms (next.js: 66ms, application-code: 1649ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1670ms (next.js: 73ms, application-code: 1597ms)
+[2m2026-04-27T14:03:38.773Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Base URL could not be determined. Please set a valid base URL using the baseURL config option or the BETTER_AUTH_URL environment variable. Without this, callbacks and redirects may not work correctly.
+ GET /api/auth/get-session 200 in 1220ms (next.js: 88ms, application-code: 1132ms)
+[2m2026-04-27T14:03:40.029Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Base URL could not be determined. Please set a valid base URL using the baseURL config option or the BETTER_AUTH_URL environment variable. Without this, callbacks and redirects may not work correctly.
+ GET /api/auth/get-session 200 in 1230ms (next.js: 83ms, application-code: 1147ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1992ms (next.js: 89ms, application-code: 1902ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1792ms (next.js: 67ms, application-code: 1725ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1892ms (next.js: 66ms, application-code: 1826ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1597ms (next.js: 77ms, application-code: 1520ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1788ms (next.js: 67ms, application-code: 1721ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1854ms (next.js: 68ms, application-code: 1787ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 2.0s (next.js: 67ms, application-code: 1936ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1993ms (next.js: 68ms, application-code: 1926ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1780ms (next.js: 67ms, application-code: 1713ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1972ms (next.js: 69ms, application-code: 1903ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1739ms (next.js: 74ms, application-code: 1665ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1739ms (next.js: 82ms, application-code: 1657ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1626ms (next.js: 75ms, application-code: 1551ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1893ms (next.js: 67ms, application-code: 1826ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1838ms (next.js: 69ms, application-code: 1769ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1850ms (next.js: 75ms, application-code: 1775ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1832ms (next.js: 68ms, application-code: 1764ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1663ms (next.js: 67ms, application-code: 1597ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1892ms (next.js: 66ms, application-code: 1826ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1809ms (next.js: 80ms, application-code: 1729ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1850ms (next.js: 67ms, application-code: 1783ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1741ms (next.js: 68ms, application-code: 1673ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1763ms (next.js: 66ms, application-code: 1697ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1752ms (next.js: 70ms, application-code: 1682ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1787ms (next.js: 67ms, application-code: 1720ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1795ms (next.js: 67ms, application-code: 1728ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1782ms (next.js: 66ms, application-code: 1716ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1688ms (next.js: 68ms, application-code: 1620ms)
+onStepFinish 
+document_type: "surgeon_fee_schedule"
+document_metadata:
+  readability_score: 95
+  data_usability_score: 98
+surgeon_fees[19]{no, description, basic, deluxe, ed, executive_suite, opd, opd_executive, standard, vip, vip_deluxe}:
+  1, "DOKTER OPERATOR_TABLE_TARIF II_1 (SUB SPECIALIST / CONSULTANT / PROFESSOR)", 1320000, 2184000, null, 2738000, null, null, 1566000, 2512000, 2512000
+  2, "DOKTER OPERATOR_TABLE_TARIF II_2 (SUB SPECIALIST / CONSULTANT / PROFESSOR)", 1584000, 2621000, null, 3014000, null, null, 1883000, 3014000, 3014000
+  3, "DOKTER OPERATOR_TABLE_TARIF II_3 (SUB SPECIALIST / CONSULTANT / PROFESSOR)", 2979000, 4114000, null, 4296000, null, null, 3349000, 4296000, 4296000
+  4, "DOKTER OPERATOR_TABLE_TARIF II_4 (SUB SPECIALIST / CONSULTANT / PROFESSOR)", 3945000, 5635000, null, 7326000, null, null, 4509000, 7326000, 7326000
+  5, "DOKTER OPERATOR_TABLE_TARIF II_5 (SUB SPECIALIST / CONSULTANT / PROFESSOR)", 5658000, 8083000, null, 10508000, null, null, 6467000, 10508000, 10508000
+  6, "DOKTER OPERATOR_TABLE_TARIF II_6 (SUB SPECIALIST / CONSULTANT / PROFESSOR)", 8015000, 11450000, null, 14885000, null, null, 9160000, 14885000, 14885000
+  7, "DOKTER OPERATOR_TABLE_TARIF II_7 (SUB SPECIALIST / CONSULTANT / PROFESSOR)", 11559000, 16512000, null, 21466000, null, null, 13210000, 21466000, 21466000
+  8, "DOKTER OPERATOR_TABLE_TARIF I_1", 580000, 1000000, 750000, 2106000, 580000, 750000, 750000, 1200000, 1250000
+  9, "DOKTER OPERATOR_TABLE_TARIF I_2", 1218000, 2100000, 1575000, 2318000, 1218000, 1575000, 1575000, 2520000, 2625000
+  10, "DOKTER OPERATOR_TABLE_TARIF I_3", 2494000, 4300000, 3225000, 3304000, 2494000, 3225000, 322500 []
+[Agent] Stream finished. Steps: 1, Tokens: 11833 (In: 3641, Out: 8192), Reason: length
+[OCR] Truncated output on page 4 for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 4.2min (next.js: 1152µs, application-code: 4.2min)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 4 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 173ms (next.js: 1420µs, application-code: 171ms)
+[Step] dbSaveOcrPageResult started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 4
+[Step] dbSaveOcrPageResult completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 4
+ POST /.well-known/workflow/v1/step 200 in 849ms (next.js: 1519µs, application-code: 847ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 4 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 121ms (next.js: 1465µs, application-code: 120ms)
+[Step] dbSaveLlmLogsBatch started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, 1 logs
+[Step] dbSaveLlmLogsBatch completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 2.5s (next.js: 1995µs, application-code: 2.5s)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 4 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 5 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 119ms (next.js: 1558µs, application-code: 117ms)
+[Step] runOcrOnPage started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 5
+[Workflow] Using model: @vercel/zai/glm-4.6v, config: {"google":{},"zai":{}}
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 3.6s (next.js: 72ms, application-code: 3.6s)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1678ms (next.js: 67ms, application-code: 1612ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1786ms (next.js: 77ms, application-code: 1709ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1989ms (next.js: 68ms, application-code: 1921ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1896ms (next.js: 79ms, application-code: 1817ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1849ms (next.js: 71ms, application-code: 1778ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1881ms (next.js: 70ms, application-code: 1811ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1729ms (next.js: 69ms, application-code: 1660ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1799ms (next.js: 73ms, application-code: 1726ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1807ms (next.js: 73ms, application-code: 1734ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1656ms (next.js: 74ms, application-code: 1582ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1848ms (next.js: 92ms, application-code: 1756ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1847ms (next.js: 74ms, application-code: 1773ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1743ms (next.js: 75ms, application-code: 1669ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1787ms (next.js: 68ms, application-code: 1718ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1759ms (next.js: 75ms, application-code: 1684ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1762ms (next.js: 71ms, application-code: 1691ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1787ms (next.js: 67ms, application-code: 1719ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1842ms (next.js: 74ms, application-code: 1767ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1845ms (next.js: 83ms, application-code: 1762ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1892ms (next.js: 67ms, application-code: 1825ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1839ms (next.js: 123ms, application-code: 1716ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1972ms (next.js: 79ms, application-code: 1894ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1653ms (next.js: 84ms, application-code: 1569ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1623ms (next.js: 75ms, application-code: 1547ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1655ms (next.js: 100ms, application-code: 1555ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1655ms (next.js: 67ms, application-code: 1588ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1627ms (next.js: 79ms, application-code: 1548ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1952ms (next.js: 107ms, application-code: 1845ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1839ms (next.js: 84ms, application-code: 1756ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1803ms (next.js: 101ms, application-code: 1701ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1746ms (next.js: 82ms, application-code: 1664ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1937ms (next.js: 71ms, application-code: 1867ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1907ms (next.js: 103ms, application-code: 1804ms)
+onStepFinish 
+document_type: "surgeon_fee_schedule"
+document_id: "page_5"
+document_metadata:
+  readability_score: 95
+  data_usability_score: 98
+
+surgeon_fees[15]{no, description, basic, deluxe, ed, executive_suite, opd, opd_executive, standard, vip, vip_deluxe}:
+  20,"SRG I_Abdominal Cavity,Various Lesions,Colostomy/Enterostomy/Gastrectomy (Laparoscopy)",5,690,000.,9,810,000.,7,360,000.,12,750,000.,7,360,000.,7,360,000.,7,360,000.,11,770,000.,11,770,000.
+  21,"SRG I_Abdominal Cavity,Various Lesions,Colostomy/Enterostomy/Gastrectomy (Open)",4,060,000.,7,010,000.,5,260,000.,9,110,000.,5,260,000.,5,260,000.,5,260,000.,8,410,000.,8,410,000.
+  22,"SRG I_Abdominal Cavity,Various Lesions,Exploratory Laparotomy",2,920,000.,5,040,000.,3,780,000.,6,550,000.,3,780,000.,3,780,000.,3,780,000.,6,050,000.,6,050,000.
+  23,"SRG I_Abdominal Wall,Epigastric/Umbilical Hernia,Repair (Open)",2,620,000.,4,520,000.,3,390,000.,5,870,000.,3,390,000.,3,390,000.,3,390,000.,5,420,000.,5,420,000.
+  24,"SRG I_Abdominal Wall,Inguinal Hernia (Infants & Children),Herniotomy (Bilateral)",3,670,000.,6,320,000.,4,740,000.,8,220,000.,4,740,000.,4,740,000.,4,740,000.,7,590,000.,7,590,000.
+  25,"SRG I_Abdominal Wall,Inguinal Hernia (Infants & Children),Herniotomy (Unilateral)",2,620,000.,4,520,000.,3,390,000.,5,870,000.,3,390,000.,3,390,000.,3,390,000.,5,420,000.,5,420,000.
+  26,"SRG I_Abdominal Wall,Inguinal/Femoral Hernia,Bilateral Herniorrhaphy (Laparoscopy)",8,790,000.,15,150,000.,11,360,000.,19,690,000.,11,360,000.,11,360,000.,11,360,000.,18,180,000.,18,180,000.
+  27,"SRG I_Abdominal Wall,Inguinal/Femoral Hernia,Bilateral Herniorrhaphy (Open)",6,280,000.,10,820,000.,8,110,000.,14,060,000.,8,110,000.,8,110,000.,8,110,000.,12,980,000.,12,980,000.
+  28,"SRG I_Abdominal Wall,Inguinal/Femoral Hernia,Unilateral Herniorrhaphy (Laparoscopy)",6,280,000.,10,820,000.,8,110,000.,14,060,000.,8,110,000.,8,110,000.,8,110,000.,12,980,000.,12,980,000.
+  29,"SRG I_Abdominal Wall,Inguinal/Femoral Hernia,Unilateral Herniorrhaphy (Open)",4,480,000.,7,730,000.,5,800,000.,10,050,000.,5,800,000.,5,800,000.,5,800,000.,9,270,000.,9,270,000.
+  30,"SRG I_Abdominal Wall,Strangulated/Obstructed Hernia,Repair with Bowel Resection",6,780,000.,11,690,000.,8,770,000.,15,200,000.,8,770,000.,8,770,000.,8,770,000.,14,030,000.,14,030,000.
+  31,"SRG I_Abdominal Wall,Strangulated/Obstructed Hernia,Repair without Bowel Resection",5,480,000.,9,450,000.,7,090,000.,12,290,000.,7,090,000.,7,090,000.,7,090,000.,11,340,000.,11,340,000.
+  32,"SRG I_Abdominal Wall,Ventral/Incisional/Recurrent Hernia,Repair (Open)",6,120,000.,10,550,000.,7,910,000.,13,710,000.,7,910,000.,7,910,000.,7,910,000.,12,660,000.,12,660,000.
+  33,"SRG I_Adenoids,Various Lesions,Removal",2,310,000.,3,990,000.,2,990,000.,5,190,000.,2,990,000.,2,990,000.,2,990,000.,4,790,000.,4,790,000.
+  34,"SRG I_Adrenals,Various Lesions,Biopsy/Excision (Laparoscopy)",6,960,000.,12,010,000.,9,000,000.,15,610,000.,9,000,000.,9,000,000.,9,000,000.,14,410,000.,14,410,000. []
+[Agent] Stream finished. Steps: 1, Tokens: 9351 (In: 3641, Out: 5710), Reason: stop
+[OCR Error] TOON decode failed: Error: TOON Decode Error (Line 8): Column mismatch in 'surgeon_fees' at row 1. Expected 11 columns (no, description, basic, deluxe, ed, executive_suite, opd, opd_executive, standard, vip, vip_deluxe), but got 29 values — too many. A value likely contains an unquoted comma. Parsed values: ["20", "SRG I_Abdominal Cavity,Various Lesions,Colostomy/Enterostomy/Gastrectomy (Laparoscopy)", "5", "690", "000.", "9", "810", "000.", "7", "360", "000.", "12", "750", "000.", "7", "360", "000.", "7", "360", "000.", "7", "360", "000.", "11", "770", "000.", "11", "770", "000."]. Quote any value containing a comma: e.g. "value, with comma".
+    at createError (lib/toon-parser.ts:188:17)
+    at decodeToon (lib/toon-parser.ts:63:17)
+    at runOcrOnPage (app/workflows/ocr/steps/ai.ts:154:17)
+  186 |
+  187 | function createError(message: string, line: number, key?: string, context?: string): Toon...
+> 188 |   const error = new Error(`TOON Decode Error (Line ${line}): ${message}`) as ToonParseError;
+      |                 ^
+  189 |   error.line = line;
+  190 |   error.key = key;
+  191 |   error.context = context; {
+  line: 8,
+  key: 'surgeon_fees',
+  context: '20,"SRG I_Abdominal Cavity,Various Lesions,Colostomy/Enterostomy/Gastrectomy (Laparoscopy)",5,690,000.,9,810,000.,7,360,000.,12,750,000.,7,360,000.,7,360,000.,7,360,000.,11,770,000.,11,770,000.'
+}
+[Step] runOcrOnPage completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 5
+ POST /.well-known/workflow/v1/step 200 in 2.7min (next.js: 1280µs, application-code: 2.7min)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 4 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 5 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] OCR failed validation on page 5, calling repairOcrPage for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 370ms (next.js: 1462µs, application-code: 368ms)
+[Step] repairOcrPage started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 5
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1850ms (next.js: 68ms, application-code: 1782ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1835ms (next.js: 74ms, application-code: 1761ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 2.0s (next.js: 72ms, application-code: 1940ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1685ms (next.js: 111ms, application-code: 1574ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1833ms (next.js: 70ms, application-code: 1763ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1724ms (next.js: 69ms, application-code: 1655ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1843ms (next.js: 74ms, application-code: 1769ms)
+[Tool] validate_toon called (length: 2577)
+✅ [TOON] Parse successful
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1730ms (next.js: 67ms, application-code: 1663ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1797ms (next.js: 68ms, application-code: 1729ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1740ms (next.js: 68ms, application-code: 1672ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1728ms (next.js: 92ms, application-code: 1636ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1926ms (next.js: 65ms, application-code: 1861ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1814ms (next.js: 66ms, application-code: 1748ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1823ms (next.js: 76ms, application-code: 1747ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1704ms (next.js: 66ms, application-code: 1639ms)
+[Agent] Repair stream finished. Steps: 2, Tokens: 16078 (In: 13108, Out: 2970), Reason: stop
+[OCR Repair] Captured via tool callback
+ POST /.well-known/workflow/v1/step 200 in 90s (next.js: 1616µs, application-code: 90s)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 4 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 5 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] OCR failed validation on page 5, calling repairOcrPage for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 120ms (next.js: 1194µs, application-code: 119ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1836ms (next.js: 68ms, application-code: 1768ms)
+[Step] dbSaveOcrPageResult started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 5
+[Step] dbSaveOcrPageResult completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314, page: 5
+ POST /.well-known/workflow/v1/step 200 in 633ms (next.js: 1140µs, application-code: 632ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 4 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 5 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] OCR failed validation on page 5, calling repairOcrPage for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 103ms (next.js: 1034µs, application-code: 102ms)
+[Step] dbSaveLlmLogsBatch started for jobId: 54b91814-aba4-4d25-beab-8a5387373314, 3 logs
+[Step] dbSaveLlmLogsBatch completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 1433ms (next.js: 1032µs, application-code: 1432ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 4 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 5 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] OCR failed validation on page 5, calling repairOcrPage for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Workflow] Page results for jobId: 54b91814-aba4-4d25-beab-8a5387373314 — total: 5, extracted: 5, empty: 0, failed: 2, mergeable: 3
+[Workflow] Running programmatic blind merge for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 193ms (next.js: 1529µs, application-code: 192ms)
+[Step] dbSaveJobResult started for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] dbSaveJobResult completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 823ms (next.js: 1833µs, application-code: 822ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 4 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 5 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] OCR failed validation on page 5, calling repairOcrPage for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Workflow] Page results for jobId: 54b91814-aba4-4d25-beab-8a5387373314 — total: 5, extracted: 5, empty: 0, failed: 2, mergeable: 3
+[Workflow] Running programmatic blind merge for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 151ms (next.js: 1304µs, application-code: 149ms)
+[Step] finalizeJob setting status to 'completed' for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] finalizeJob completed for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/step 200 in 625ms (next.js: 1259µs, application-code: 624ms)
+[Workflow] Image-based PDF — all 5 pages will run vision OCR
+[Step] Running OCR on page 1 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 2 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 3 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 4 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] Running OCR on page 5 using image for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Step] OCR failed validation on page 5, calling repairOcrPage for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+[Workflow] Page results for jobId: 54b91814-aba4-4d25-beab-8a5387373314 — total: 5, extracted: 5, empty: 0, failed: 2, mergeable: 3
+[Workflow] Running programmatic blind merge for jobId: 54b91814-aba4-4d25-beab-8a5387373314
+ POST /.well-known/workflow/v1/flow 200 in 125ms (next.js: 1030µs, application-code: 124ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1961ms (next.js: 67ms, application-code: 1893ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1922ms (next.js: 67ms, application-code: 1855ms)
+ GET /api/ocr/54b91814-aba4-4d25-beab-8a5387373314 200 in 1784ms (next.js: 70ms, application-code: 1714ms)
+[2m2026-04-27T14:22:18.392Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Base URL could not be determined. Please set a valid base URL using the baseURL config option or the BETTER_AUTH_URL environment variable. Without this, callbacks and redirects may not work correctly.
+ GET /api/auth/get-session 200 in 4.5s (next.js: 160ms, application-code: 4.4s)
+[2m2026-04-27T14:22:22.911Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Base URL could not be determined. Please set a valid base URL using the baseURL config option or the BETTER_AUTH_URL environment variable. Without this, callbacks and redirects may not work correctly.
+ GET /api/auth/get-session 200 in 1155ms (next.js: 113ms, application-code: 1042ms)
