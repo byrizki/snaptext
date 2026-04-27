@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { getDb, jobResults, jobs, jobPages, ocrModels, user } from "@/db";
 import { eq, ne, sql } from "drizzle-orm";
-import { VERCEL_AI_GATEWAY_PRICING } from "@/lib/constants";
+
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "@/app/workflows/ocr/models";
 
 export async function GET() {
@@ -41,6 +41,17 @@ export async function GET() {
         jobResults.secondModelOutput
       );
 
+
+    const allModels = await db.select({ modelId: ocrModels.modelId, provider: ocrModels.provider, inputPrice: ocrModels.inputPrice, outputPrice: ocrModels.outputPrice }).from(ocrModels);
+    const pricingMap = allModels.reduce((acc, model) => {
+      // Map based on how modelId is stored or queried. We'll use getProviderPrefixedModelId logic if needed, but here we can just store by modelId.
+      // The models in DB have modelId. Sometimes we query by a prefixed one. Let's just index by raw modelId and prefixed modelId to be safe.
+      acc[model.modelId] = { input: model.inputPrice || 0, output: model.outputPrice || 0 };
+      if (model.provider === "vercel") acc[`@vercel/${model.modelId}`] = { input: model.inputPrice || 0, output: model.outputPrice || 0 };
+      if (model.provider === "cloudflare") acc[`@cf/${model.modelId}`] = { input: model.inputPrice || 0, output: model.outputPrice || 0 };
+      return acc;
+    }, {} as Record<string, { input: number; output: number }>);
+
     const [{ count: userCount }] = await db
       .select({ count: sql<number>`count(*)` })
       .from(user)
@@ -67,13 +78,13 @@ export async function GET() {
         // 1. Primary Model (Vision) Token Cost
         const visionModelId = stat.modelId || OCR_VISION_MODEL;
 
-        const visionPricing = VERCEL_AI_GATEWAY_PRICING[visionModelId as keyof typeof VERCEL_AI_GATEWAY_PRICING] || { input: 0, output: 0 };
+        const visionPricing = pricingMap[visionModelId as string] || { input: 0, output: 0 };
 
         totalCostAll += (pagesPromptTokens / 1_000_000) * visionPricing.input;
         totalCostAll += (pagesCompletionTokens / 1_000_000) * visionPricing.output;
 
         // 2. Second Model (Text) Token Cost
-        const textPricing = VERCEL_AI_GATEWAY_PRICING[OCR_TEXT_MODEL as keyof typeof VERCEL_AI_GATEWAY_PRICING] || { input: 0, output: 0 };
+        const textPricing = pricingMap[OCR_TEXT_MODEL as string] || { input: 0, output: 0 };
 
         totalCostAll += ((pagesSecondModelInput + resultSecondModelInput) / 1_000_000) * textPricing.input;
         totalCostAll += ((pagesSecondModelOutput + resultSecondModelOutput) / 1_000_000) * textPricing.output;
