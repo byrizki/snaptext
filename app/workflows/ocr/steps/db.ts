@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { and, asc, eq } from "drizzle-orm";
-import { getDb, jobPages, jobResults, jobs, ocrModels, type OcrModel } from "@/db";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { getDb, jobPages, jobResults, jobs, ocrModels, llmLogs, type OcrModel } from "@/db";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
 
 export async function dbGetOcrModel(modelId: string): Promise<OcrModel | undefined> {
@@ -9,6 +9,49 @@ export async function dbGetOcrModel(modelId: string): Promise<OcrModel | undefin
   return await db.query.ocrModels.findFirst({
     where: eq(ocrModels.id, modelId),
   });
+}
+
+export async function dbSaveLlmLogsBatch(
+  jobId: string,
+  logs: Array<{
+    stepName: string;
+    model: string;
+    usage: { promptTokens: number; completionTokens: number; totalTokens: number };
+    pageNumber?: number;
+    rawResponse?: string;
+  }>
+) {
+  "use step";
+  if (logs.length === 0) return;
+  console.log(`[Step] dbSaveLlmLogsBatch started for jobId: ${jobId}, ${logs.length} logs`);
+  const db = getDb();
+  
+  const pageNumbers = [...new Set(logs.map(l => l.pageNumber).filter(n => n !== undefined))] as number[];
+  const pageIdMap = new Map<number, string>();
+  
+  if (pageNumbers.length > 0) {
+    const existingPages = await db.query.jobPages.findMany({
+      where: and(eq(jobPages.jobId, jobId), inArray(jobPages.pageNumber, pageNumbers)),
+      columns: { id: true, pageNumber: true },
+    });
+    for (const p of existingPages) {
+      pageIdMap.set(p.pageNumber, p.id);
+    }
+  }
+
+  const values = logs.map(l => ({
+    jobId,
+    jobPageId: l.pageNumber !== undefined ? pageIdMap.get(l.pageNumber) : undefined,
+    stepName: l.stepName,
+    model: l.model,
+    promptTokens: l.usage.promptTokens,
+    completionTokens: l.usage.completionTokens,
+    totalTokens: l.usage.totalTokens,
+    rawResponse: l.rawResponse,
+  }));
+
+  await db.insert(llmLogs).values(values);
+  console.log(`[Step] dbSaveLlmLogsBatch completed for jobId: ${jobId}`);
 }
 
 export async function initializeJob(jobId: string): Promise<void> {
@@ -139,7 +182,7 @@ export async function dbSaveNewPages(jobId: string, pages: Array<{ pageNumber: n
 export async function dbSaveOcrPageResult(
   jobId: string,
   pageNumber: number,
-  result: { rawToon: string; data: any; usage: any; finishReason: string; log: string; model?: string }
+  result: { rawToon: string; data: any; finishReason: string; log: string; model?: string }
 ) {
   "use step";
   console.log(`[Step] dbSaveOcrPageResult started for jobId: ${jobId}, page: ${pageNumber}`);
@@ -150,9 +193,6 @@ export async function dbSaveOcrPageResult(
       toonOutput: result.rawToon,
       parsedData: result.data,
       model: result.model || OCR_VISION_MODEL,
-      promptTokens: result.usage.promptTokens,
-      completionTokens: result.usage.completionTokens,
-      totalTokens: result.usage.totalTokens,
       finishReason: result.finishReason,
       log: result.log,
     })
@@ -160,53 +200,22 @@ export async function dbSaveOcrPageResult(
   console.log(`[Step] dbSaveOcrPageResult completed for jobId: ${jobId}, page: ${pageNumber}`);
 }
 
-export async function dbSaveRepairPageResult(
-  jobId: string,
-  pageNumber: number,
-  result: { data: any; usage: any; finishReason: string; log: string }
-) {
-  "use step";
-  console.log(`[Step] dbSaveRepairPageResult started for jobId: ${jobId}, page: ${pageNumber}`);
-  const db = getDb();
-  const existingPage = await db.query.jobPages.findFirst({
-    where: and(eq(jobPages.jobId, jobId), eq(jobPages.pageNumber, pageNumber)),
-  });
-
-  const prevLog = existingPage?.log ? existingPage.log + "\n" : "";
-
-  await db
-    .update(jobPages)
-    .set({
-      parsedData: result.data,
-      secondModelInput: (existingPage?.secondModelInput ?? 0) + result.usage.promptTokens,
-      secondModelOutput: (existingPage?.secondModelOutput ?? 0) + result.usage.completionTokens,
-      log: prevLog + result.log,
-    })
-    .where(and(eq(jobPages.jobId, jobId), eq(jobPages.pageNumber, pageNumber)));
-  console.log(`[Step] dbSaveRepairPageResult completed for jobId: ${jobId}, page: ${pageNumber}`);
-}
 
 export async function dbSaveJobResult(
   jobId: string,
   mergedData: Record<string, unknown>,
   log: string,
-  usage?: { promptTokens: number; completionTokens: number; totalTokens: number; finishReason: string; rawResponse: string },
   model?: string
 ) {
   "use step";
   console.log(`[Step] dbSaveJobResult started for jobId: ${jobId}`);
   const db = getDb();
-  // Upsert: safe to replay — overwrites the result if it already exists.
   await db
     .insert(jobResults)
     .values({
       jobId,
       mergedData,
       model: model || OCR_TEXT_MODEL,
-      secondModelInput: usage?.promptTokens ?? 0,
-      secondModelOutput: usage?.completionTokens ?? 0,
-      finishReason: usage?.finishReason ?? "",
-      rawResponse: usage?.rawResponse ?? "",
       log,
     })
     .onConflictDoUpdate({
@@ -214,10 +223,6 @@ export async function dbSaveJobResult(
       set: {
         mergedData,
         model: model || OCR_TEXT_MODEL,
-        secondModelInput: usage?.promptTokens ?? 0,
-        secondModelOutput: usage?.completionTokens ?? 0,
-        finishReason: usage?.finishReason ?? "",
-        rawResponse: usage?.rawResponse ?? "",
         log,
       },
     });

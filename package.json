@@ -63,6 +63,7 @@
     "vaul": "^1.1.2",
     "workers-ai-provider": "^3.1.12",
     "workflow": "^4.2.4",
+    "zhipu-ai-provider": "^0.3.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

@@ -158,6 +158,9 @@ importers:
       workflow:
         specifier: ^4.2.4
         version: 4.2.4(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.19(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.0)(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3)
+      zhipu-ai-provider:
+        specifier: ^0.3.0
+        version: 0.3.0(zod@4.3.6)
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -6280,6 +6283,10 @@ packages:
 
   yoctocolors@2.1.2:
     resolution: {integrity: sha512-CzhO+pFNo8ajLM2d2IW/R93ipy99LWjtwblvC1RsoSUMZgyLbYFr221TnSNT7GjGdYui6P459mw9JH/g/zW2ug==}
+    engines: {node: '>=18'}
+
+  zhipu-ai-provider@0.3.0:
+    resolution: {integrity: sha512-KaA0APoGSJbuLO10QAC2tLX4mx4lVq7rDdl/023V3Wcnv9I57naVQ1EWEiOXklkM8tpEI20tbzHfhqL4JyK7nw==}
     engines: {node: '>=18'}
 
   zod-to-json-schema@3.25.2:
@@ -12743,6 +12750,13 @@ snapshots:
       yoctocolors: 2.1.2
 
   yoctocolors@2.1.2: {}
+
+  zhipu-ai-provider@0.3.0(zod@4.3.6):
+    dependencies:
+      '@ai-sdk/provider': 3.0.8
+      '@ai-sdk/provider-utils': 4.0.23(zod@4.3.6)
+    transitivePeerDependencies:
+      - zod
 
   zod-to-json-schema@3.25.2(zod@3.25.76):
     dependencies:
