@@ -18,7 +18,7 @@ export async function GET() {
       : null;
 
     const freeBalance = await freeGW.getCredits();
-    const paidBalance = paidGW ? await paidGW.getCredits() : { credits: 0 };
+    const paidBalance = paidGW ? await paidGW.getCredits() : { balance: "0", totalUsed: "0" };
 
     return NextResponse.json({
       freeBalance,

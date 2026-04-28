@@ -103,8 +103,8 @@ export default function AdminDashboardPage() {
         {[
           { 
             title: "Gateway (Free)", 
-            value: balanceData?.freeBalance?.credits !== undefined 
-              ? `$${Number(balanceData.freeBalance.credits).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+            value: balanceData?.freeBalance?.balance !== undefined 
+              ? `$${Number(balanceData.freeBalance.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
               : "Loading...", 
             icon: Coins01Icon, 
             trend: "Standard API", 
@@ -112,8 +112,8 @@ export default function AdminDashboardPage() {
           },
           { 
             title: "Gateway (Paid)", 
-            value: balanceData?.paidBalance?.credits !== undefined 
-              ? `$${Number(balanceData.paidBalance.credits).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+            value: balanceData?.paidBalance?.balance !== undefined 
+              ? `$${Number(balanceData.paidBalance.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
               : "Loading...", 
             icon: Coins01Icon, 
             trend: "Priority API", 
