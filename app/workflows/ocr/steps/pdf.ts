@@ -17,6 +17,14 @@ export async function extractPdfPageImages(
     console.log(
       `[Step] extractPdfPageImages started for jobId: ${jobId} (PDF: ${pdfUrl})`
     );
+    if (!(Uint8Array.prototype as any).toHex) {
+      (Uint8Array.prototype as any).toHex = function () {
+        return Array.from(this as Uint8Array)
+          .map((b: number) => b.toString(16).padStart(2, "0"))
+          .join("");
+      };
+    }
+
     await definePDFJSModule(() => import("pdfjs-dist"));
 
     const response = await fetch(pdfUrl);
