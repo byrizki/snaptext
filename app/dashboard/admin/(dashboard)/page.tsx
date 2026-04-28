@@ -28,6 +28,11 @@ export default function AdminDashboardPage() {
     (url: string) => fetch(url).then((r) => r.json())
   );
 
+  const { data: balanceData } = useSWR(
+    "/api/admin/gateway/balance",
+    (url: string) => fetch(url).then((r) => r.json())
+  );
+
   const [rerunningIds, setRerunningIds] = useState<Set<string>>(new Set());
 
   const handleRerun = async (jobId: string) => {
@@ -93,13 +98,31 @@ export default function AdminDashboardPage() {
         <p className="text-muted-foreground mt-1 text-sm">Real-time platform metrics and financial monitoring.</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
         {[
-          { title: "Active Models", value: models.length.toString(), icon: AiBrain01Icon, trend: "Configured", color: "text-zinc-500" },
+          { 
+            title: "Gateway (Free)", 
+            value: balanceData?.freeBalance?.credits !== undefined 
+              ? `$${Number(balanceData.freeBalance.credits).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+              : "Loading...", 
+            icon: Coins01Icon, 
+            trend: "Standard API", 
+            color: "text-purple-500" 
+          },
+          { 
+            title: "Gateway (Paid)", 
+            value: balanceData?.paidBalance?.credits !== undefined 
+              ? `$${Number(balanceData.paidBalance.credits).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+              : "Loading...", 
+            icon: Coins01Icon, 
+            trend: "Priority API", 
+            color: "text-fuchsia-500" 
+          },
+          { title: "Active Models", value: models.length.toLocaleString(), icon: AiBrain01Icon, trend: "Configured", color: "text-zinc-500" },
           { title: "Total Users", value: statsData?.totalUsers ? statsData.totalUsers.toLocaleString() : "0", icon: UserGroupIcon, trend: "Registered", color: "text-amber-500" },
-          { title: "Total Jobs", value: jobs.length.toString(), icon: Database01Icon, trend: "Processed", color: "text-blue-500" },
+          { title: "Total Jobs", value: jobs.length.toLocaleString(), icon: Database01Icon, trend: "Processed", color: "text-blue-500" },
           { title: "Total Tokens", value: statsData?.totalTokens ? statsData.totalTokens.toLocaleString() : "0", icon: Clock01Icon, trend: "All time consumed", color: "text-indigo-500" },
-          { title: "Total Cost", value: statsData?.totalCost ? `$${statsData.totalCost}` : "$0.0000", icon: Analytics01Icon, trend: "Cumulative API spend", color: "text-emerald-500" },
+          { title: "Total Cost", value: statsData?.totalCost ? `$${Number(statsData.totalCost).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}` : "$0.0000", icon: Analytics01Icon, trend: "Cumulative API spend", color: "text-emerald-500" },
         ].map((stat, i) => (
           <Card key={i} className="bg-white/60 dark:bg-zinc-900/40 backdrop-blur-xl border-zinc-200/50 dark:border-white/5 shadow-xl rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -162,7 +185,7 @@ export default function AdminDashboardPage() {
                     </div>
                     <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md flex items-center gap-1">
                       <HugeiconsIcon icon={Coins01Icon} size={10} />
-                      ${job.cost || "0.0000"}
+                      ${Number(job.cost || 0).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
                     </span>
                   </div>
                   
