@@ -25,6 +25,30 @@ export async function extractPdfPageImages(
       };
     }
 
+    if (!(Promise as any).withResolvers) {
+      (Promise as any).withResolvers = function <T>() {
+        let resolve!: (value: T | PromiseLike<T>) => void;
+        let reject!: (reason?: unknown) => void;
+        const promise = new Promise<T>((res, rej) => {
+          resolve = res;
+          reject = rej;
+        });
+        return { promise, resolve, reject };
+      };
+    }
+
+    if (!(Map.prototype as any).getOrInsertComputed) {
+      (Map.prototype as any).getOrInsertComputed = function <K, V>(
+        key: K,
+        callbackFn: (key: K) => V
+      ): V {
+        if (!this.has(key)) {
+          this.set(key, callbackFn(key));
+        }
+        return this.get(key);
+      };
+    }
+
     await definePDFJSModule(() => import("pdfjs-dist"));
 
     const response = await fetch(pdfUrl);
