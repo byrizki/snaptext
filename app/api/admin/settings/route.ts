@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, scanQuotas } from "@/db";
+import { getDb, scanQuotas, systemSettings } from "@/db";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -14,6 +14,12 @@ async function getQuotaByType(type: "global" | "registered") {
   return row ?? null;
 }
 
+async function getSystemSettings() {
+  const db = getDb();
+  const [row] = await db.select().from(systemSettings).limit(1);
+  return row ?? { concurrencyLength: 5 };
+}
+
 export async function GET() {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -21,9 +27,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [guest, registered] = await Promise.all([
+    const [guest, registered, system] = await Promise.all([
       getQuotaByType("global"),
       getQuotaByType("registered"),
+      getSystemSettings(),
     ]);
 
     return NextResponse.json({
@@ -33,6 +40,9 @@ export async function GET() {
       registered: registered
         ? { count: registered.count, resetPeriod: registered.resetPeriod }
         : { count: 50, resetPeriod: "daily" },
+      system: {
+        concurrencyLength: system.concurrencyLength,
+      },
     });
   } catch (error: any) {
     console.error("Failed to fetch settings", error);
@@ -70,7 +80,22 @@ export async function POST(request: Request) {
     if (data.guest) await saveQuota("global", data.guest);
     if (data.registered) await saveQuota("registered", data.registered);
 
-    if (!data.guest && !data.registered && data.count !== undefined) {
+    if (data.system && data.system.concurrencyLength !== undefined) {
+      const concurrencyLength = parseInt(String(data.system.concurrencyLength), 10);
+      if (isNaN(concurrencyLength) || concurrencyLength < 1) throw new Error("Invalid concurrency length");
+
+      const [existing] = await db.select().from(systemSettings).limit(1);
+      if (existing) {
+        await db
+          .update(systemSettings)
+          .set({ concurrencyLength, updatedAt: new Date() })
+          .where(eq(systemSettings.id, existing.id));
+      } else {
+        await db.insert(systemSettings).values({ id: "default", concurrencyLength });
+      }
+    }
+
+    if (!data.guest && !data.registered && !data.system && data.count !== undefined) {
       await saveQuota("global", data);
     }
 

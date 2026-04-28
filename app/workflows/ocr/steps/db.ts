@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { getDb, jobPages, jobResults, jobs, ocrModels, llmLogs, type OcrModel } from "@/db";
+import { getDb, jobPages, jobResults, jobs, ocrModels, llmLogs, systemSettings, type OcrModel } from "@/db";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
 
 export async function dbGetOcrModel(modelId: string): Promise<OcrModel | undefined> {
@@ -9,6 +9,13 @@ export async function dbGetOcrModel(modelId: string): Promise<OcrModel | undefin
   return await db.query.ocrModels.findFirst({
     where: eq(ocrModels.id, modelId),
   });
+}
+
+export async function dbGetSystemSettings() {
+  "use step";
+  const db = getDb();
+  const [row] = await db.select().from(systemSettings).limit(1);
+  return row ?? { concurrencyLength: 5 };
 }
 
 export async function dbSaveLlmLogsBatch(
