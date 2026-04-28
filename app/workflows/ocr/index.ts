@@ -53,9 +53,7 @@ export async function ocrWorkflow(
 
     let pageImages = await dbGetExistingPages(jobId);
 
-    if (
-      pageImages.length === 0 || !pageImages.every((p) => p.pageBlobUrl)
-    ) {
+    if (pageImages.length === 0 || !pageImages.every((p) => p.pageBlobUrl)) {
       const reusablePages = await dbFindReusablePages(jobId, job.fileHash);
       if (reusablePages.length > 0) {
         await dbSaveReusablePages(jobId, reusablePages);
@@ -71,7 +69,9 @@ export async function ocrWorkflow(
       }
     }
 
-    console.log(`[Workflow] Image-based PDF — all ${pageImages.length} pages will run vision OCR`);
+    console.log(
+      `[Workflow] Image-based PDF — all ${pageImages.length} pages will run vision OCR`,
+    );
     const pagesToProcess = pageImages;
 
     if (stopState.current) {
@@ -82,8 +82,10 @@ export async function ocrWorkflow(
 
     const pagesResults = await pMap(
       pagesToProcess,
-      async (p: any): Promise<OcrPageResult | null> =>
-        processOcrPage(
+      async (p: any): Promise<OcrPageResult | null> => {
+        if (stopState.current) return null;
+
+        return processOcrPage(
           p,
           jobId,
           job.fileHash,
@@ -91,7 +93,8 @@ export async function ocrWorkflow(
           stopState,
           toonSchemaTemplate,
           userId,
-        ),
+        );
+      },
       { concurrency: systemSettings.concurrencyLength },
     );
     const pages = pagesResults.filter((p): p is OcrPageResult => p !== null);
@@ -113,10 +116,18 @@ export async function ocrWorkflow(
 
     let merged: Record<string, unknown> = {};
     if (mergeablePages.length === 0) {
-      console.log(`[Workflow] No mergeable pages — all pages failed or were empty for jobId: ${jobId}`);
-      await dbSaveJobResult(jobId, {}, `[${new Date().toISOString()}] No mergeable pages`);
+      console.log(
+        `[Workflow] No mergeable pages — all pages failed or were empty for jobId: ${jobId}`,
+      );
+      await dbSaveJobResult(
+        jobId,
+        {},
+        `[${new Date().toISOString()}] No mergeable pages`,
+      );
     } else if (mergeablePages.length === 1) {
-      console.log(`[Workflow] Single mergeable page — skipping merge for jobId: ${jobId}`);
+      console.log(
+        `[Workflow] Single mergeable page — skipping merge for jobId: ${jobId}`,
+      );
       merged = mergeablePages[0].data;
       await dbSaveJobResult(
         jobId,
@@ -125,13 +136,21 @@ export async function ocrWorkflow(
         mergeablePages[0].model,
       );
     } else {
-      console.log(`[Workflow] Running programmatic blind merge for jobId: ${jobId}`);
-      merged = mergeablePages.reduce((acc, curr) => {
-        return deepMergeWithArrayConcat(acc, curr.data);
-      }, {} as Record<string, unknown>);
+      console.log(
+        `[Workflow] Running programmatic blind merge for jobId: ${jobId}`,
+      );
+      merged = mergeablePages.reduce(
+        (acc, curr) => {
+          return deepMergeWithArrayConcat(acc, curr.data);
+        },
+        {} as Record<string, unknown>,
+      );
 
       // Compute average metadata scores if possible
-      if (merged.document_metadata && typeof merged.document_metadata === "object") {
+      if (
+        merged.document_metadata &&
+        typeof merged.document_metadata === "object"
+      ) {
         let totalReadability = 0;
         let readabilityCount = 0;
         let totalUsability = 0;
@@ -152,14 +171,23 @@ export async function ocrWorkflow(
         }
 
         if (readabilityCount > 0) {
-          (merged.document_metadata as any).readability_score = Math.round(totalReadability / readabilityCount);
+          (merged.document_metadata as any).readability_score = Math.round(
+            totalReadability / readabilityCount,
+          );
         }
         if (usabilityCount > 0) {
-          (merged.document_metadata as any).data_usability_score = Math.round(totalUsability / usabilityCount);
+          (merged.document_metadata as any).data_usability_score = Math.round(
+            totalUsability / usabilityCount,
+          );
         }
       }
 
-      await dbSaveJobResult(jobId, merged, "Programmatic blind merge completed", mergeablePages[0].model);
+      await dbSaveJobResult(
+        jobId,
+        merged,
+        "Programmatic blind merge completed",
+        mergeablePages[0].model,
+      );
     }
 
     await finalizeJob(jobId, "completed");
@@ -200,5 +228,7 @@ function deepMergeWithArrayConcat(target: any, source: any): any {
     }
     return merged;
   }
-  return target !== undefined && target !== null && target !== "" ? target : source;
+  return target !== undefined && target !== null && target !== ""
+    ? target
+    : source;
 }

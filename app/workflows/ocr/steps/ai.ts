@@ -176,6 +176,13 @@ export async function runOcrOnPage(
             event.text ||
             (event.toolCalls ? JSON.stringify(event.toolCalls) : ""),
         });
+
+        if (stopState?.current) {
+          console.log(
+            `[Step] Stopping OCR stream for page ${pageNumber} as stop requested`,
+          );
+          throw new Error("Stopped execution")
+        }
       },
     });
 
@@ -427,6 +434,13 @@ export async function repairOcrPage(
             event.text ||
             (event.toolCalls ? JSON.stringify(event.toolCalls) : ""),
         });
+
+        if (stopState?.current) {
+          console.log(
+            `[Step] Stopping OCR stream for page ${pageNumber} as stop requested`,
+          );
+          throw new Error("Stopped execution")
+        }
       },
     });
 
