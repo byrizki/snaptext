@@ -30,7 +30,23 @@ line_items[2]{id,description,qty,unit_price,total}:
   1,Widget A,2,15.00,30.00
   2,Widget B,1,25.00,25.00
 
-### Quoting — quote values containing commas, colons, or newlines
+### Quoting — MANDATORY double-quote rule
+You MUST wrap any string value in double quotes if it contains a comma, colon, or newline.
+Failure to quote such strings WILL corrupt the parser. No exceptions.
+
+#### Flat array — element with a comma MUST be quoted
+tags[3]: "hello, world","foo,bar",plain
+
+#### Scalar value — value with a comma MUST be quoted
+notes: "Thank you for your order, please pay within 30 days."
+address: "123 Main St, Suite 400"
+
+#### Object array row — quote ONLY the cell that contains a comma
+line_items[2]{id,description,qty,unit_price,total}:
+  1,"Widget A, Special Edition",2,15.00,30.00
+  2,Widget B,1,25.00,25.00
+
+#### Value with a newline — MUST be quoted
 notes[2]: "hello, world","line1\nline2"
 
 ### Important rules
@@ -41,6 +57,8 @@ notes[2]: "hello, world","line1\nline2"
 - Object arrays MUST have {headers}: items[2]{id,name}:  NOT  items[2]:
 - Row count MUST match [N]: if line_items[3] is declared, write EXACTLY 3 rows.
 - Header count MUST match columns: if {id,name} is declared, each line MUST have 2 values.
+- COMMA IN VALUE → MUST QUOTE: notes: "Acme Corp, Inc."  NOT  notes: Acme Corp, Inc.
+- COMMA IN ARRAY CELL → MUST QUOTE: 1,"Widget A, Pro",2  NOT  1,Widget A, Pro,2
 - No backticks, no markdown fences, no preamble, no trailing text. Output RAW TOON.`;
 
 /**
@@ -48,44 +66,51 @@ notes[2]: "hello, world","line1\nline2"
  */
 const EXTRACTION_EXAMPLE = `## OUTPUT EXAMPLE
 
-document_type: "invoice"
-document_id: "INV-2023-001"
-date: "2023-10-27"
+# Plain scalars — no quotes needed unless the value contains a comma, colon, or newline
+document_type: invoice
+document_id: INV-2023-001
+date: 2023-10-27
 is_paid: false
 total_amount: 1040.50
-currency: "USD"
+currency: USD
 
 document_metadata:
   readability_score: 95
   data_usability_score: 98
 
+# Nested objects — plain string values, no quotes needed
 issuer:
-  name: "Acme Corp"
-  tax_id: "US123456789"
-  phone: "+1-555-0199"
+  name: Acme Corp
+  tax_id: US123456789
+  phone: +1-555-0199
   address:
-    street: "123 Tech Lane"
-    city: "San Francisco"
-    state: "CA"
-    zip: "94105"
-    country: "USA"
+    street: 123 Tech Lane
+    city: San Francisco
+    state: CA
+    zip: 94105
+    country: USA
 
 recipient:
-  name: "Global Logistics Ltd"
+  name: Global Logistics Ltd
   address:
-    city: "London"
-    country: "UK"
+    city: London
+    country: UK
 
-items[3]{id, description, quantity, unit_price, total}:
-  1, "Premium Widget", 2, 500.00, 1000.00
-  2, "Shipping", 1, 40.50, 40.50
-  3, "Tax Adjustment", 1, 0.00, 0.00
+# Object array — row 1: description contains a comma → quoted; others plain
+items[3]{id,description,quantity,unit_price,total}:
+  1,"Premium Widget, Special Edition",2,500.00,1000.00
+  2,Shipping,1,40.50,40.50
+  3,Tax Adjustment,1,0.00,0.00
 
-additional_accounts[2]{bank_name, account_no, currency}:
-  "JPMorgan Chase", "88273645", "USD"
-  "Barclays Bank", "UK-99283", "GBP"
+# Object array — bank names contain no comma → plain; account numbers plain
+additional_accounts[2]{bank_name,account_no,currency}:
+  JPMorgan Chase,88273645,USD
+  Barclays Bank,UK-99283,GBP
 
-tags[3]: "urgent", "electronics", "b2b"
+# Flat array — plain tags, no commas inside values → no quotes
+tags[3]: urgent,electronics,b2b
+
+# Scalar — value contains a comma → MUST be quoted
 notes: "Thank you for your business. Please pay within 30 days."`;
 
 /**
@@ -105,14 +130,15 @@ function buildExtractionInstructions(): string {
 1. Carefully ${readVerb} before writing anything.
 2. Identify all sections: header, parties, line items, totals, notes, footer.
 3. Extract ONLY useful, structured business data. EXCLUDE generic page headers/footers (e.g. "Page 1 of 2"), unreadable text, watermarks, or boilerplate disclaimers.
-4. Group the extracted data into proper, logical nested structures (e.g., nested objects for vendor details, customer info, etc.) and use common, standardized structural naming conventions (e.g., snake_case keys).
-5. DECOMPOSE complex or combined data into granular fields whenever possible (e.g., separate currency from amount, split addresses into street/city/state/zip, separate country codes from phone numbers).
-6. DO NOT TRANSLATE the page content. Extract the text exactly as it appears in its original language.
-7. IF ${skipCondition}, skip it immediately by returning exactly \`empty: true\`.
-8. Include a \`document_metadata\` object containing \`readability_score\` (0-100) and \`data_usability_score\` (0-100) ${metadataNote}.
-9. Write TOON from top to bottom.
-10. Count line items precisely — set [N] correctly.
-11. Output ONLY TOON — nothing before or after.
+4. Group extracted data into logical nested structures using snake_case keys.
+5. DECOMPOSE combined data into granular fields (e.g., split address into street/city/state/zip, separate currency from amount).
+6. DO NOT TRANSLATE — extract text exactly as it appears in its original language.
+7. IF ${skipCondition}, return exactly \`empty: true\` and stop.
+8. Include a \`document_metadata\` object with \`readability_score\` (0-100) and \`data_usability_score\` (0-100) ${metadataNote}.
+9. Apply TOON format rules exactly as defined above: correct [N] counts, {headers} on object arrays, and mandatory quoting for any value containing a comma, colon, or newline.
+10. Do NOT quote plain values that contain no comma, colon, or newline — follow the TOON quoting rules strictly.
+11. Count array items precisely before writing — declare [N] only after you know the exact count.
+12. Output ONLY TOON — nothing before or after.
 
 If ${noContentNote}: output exactly \`empty: true\``;
 }
