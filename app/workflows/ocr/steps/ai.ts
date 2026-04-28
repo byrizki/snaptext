@@ -5,7 +5,7 @@ import { decodeToon } from "@/lib/toon-parser";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { DurableAgent } from "@workflow/ai/agent";
-import { stepCountIs } from "ai";
+import { stepCountIs, createGateway } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import { fetch, getStepMetadata, getWritable, RetryableError } from "workflow";
 import { OCR_VISION_MODEL } from "../models";
@@ -24,13 +24,20 @@ function getAiModel(
   modelId: string,
   config: Record<string, unknown> = {},
   fileHash?: string | null,
+  userId?: string | null,
 ): { model: string | (() => Promise<LanguageModelV3>); providerConfig: any } {
   if (modelId.startsWith("@vercel/")) {
     const actualModelId = modelId.slice("@vercel/".length);
     const [providerId] = actualModelId.split("/");
 
+    const gateway = createGateway({
+      apiKey: userId && process.env.AI_GATEWAY_API_KEY_PAID
+        ? process.env.AI_GATEWAY_API_KEY_PAID
+        : process.env.AI_GATEWAY_API_KEY,
+    });
+
     return {
-      model: actualModelId,
+      model: async () => gateway(actualModelId),
       providerConfig: { ...predefinedProvider, [providerId]: config },
     };
   }
@@ -93,6 +100,7 @@ export async function runOcrOnPage(
   ocrModelConfig?: OcrModel,
   stopState?: { current: boolean },
   toonSchemaTemplate?: string,
+  userId?: string | null,
 ): Promise<
   OcrPageResult & { log: string; llmLogs: any[]; internalError?: any }
 > {
@@ -110,7 +118,7 @@ export async function runOcrOnPage(
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};
 
-    const { model, providerConfig } = getAiModel(modelId, config, fileHash);
+    const { model, providerConfig } = getAiModel(modelId, config, fileHash, userId);
     console.log(
       `[Workflow] Using model: ${modelId}, config: ${JSON.stringify(providerConfig)}`,
     );
@@ -315,6 +323,7 @@ export async function repairOcrPage(
   ocrModelConfig?: OcrModel,
   stopState?: { current: boolean },
   toonSchemaTemplate?: string,
+  userId?: string | null,
 ): Promise<
   OcrPageResult & { log: string; llmLogs: any[]; internalError?: any }
 > {
@@ -331,7 +340,7 @@ export async function repairOcrPage(
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};
 
-    const { model, providerConfig } = getAiModel(modelId, config, fileHash);
+    const { model, providerConfig } = getAiModel(modelId, config, fileHash, userId);
     const startedAt = "N/A";
 
     let parsedResult: {
@@ -538,6 +547,7 @@ export async function processOcrPage(
   ocrModelConfig?: OcrModel,
   stopState?: { current: boolean },
   toonSchemaTemplate?: string,
+  userId?: string | null,
 ): Promise<OcrPageResult | null> {
   const { pageNumber, pageBlobUrl } = page;
 
@@ -596,6 +606,7 @@ export async function processOcrPage(
           ocrModelConfig,
           stopState,
           toonSchemaTemplate,
+          userId,
         );
 
         // Merge logs

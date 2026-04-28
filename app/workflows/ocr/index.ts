@@ -15,6 +15,7 @@ import {
   dbSaveNewPages,
   dbSaveJobResult,
   dbGetOcrModel,
+  dbGetSystemSettings,
 } from "./steps";
 import type { OcrPageResult, OcrWorkflowResult } from "./types";
 import type { OcrModel } from "@/db";
@@ -22,6 +23,7 @@ import type { OcrModel } from "@/db";
 export async function ocrWorkflow(
   jobId: string,
   pdfUrl: string,
+  userId?: string | null,
 ): Promise<OcrWorkflowResult> {
   "use workflow";
   const { workflowRunId } = getWorkflowMetadata();
@@ -76,6 +78,8 @@ export async function ocrWorkflow(
       throw new FatalError("Workflow stopped by user");
     }
 
+    const systemSettings = await dbGetSystemSettings();
+
     const pagesResults = await pMap(
       pagesToProcess,
       async (p: any): Promise<OcrPageResult | null> =>
@@ -86,8 +90,9 @@ export async function ocrWorkflow(
           ocrModelConfig,
           stopState,
           toonSchemaTemplate,
+          userId,
         ),
-      { concurrency: 5 },
+      { concurrency: systemSettings.concurrencyLength },
     );
     const pages = pagesResults.filter((p): p is OcrPageResult => p !== null);
 

@@ -98,7 +98,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     })
     .returning({ id: jobs.id });
 
-  const run = await start(ocrWorkflow, [job.id, pdfBlobUrl]);
+  const run = await start(ocrWorkflow, [job.id, pdfBlobUrl, userId]);
 
   await db
     .update(jobs)
