@@ -44,6 +44,7 @@ export function decodeToon(input: string): Record<string, any> {
 
       i++;
       let r = 0;
+      let stoppedAtEof = false;
       while (i < lines.length) {
         let peek = i;
         while (peek < lines.length && (!lines[peek].trim() || lines[peek].trim().startsWith("#"))) {
@@ -51,6 +52,7 @@ export function decodeToon(input: string): Record<string, any> {
         }
         if (peek >= lines.length) {
           i = peek;
+          stoppedAtEof = true;
           break;
         }
 
@@ -116,7 +118,7 @@ export function decodeToon(input: string): Record<string, any> {
       }
 
       if (r < count) {
-        if (peek >= lines.length) {
+        if (stoppedAtEof) {
           // True EOF mid-table — genuine truncation, throw.
           throw createError(
             `Unexpected end of input. Expected ${count} rows for object array '${key}', but only parsed ${r} before EOF — output may be truncated.`,
