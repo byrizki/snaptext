@@ -7,11 +7,13 @@ const nextConfig: NextConfig = {
     "@napi-rs/canvas",
     "pdfjs-dist",
     "@vercel/oidc",
-    "@firecrawl/pdf-inspector",
-    "@firecrawl/pdf-inspector-linux-x64-gnu",
-    "@firecrawl/pdf-inspector-win32-x64-msvc",
-    "@firecrawl/pdf-inspector-darwin-arm64"
   ],
+  outputFileTracingIncludes: {
+    "**": [
+      "./node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/build/pdf.worker.mjs",
+      "./node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+    ],
+  },
   images: {
     remotePatterns: [
       {

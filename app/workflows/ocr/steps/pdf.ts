@@ -17,24 +17,15 @@ export async function extractPdfPageImages(
     console.log(
       `[Step] extractPdfPageImages started for jobId: ${jobId} (PDF: ${pdfUrl})`
     );
-    if (!(Uint8Array.prototype as any).toHex) {
-      (Uint8Array.prototype as any).toHex = function () {
-        return Array.from(this as Uint8Array)
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-      };
-    }
-
-    await definePDFJSModule(() => import("pdfjs-dist/legacy/build/pdf.mjs"));
+    await definePDFJSModule(() => import("pdfjs-dist"));
 
     const response = await fetch(pdfUrl);
     const pdfBuffer = await response.arrayBuffer();
     const pdfData = new Uint8Array(pdfBuffer.slice(0));
 
     const pdf = await getDocumentProxy(pdfData, {
-      disableWorker: true,
       verbosity: 0,
-    } as any);
+    });
 
     const totalPages = pdf.numPages;
     const pages: Array<{ pageNumber: number; pageBlobUrl: string }> = [];
