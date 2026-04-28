@@ -9,6 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { formatCompactNumber } from "@/lib/utils";
 
 export default function AdminDashboardPage() {
   const { data: jobsData = [] } = useSWR(
@@ -118,10 +119,10 @@ export default function AdminDashboardPage() {
             trend: "Priority API", 
             color: "text-fuchsia-500" 
           },
-          { title: "Active Models", value: models.length.toLocaleString(), icon: AiBrain01Icon, trend: "Configured", color: "text-zinc-500" },
-          { title: "Total Users", value: statsData?.totalUsers ? statsData.totalUsers.toLocaleString() : "0", icon: UserGroupIcon, trend: "Registered", color: "text-amber-500" },
-          { title: "Total Jobs", value: jobs.length.toLocaleString(), icon: Database01Icon, trend: "Processed", color: "text-blue-500" },
-          { title: "Total Tokens", value: statsData?.totalTokens ? statsData.totalTokens.toLocaleString() : "0", icon: Clock01Icon, trend: "All time consumed", color: "text-indigo-500" },
+          { title: "Active Models", value: formatCompactNumber(models.length), icon: AiBrain01Icon, trend: "Configured", color: "text-zinc-500" },
+          { title: "Total Users", value: statsData?.totalUsers ? formatCompactNumber(statsData.totalUsers) : "0", icon: UserGroupIcon, trend: "Registered", color: "text-amber-500" },
+          { title: "Total Jobs", value: formatCompactNumber(jobs.length), icon: Database01Icon, trend: "Processed", color: "text-blue-500" },
+          { title: "Total Tokens", value: statsData?.totalTokens ? formatCompactNumber(statsData.totalTokens) : "0", icon: Clock01Icon, trend: "All time consumed", color: "text-indigo-500" },
           { title: "Total Cost", value: statsData?.totalCost ? `$${Number(statsData.totalCost).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}` : "$0.0000", icon: Analytics01Icon, trend: "Cumulative API spend", color: "text-emerald-500" },
         ].map((stat, i) => (
           <Card key={i} className="bg-white/60 dark:bg-zinc-900/40 backdrop-blur-xl border-zinc-200/50 dark:border-white/5 shadow-xl rounded-2xl">
