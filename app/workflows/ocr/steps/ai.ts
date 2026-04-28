@@ -106,9 +106,10 @@ export async function runOcrOnPage(
 > {
   "use step";
   const llmLogs: any[] = [];
+  const { attempt } = getStepMetadata();
   try {
     console.log(
-      `[Step] runOcrOnPage started for jobId: ${jobId}, page: ${pageNumber}`,
+      `[Step] runOcrOnPage started for jobId: ${jobId}, page: ${pageNumber} (attempt: ${attempt})`,
     );
 
     const base64Image = await fetchImageBase64(pageBlobUrl);
@@ -150,7 +151,7 @@ export async function runOcrOnPage(
         },
       ],
       stopWhen: stepCountIs(1),
-      writable: getWritable({ namespace: `ocr-run-${pageNumber}` }),
+      writable: getWritable({ namespace: `ocr-run-${pageNumber}-${attempt}` }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
         return {};
@@ -329,9 +330,10 @@ export async function repairOcrPage(
 > {
   "use step";
   const llmLogs: any[] = [];
+  const { attempt } = getStepMetadata();
   try {
     console.log(
-      `[Step] repairOcrPage started for jobId: ${jobId}, page: ${pageNumber}`,
+      `[Step] repairOcrPage started for jobId: ${jobId}, page: ${pageNumber} (attempt: ${attempt})`,
     );
     const base64Image = await fetchImageBase64(pageBlobUrl);
 
@@ -406,7 +408,7 @@ export async function repairOcrPage(
         },
       ],
       stopWhen: stepCountIs(6),
-      writable: getWritable({ namespace: `ocr-repair-${pageNumber}` }),
+      writable: getWritable({ namespace: `ocr-repair-${pageNumber}-${attempt}` }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
         return {};
