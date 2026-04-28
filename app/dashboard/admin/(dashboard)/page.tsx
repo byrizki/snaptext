@@ -106,22 +106,18 @@ export default function AdminDashboardPage() {
             value: balanceData 
               ? `$${(Number(balanceData.freeBalance?.balance || 0) + Number(balanceData.paidBalance?.balance || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
               : "Loading...", 
-            icon: Coins01Icon, 
             trend: balanceData ? `Free: $${Number(balanceData.freeBalance?.balance || 0).toFixed(2)} • Paid: $${Number(balanceData.paidBalance?.balance || 0).toFixed(2)}` : "Fetching available credits", 
             color: "text-purple-500" 
           },
-          { title: "Active Models", value: formatCompactNumber(models.length), icon: AiBrain01Icon, trend: "Configured", color: "text-zinc-500" },
-          { title: "Total Users", value: statsData?.totalUsers ? formatCompactNumber(statsData.totalUsers) : "0", icon: UserGroupIcon, trend: "Registered", color: "text-amber-500" },
-          { title: "Total Jobs", value: formatCompactNumber(jobs.length), icon: Database01Icon, trend: "Processed", color: "text-blue-500" },
-          { title: "Total Tokens", value: statsData?.totalTokens ? formatCompactNumber(statsData.totalTokens) : "0", icon: Clock01Icon, trend: "All time consumed", color: "text-indigo-500" },
-          { title: "Total Cost", value: statsData?.totalCost ? `$${Number(statsData.totalCost).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}` : "$0.0000", icon: Analytics01Icon, trend: "Cumulative API spend", color: "text-emerald-500" },
+          { title: "Active Models", value: formatCompactNumber(models.length), trend: "Configured", color: "text-zinc-500" },
+          { title: "Total Users", value: statsData?.totalUsers ? formatCompactNumber(statsData.totalUsers) : "0", trend: "Registered", color: "text-amber-500" },
+          { title: "Total Jobs", value: formatCompactNumber(jobs.length), trend: "Processed", color: "text-blue-500" },
+          { title: "Total Tokens", value: statsData?.totalTokens ? formatCompactNumber(statsData.totalTokens) : "0", trend: "All time consumed", color: "text-indigo-500" },
+          { title: "Total Cost", value: statsData?.totalCost ? `$${Number(statsData.totalCost).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}` : "$0.0000", trend: "Cumulative API spend", color: "text-emerald-500" },
         ].map((stat, i) => (
           <Card key={i} className="bg-white/60 dark:bg-zinc-900/40 backdrop-blur-xl border-zinc-200/50 dark:border-white/5 shadow-xl rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">{stat.title}</CardTitle>
-              <div className={`p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 ${stat.color}`}>
-                <HugeiconsIcon icon={stat.icon} size={18} />
-              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{stat.value}</div>
