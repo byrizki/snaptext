@@ -43,27 +43,36 @@ export function decodeToon(input: string): Record<string, any> {
       const rows: Record<string, any>[] = [];
 
       i++;
-      for (let r = 0; r < count; r++) {
-        while (i < lines.length && (!lines[i].trim() || lines[i].trim().startsWith("#"))) {
-          i++; // skip empty lines/comments between rows
+      let r = 0;
+      while (i < lines.length) {
+        let peek = i;
+        while (peek < lines.length && (!lines[peek].trim() || lines[peek].trim().startsWith("#"))) {
+          peek++;
+        }
+        if (peek >= lines.length) {
+          i = peek;
+          break;
         }
 
-        if (i >= lines.length) {
-          throw createError(
-            `Unexpected end of input. Expected ${count} rows for object array '${key}', but only found ${r}.`,
-            lineNum,
-            key
-          );
-        }
-
-        const rowLine = lines[i];
+        const rowLine = lines[peek];
         const rowValues = parseCsvLine(rowLine.trim());
+        const isKey = /^\s*[\w_]+(\[\d+\](?:\{[^}]+\})?)?:/.test(rowLine);
+
+        if (r >= count) {
+          if (rowValues.length !== headers.length || isKey) {
+            break;
+          }
+        } else if (isKey) {
+          break;
+        }
+
+        i = peek;
 
         if (rowValues.length > headers.length) {
           throw createError(
             `Column mismatch in '${key}' at row ${r + 1}. ` +
             `Expected ${headers.length} columns (${headersStr}), but got ${rowValues.length} values — too many. ` +
-            `A value likely contains an unquoted comma. Parsed values: [${rowValues.map(v => `"${v}"`).join(", ")}]. ` +
+            `A value likely contains an unquoted comma. Line content: '${rowLine.trim()}' ` +
             `Quote any value containing a comma: e.g. "value, with comma".`,
             i + 1,
             key,
@@ -76,7 +85,7 @@ export function decodeToon(input: string): Record<string, any> {
           if (ratio < 0.5) {
             throw createError(
               `Row ${r + 1} of '${key}' has only ${rowValues.length} of ${headers.length} expected values \u2014 likely a truncated or broken line. ` +
-              `Parsed values: [${rowValues.map(v => `"${v}"`).join(", ")}].`,
+              `Line content: '${rowLine.trim()}'`,
               i + 1,
               key,
               rowLine.trim()
@@ -93,8 +102,19 @@ export function decodeToon(input: string): Record<string, any> {
           rowObj[h] = castValue(rowValues[idx]);
         });
         rows.push(rowObj);
+        
+        r++;
         i++;
       }
+
+      if (r < count) {
+        throw createError(
+          `Unexpected end of input or invalid rows. Expected ${count} rows for object array '${key}', but only parsed ${r}.`,
+          lineNum,
+          key
+        );
+      }
+
       currentObj[key] = rows;
       continue;
     }

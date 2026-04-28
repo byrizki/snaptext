@@ -90,6 +90,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           hasSchema: boolean;
           data: Record<string, unknown> | null;
           error: string | null;
+          modelName?: string;
         };
 
         const mappedResult: OcrResult = {
@@ -103,6 +104,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           updatedAt: json.updatedAt,
           hasSchema: json.hasSchema,
           filename: json.filename,
+          modelName: json.modelName,
         };
         setResult(mappedResult);
 

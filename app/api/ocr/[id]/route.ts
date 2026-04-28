@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { and, count, eq, isNotNull } from "drizzle-orm";
+import { and, count, eq, isNotNull, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getRun } from "workflow/api";
 
-import { getDb, jobPages, jobResults, jobs } from "@/db";
+import { getDb, jobPages, jobResults, jobs, ocrModels } from "@/db";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -26,18 +26,25 @@ export async function GET(
   // Determine whether the param is a Vercel workflow run ID or a DB job UUID.
   const isWorkflowRunId = id.startsWith("wrun_");
 
-  let job = await db.query.jobs.findFirst({
-    where: isWorkflowRunId
-      ? eq(jobs.workflowRunId, id)
-      : eq(jobs.id, id),
-  });
+  const [data] = await db
+    .select({
+      job: jobs,
+      ocrModelName: ocrModels.name,
+      result: jobResults,
+    })
+    .from(jobs)
+    .leftJoin(ocrModels, eq(jobs.ocrModelId, ocrModels.id))
+    .leftJoin(jobResults, eq(jobs.id, jobResults.jobId))
+    .where(
+      isWorkflowRunId
+        ? eq(jobs.workflowRunId, id)
+        : or(eq(jobs.id, id), eq(jobs.workflowRunId, id))
+    )
+    .limit(1);
 
-  // If looking up by jobId failed (shouldn't happen), try workflowRunId as fallback.
-  if (!job && !isWorkflowRunId) {
-    job = await db.query.jobs.findFirst({
-      where: eq(jobs.workflowRunId, id),
-    });
-  }
+  const job = data?.job;
+  const ocrModelName = data?.ocrModelName;
+  const result = data?.result;
 
   let status = "unknown";
 
@@ -61,11 +68,7 @@ export async function GET(
     status = "failed";
   }
 
-  const result = job
-    ? await db.query.jobResults.findFirst({
-        where: eq(jobResults.jobId, job.id),
-      })
-    : null;
+
 
   const [completedPagesRow] = job
     ? await db
@@ -99,6 +102,7 @@ export async function GET(
     createdAt: job?.createdAt,
     updatedAt: job?.updatedAt,
     hasSchema: !!job?.jsonSchema,
+    modelName: ocrModelName ?? result?.model ?? null,
     data: result?.mergedData ?? null,
     error: job?.error ?? null,
   });

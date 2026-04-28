@@ -38,17 +38,14 @@ export function buildToonTools(
 
   const validate_toon = {
     description:
-      "Submit your complete TOON output for validation. Call this first with your full TOON. If it fails, use patch_toon to fix specific issues without resubmitting the entire output.",
-    inputSchema: z.object({
-      toon: z.string().describe("Your complete TOON-formatted output"),
-    }),
-    execute: async ({ toon }: { toon: string }): Promise<ParseResult> => {
+      "Validate the current state of the TOON output in memory. Call this to check if your patches have successfully fixed the TOON.",
+    inputSchema: z.object({}),
+    execute: async (): Promise<ParseResult> => {
       if (stopState?.current) {
         return { success: false, error: "Workflow stopped by user", hint: "Stop processing immediately." };
       }
-      console.log(`[Tool] validate_toon called (length: ${toon.length})`);
-      currentToon = toon;
-      return tryParseToon(toon, onParsed);
+      console.log(`[Tool] validate_toon called (length: ${currentToon.length})`);
+      return tryParseToon(currentToon, onParsed);
     },
   };
 
@@ -82,7 +79,7 @@ export function buildToonTools(
         return {
           success: false,
           error: "No TOON available to patch.",
-          hint: "Call validate_toon with the complete corrected TOON output first.",
+          hint: "There is no TOON in memory.",
         };
       }
       if (!currentToon.includes(search)) {
