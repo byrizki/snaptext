@@ -106,7 +106,7 @@ export default function AdminDashboardPage() {
             value: balanceData 
               ? `$${(Number(balanceData.freeBalance?.balance || 0) + Number(balanceData.paidBalance?.balance || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
               : "Loading...", 
-            trend: balanceData ? `Free: $${Number(balanceData.freeBalance?.balance || 0).toFixed(2)} • Paid: $${Number(balanceData.paidBalance?.balance || 0).toFixed(2)}` : "Fetching available credits", 
+            trend: balanceData ? `Free: $${Number(balanceData.freeBalance?.balance || 0).toFixed(2)}\nPaid: $${Number(balanceData.paidBalance?.balance || 0).toFixed(2)}` : "Fetching available credits", 
             color: "text-purple-500" 
           },
           { title: "Active Models", value: formatCompactNumber(models.length), trend: "Configured", color: "text-zinc-500" },
@@ -121,7 +121,7 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{stat.value}</div>
-              <p className={`text-[11px] font-medium mt-1 uppercase tracking-wider ${stat.color}`}>{stat.trend}</p>
+              <p className={`text-[11px] font-medium mt-1 uppercase tracking-wider whitespace-pre-line ${stat.color}`}>{stat.trend}</p>
             </CardContent>
           </Card>
         ))}
