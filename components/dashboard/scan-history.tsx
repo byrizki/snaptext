@@ -47,7 +47,41 @@ function formatBytes(bytes: number) {
 export function ScanHistory() {
   const router = useRouter();
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useSWR<ScanJobsResponse>(`/api/dashboard/jobs?page=${page}&limit=10`, fetcher);
+  const [isRerunning, setIsRerunning] = useState<string | null>(null);
+  const [isStopping, setIsStopping] = useState<string | null>(null);
+  const { data, isLoading, mutate } = useSWR<ScanJobsResponse>(`/api/dashboard/jobs?page=${page}&limit=10`, fetcher);
+
+  const handleRerun = async (e: React.MouseEvent, jobId: string) => {
+    e.stopPropagation();
+    try {
+      setIsRerunning(jobId);
+      const res = await fetch(`/api/ocr/${jobId}/rerun`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to rerun");
+      const responseData = await res.json();
+      const newJobId = responseData.jobId || responseData.runId || jobId;
+      router.push(`/dashboard/scan/${newJobId}`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to rerun job");
+    } finally {
+      setIsRerunning(null);
+    }
+  };
+
+  const handleStop = async (e: React.MouseEvent, jobId: string) => {
+    e.stopPropagation();
+    try {
+      setIsStopping(jobId);
+      const res = await fetch(`/api/ocr/${jobId}/stop`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to stop");
+      await mutate();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to stop job");
+    } finally {
+      setIsStopping(null);
+    }
+  };
 
   const jobs = data?.jobs ?? [];
   const pagination = data?.pagination;
@@ -99,12 +133,12 @@ export function ScanHistory() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
                 onClick={() => {
-                  if (job.status === "completed") {
+                  if (job.status !== "failed") {
                     router.push(`/dashboard/scan/${job.id}`);
                   }
                 }}
                 className={`group flex items-center gap-4 px-8 py-4 transition-all ${
-                  job.status === "completed" 
+                  job.status !== "failed" 
                     ? "cursor-pointer hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 active:scale-[0.99]" 
                     : "opacity-80"
                 }`}
@@ -132,7 +166,37 @@ export function ScanHistory() {
                   {status.label}
                 </span>
 
-                {job.status === "completed" && (
+                {job.status === "failed" && (
+                  <button
+                    onClick={(e) => handleRerun(e, job.id)}
+                    disabled={isRerunning === job.id}
+                    className="size-8 rounded-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Rerun Scan"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`size-4 ${isRerunning === job.id ? 'animate-spin' : ''}`}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                )}
+
+                {(job.status === "running" || job.status === "pending") && (
+                  <button
+                    onClick={(e) => handleStop(e, job.id)}
+                    disabled={isStopping === job.id}
+                    className="size-8 rounded-full flex items-center justify-center border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Stop Scan"
+                  >
+                    {isStopping === job.id ? (
+                      <span className="size-3 rounded-full border-2 border-red-400 border-t-transparent animate-spin" />
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="size-3.5">
+                        <rect x="6" y="6" width="12" height="12" rx="2" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+
+                {job.status !== "failed" && (
                   <div className="size-8 rounded-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-500/10 dark:group-hover:text-blue-400 transition-colors shrink-0">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="size-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

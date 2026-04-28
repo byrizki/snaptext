@@ -64,7 +64,7 @@ function JobRow({
   };
 
   const handleRowClick = () => {
-    if (job.status === "completed") {
+    if (job.status !== "failed") {
       onView(job.id, job.filename);
     }
   };
@@ -73,7 +73,7 @@ function JobRow({
     <div
       onClick={handleRowClick}
       className={`flex items-center justify-between gap-4 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/60 transition-all shadow-sm ${
-        job.status === "completed"
+        job.status !== "failed"
           ? "bg-white/40 dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer"
           : "bg-white/40 dark:bg-zinc-900/40 opacity-80 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
       }`}
@@ -97,7 +97,7 @@ function JobRow({
 
       <div className="shrink-0 flex items-center gap-2">
         <span className={`text-xs font-semibold hidden sm:inline ${cfg.text}`}>{cfg.label}</span>
-        {job.status === "completed" && (
+        {job.status !== "failed" && (
           <button
             onClick={handleView}
             className="h-8 w-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all"
