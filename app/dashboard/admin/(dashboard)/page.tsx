@@ -99,25 +99,16 @@ export default function AdminDashboardPage() {
         <p className="text-muted-foreground mt-1 text-sm">Real-time platform metrics and financial monitoring.</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
           { 
-            title: "Gateway (Free)", 
-            value: balanceData?.freeBalance?.balance !== undefined 
-              ? `$${Number(balanceData.freeBalance.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+            title: "Gateway Balance", 
+            value: balanceData 
+              ? `$${(Number(balanceData.freeBalance?.balance || 0) + Number(balanceData.paidBalance?.balance || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
               : "Loading...", 
             icon: Coins01Icon, 
-            trend: "Standard API", 
+            trend: balanceData ? `Free: $${Number(balanceData.freeBalance?.balance || 0).toFixed(2)} • Paid: $${Number(balanceData.paidBalance?.balance || 0).toFixed(2)}` : "Fetching available credits", 
             color: "text-purple-500" 
-          },
-          { 
-            title: "Gateway (Paid)", 
-            value: balanceData?.paidBalance?.balance !== undefined 
-              ? `$${Number(balanceData.paidBalance.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
-              : "Loading...", 
-            icon: Coins01Icon, 
-            trend: "Priority API", 
-            color: "text-fuchsia-500" 
           },
           { title: "Active Models", value: formatCompactNumber(models.length), icon: AiBrain01Icon, trend: "Configured", color: "text-zinc-500" },
           { title: "Total Users", value: statsData?.totalUsers ? formatCompactNumber(statsData.totalUsers) : "0", icon: UserGroupIcon, trend: "Registered", color: "text-amber-500" },
