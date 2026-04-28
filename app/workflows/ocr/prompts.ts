@@ -137,15 +137,20 @@ function buildExtractionInstructions(): string {
 4. Group extracted data into logical nested structures using snake_case keys.
 5. DECOMPOSE combined data into granular fields (e.g., split address into street/city/state/zip, separate currency from amount).
 6. DO NOT TRANSLATE — extract text exactly as it appears in its original language.
-7. IF ${skipCondition}, return exactly \`empty: true\` and stop.
-8. Include a \`document_metadata\` object with \`readability_score\` (0-100) and \`data_usability_score\` (0-100) ${metadataNote}.
-9. For EVERY table in the document, follow this sequence before writing:
+7. NUMBER FORMATTING EDGE CASES:
+   - Remove thousands separators (e.g., "100,000" becomes 100000, "1,234.56" becomes 1234.56).
+   - Normalize European number formats (e.g., "100.000,00" becomes 100000.00).
+   - Strip currency symbols or units from numeric fields (e.g., "$100" becomes 100, "50 kg" becomes 50); store units/currencies in separate fields if necessary.
+   - For missing or unreadable numeric values, use \`null\` instead of 0.
+8. IF ${skipCondition}, return exactly \`empty: true\` and stop.
+9. Include a \`document_metadata\` object with \`readability_score\` (0-100) and \`data_usability_score\` (0-100) ${metadataNote}.
+10. For EVERY table in the document, follow this sequence before writing:
    a. Count the columns in the image header row → that is C. Declare exactly C headers in {…}. Do NOT quote headers.
    b. Count ALL data rows visible in the image → that is N. Set [N] to that exact count.
    c. Write EVERY row completely — do NOT stop early. Each row MUST have exactly C comma-separated values.
    d. If any cell value contains a comma, wrap ONLY that cell in double quotes.
-10. Do NOT quote plain scalar values that contain no comma, colon, or newline.
-11. Output ONLY TOON — nothing before or after.
+11. Do NOT quote plain scalar values that contain no comma, colon, or newline.
+12. Output ONLY TOON — nothing before or after.
 
 If ${noContentNote}: output exactly \`empty: true\``;
 }
