@@ -201,3 +201,12 @@ export type ScanQuota = typeof scanQuotas.$inferSelect;
 export type NewScanQuota = typeof scanQuotas.$inferInsert;
 export type LlmLog = typeof llmLogs.$inferSelect;
 export type NewLlmLog = typeof llmLogs.$inferInsert;
+
+export const systemSettings = pgTable("system_settings", {
+  id: text("id").primaryKey().default("default"),
+  concurrencyLength: integer("concurrency_length").notNull().default(5),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SystemSettings = typeof systemSettings.$inferSelect;
+export type NewSystemSettings = typeof systemSettings.$inferInsert;
