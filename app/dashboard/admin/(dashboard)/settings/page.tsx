@@ -13,6 +13,7 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
   Edit01Icon,
+  Settings01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,9 @@ interface QuotaSettings {
 interface AdminSettings {
   guest: QuotaSettings;
   registered: QuotaSettings;
+  system: {
+    concurrencyLength: number;
+  };
 }
 
 interface UserRow {
@@ -306,10 +310,13 @@ export default function SettingsPage() {
 
   const [guestForm, setGuestForm] = useState<QuotaSettings>({ count: 5, resetPeriod: "daily" });
   const [registeredForm, setRegisteredForm] = useState<QuotaSettings>({ count: 50, resetPeriod: "daily" });
+  const [systemForm, setSystemForm] = useState({ concurrencyLength: 5 });
   const [guestDirty, setGuestDirty] = useState(false);
   const [registeredDirty, setRegisteredDirty] = useState(false);
+  const [systemDirty, setSystemDirty] = useState(false);
   const [savingGuest, setSavingGuest] = useState(false);
   const [savingRegistered, setSavingRegistered] = useState(false);
+  const [savingSystem, setSavingSystem] = useState(false);
 
   // Users table state
   const [page, setPage] = useState(1);
@@ -327,8 +334,10 @@ export default function SettingsPage() {
     if (!settings) return;
     setGuestForm(settings.guest);
     setRegisteredForm(settings.registered);
+    if (settings.system) setSystemForm(settings.system);
     setGuestDirty(false);
     setRegisteredDirty(false);
+    setSystemDirty(false);
   }, [settings]);
 
   // Debounce search + reset page
@@ -349,6 +358,29 @@ export default function SettingsPage() {
     setRegisteredForm(next);
     setRegisteredDirty(true);
   }, []);
+
+  const saveSystemSetting = async () => {
+    setSavingSystem(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ system: systemForm }),
+      });
+      if (res.ok) {
+        toast.success("System settings saved");
+        setSystemDirty(false);
+        mutateSettings();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setSavingSystem(false);
+    }
+  };
 
   const saveQuota = async (
     tier: "guest" | "registered",
@@ -438,6 +470,75 @@ export default function SettingsPage() {
             The <strong className="font-semibold text-zinc-500">registered</strong> default applies to all users
             without a personal override. Admins are always unlimited.
           </p>
+        </div>
+      </div>
+
+      {/* ── System Settings ─────────────────────────────────────────────────── */}
+      <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
+          <SectionLabel>System Settings</SectionLabel>
+        </div>
+
+        <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80 px-6">
+          {isLoading ? (
+            <div className="py-10 flex items-center justify-center gap-3 text-zinc-400">
+              <div className="size-5 border-2 border-zinc-200 dark:border-zinc-700 border-t-zinc-500 rounded-full animate-spin" />
+              <span className="text-sm">Loading…</span>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className="size-10 rounded-2xl flex items-center justify-center shrink-0 bg-emerald-50 dark:bg-emerald-900/30">
+                  <HugeiconsIcon icon={Settings01Icon} size={18} className="text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Workflow Concurrency</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Global maximum concurrent tasks during OCR extraction</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl px-3 h-9 border border-zinc-200/80 dark:border-zinc-700/60">
+                  <input
+                    type="number"
+                    min={1}
+                    value={systemForm.concurrencyLength}
+                    onChange={(e) => {
+                      setSystemForm({ ...systemForm, concurrencyLength: parseInt(e.target.value, 10) || 1 });
+                      setSystemDirty(true);
+                    }}
+                    className="w-14 bg-transparent text-sm font-bold text-zinc-900 dark:text-zinc-50 outline-none text-center tabular-nums"
+                  />
+                  <span className="text-xs text-zinc-400 font-medium">tasks</span>
+                </div>
+
+                <AnimatePresence>
+                  {systemDirty && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{ duration: 0.14 }}
+                    >
+                      <Button
+                        onClick={saveSystemSetting}
+                        disabled={savingSystem}
+                        size="sm"
+                        className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-1.5 shadow-md shadow-emerald-500/20"
+                      >
+                        {savingSystem ? (
+                          <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <HugeiconsIcon icon={CheckmarkCircle01Icon} size={15} />
+                        )}
+                        Save
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
