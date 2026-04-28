@@ -91,6 +91,14 @@ export function buildToonTools(
           hint: `Try again with a MUCH SHORTER and more unique search string — ideally just one distinctive keyword or number from the broken line. Here are the first 5 lines of the current TOON for reference:\n${contextLines}`,
         };
       }
+      if (search === replace) {
+        console.warn("⚠️ [Tool] patch_toon no-op: search and replace are identical");
+        return {
+          success: false,
+          error: "No-op patch: search and replace strings are identical — no change was made.",
+          hint: "Your replace string must differ from the search string. Re-read the error message and correct the actual broken value.",
+        };
+      }
       currentToon = currentToon.replace(search, replace);
       console.log("🔄 [Tool] Patch applied, re-validating...");
       return tryParseToon(currentToon, onParsed);

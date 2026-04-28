@@ -24,8 +24,11 @@ tags[3]: typescript,llm,ocr
 phones[2]: +1-555-0100,+1-555-0101
 
 ### Object arrays — MUST declare count [N] AND {headers}
-# Formatting: key[N]{header1,header2}:
-# Followed by N lines of comma-separated values (CSV style)
+# BEFORE writing any object array, do these steps:
+#   STEP 1 — Count the columns in the image table header. That number is C.
+#   STEP 2 — Count ALL data rows visible in the image. That number is N.
+#   STEP 3 — Declare key[N]{col1,...,colC}: then write exactly N rows,
+#             each with exactly C comma-separated values.
 line_items[2]{id,description,qty,unit_price,total}:
   1,Widget A,2,15.00,30.00
   2,Widget B,1,25.00,25.00
@@ -55,8 +58,9 @@ notes[2]: "hello, world","line1\nline2"
 - Null unquoted: value: null  NOT  value: "null"
 - Array count mandatory: tags[3]: a,b,c  NOT  tags: a,b,c
 - Object arrays MUST have {headers}: items[2]{id,name}:  NOT  items[2]:
-- Row count MUST match [N]: if line_items[3] is declared, write EXACTLY 3 rows.
-- Header count MUST match columns: if {id,name} is declared, each line MUST have 2 values.
+- Row count MUST match [N]: count ALL rows in the image FIRST, then set [N]. Write every single row — do not stop early.
+- Header count MUST match columns: count the image header columns FIRST, then declare exactly that many in {…}. Every row MUST have the same number of comma-separated values as there are headers.
+- Headers must NEVER be quoted: {id,description,total}  NOT  {"id","description","total"}
 - COMMA IN VALUE → MUST QUOTE: notes: "Acme Corp, Inc."  NOT  notes: Acme Corp, Inc.
 - COMMA IN ARRAY CELL → MUST QUOTE: 1,"Widget A, Pro",2  NOT  1,Widget A, Pro,2
 - No backticks, no markdown fences, no preamble, no trailing text. Output RAW TOON.`;
@@ -135,10 +139,13 @@ function buildExtractionInstructions(): string {
 6. DO NOT TRANSLATE — extract text exactly as it appears in its original language.
 7. IF ${skipCondition}, return exactly \`empty: true\` and stop.
 8. Include a \`document_metadata\` object with \`readability_score\` (0-100) and \`data_usability_score\` (0-100) ${metadataNote}.
-9. Apply TOON format rules exactly as defined above: correct [N] counts, {headers} on object arrays, and mandatory quoting for any value containing a comma, colon, or newline.
-10. Do NOT quote plain values that contain no comma, colon, or newline — follow the TOON quoting rules strictly.
-11. Count array items precisely before writing — declare [N] only after you know the exact count.
-12. Output ONLY TOON — nothing before or after.
+9. For EVERY table in the document, follow this sequence before writing:
+   a. Count the columns in the image header row → that is C. Declare exactly C headers in {…}. Do NOT quote headers.
+   b. Count ALL data rows visible in the image → that is N. Set [N] to that exact count.
+   c. Write EVERY row completely — do NOT stop early. Each row MUST have exactly C comma-separated values.
+   d. If any cell value contains a comma, wrap ONLY that cell in double quotes.
+10. Do NOT quote plain scalar values that contain no comma, colon, or newline.
+11. Output ONLY TOON — nothing before or after.
 
 If ${noContentNote}: output exactly \`empty: true\``;
 }

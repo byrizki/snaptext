@@ -69,15 +69,23 @@ export function decodeToon(input: string): Record<string, any> {
         i = peek;
 
         if (rowValues.length > headers.length) {
-          throw createError(
-            `Column mismatch in '${key}' at row ${r + 1}. ` +
-            `Expected ${headers.length} columns (${headersStr}), but got ${rowValues.length} values — too many. ` +
-            `A value likely contains an unquoted comma. Line content: '${rowLine.trim()}' ` +
-            `Quote any value containing a comma: e.g. "value, with comma".`,
-            i + 1,
-            key,
-            rowLine.trim()
+          const surplus = rowValues.length - headers.length;
+          const ratio = surplus / headers.length;
+          if (ratio > 0.2) {
+            throw createError(
+              `Column mismatch in '${key}' at row ${r + 1}. ` +
+              `Expected ${headers.length} columns (${headersStr}), but got ${rowValues.length} values — too many. ` +
+              `A value likely contains an unquoted comma. Line content: '${rowLine.trim()}' ` +
+              `Quote any value containing a comma: e.g. "value, with comma".`,
+              i + 1,
+              key,
+              rowLine.trim()
+            );
+          }
+          console.warn(
+            `[TOON] Lenient trim: '${key}' row ${r + 1} has ${rowValues.length} values, expected ${headers.length}. Trimming ${surplus} extra trailing column(s).`
           );
+          rowValues.splice(headers.length);
         }
         if (rowValues.length < headers.length) {
           const missing = headers.length - rowValues.length;
@@ -108,10 +116,17 @@ export function decodeToon(input: string): Record<string, any> {
       }
 
       if (r < count) {
-        throw createError(
-          `Unexpected end of input or invalid rows. Expected ${count} rows for object array '${key}', but only parsed ${r}.`,
-          lineNum,
-          key
+        if (peek >= lines.length) {
+          // True EOF mid-table — genuine truncation, throw.
+          throw createError(
+            `Unexpected end of input. Expected ${count} rows for object array '${key}', but only parsed ${r} before EOF — output may be truncated.`,
+            lineNum,
+            key
+          );
+        }
+        // Stopped at next TOON key — LLM miscounted [N]. Accept what was parsed.
+        console.warn(
+          `[TOON] Lenient row count: '${key}' declared [${count}] rows but only ${r} were found before next key. Accepting ${r} rows.`
         );
       }
 
