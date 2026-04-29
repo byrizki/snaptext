@@ -1,28 +1,26 @@
 /**
  * TOON format rules — shared across all prompts.
  *
- * Ordered from simplest to most complex so low-intelligence models can
- * build understanding progressively before encountering tabular rules.
+ * Covers syntax only. Edge cases (multi-line cells, rotated headers)
+ * are handled in the extraction instructions so they aren't repeated.
  */
 const TOON_RULES = `## TOON Format (Token-Oriented Object Notation)
 
-Output TOON ONLY. No JSON. No markdown. No code fences. No preamble. No trailing text.
+Output TOON only — no JSON, no markdown, no code fences, no preamble, no trailing text.
 
----
+### Scalars
+One key-value per line. Numbers, booleans, and null stay unquoted.
+Keys are always lower_snake_case — never camelCase or "Title Case".
 
-### 1. Scalars — one key-value per line, unquoted primitives
 name: Alice
 age: 30
 active: true
 score: 98.6
 nothing: null
 
-→ Numbers, booleans, and null are NEVER wrapped in quotes.
-→ Keys MUST be lower_snake_case. Never camelCase. Never "Title Case".
+### Nested objects
+Indent child keys by exactly 2 spaces. No tabs.
 
----
-
-### 2. Nested objects — 2-space indent, no extra symbols
 vendor:
   name: Acme Corp
   address:
@@ -30,143 +28,62 @@ vendor:
     state: TX
     zip: 78701
 
-→ Each level of nesting adds exactly 2 spaces. No tabs.
+### Flat arrays
+Declare the count in [N], then comma-separate the values.
 
----
-
-### 3. Flat arrays — declare count [N], comma-separate values
 tags[3]: typescript,llm,ocr
 phones[2]: +1-555-0100,+1-555-0101
 
-→ [N] MUST match the exact number of values. Never omit [N].
-→ If a value contains a comma, wrap ONLY that value in double quotes:
-   regions[3]: "North, East","South, West",Central
+[N] must match the exact number of values. If a value itself contains a comma,
+wrap only that value in double quotes:
+  regions[3]: "North, East","South, West",Central
 
----
-
-### 4. Object arrays — declare [N] rows AND {col1,...,colC} headers
-BEFORE writing any object array, do these steps in order:
-  STEP 1 — Count the columns in the source table header. That number is C.
-  STEP 2 — Count ALL data rows visible. That number is N.
-  STEP 3 — Declare key[N]{col1,...,colC}: then write exactly N rows,
-            each with exactly C comma-separated values.
+### Object arrays
+Declare [N] rows AND {col1,...,colC} headers, then write one indented row per record.
 
 items[3]{id,description,qty,unit_price,total}:
   1,Widget A,2,15.00,30.00
   2,Widget B,1,25.00,25.00
   3,Widget C,3,10.00,30.00
 
-→ Headers MUST be lower_snake_case. Never quote headers: {id,name} NOT {"id","name"}.
-→ Each row MUST have exactly C values — no more, no less.
-→ Do NOT stop early. Write EVERY row counted in STEP 2.
+Headers must be lower_snake_case and never quoted.
+Every row must have exactly C values — no more, no less.
 
-#### 4a. Multi-line cell data
-A single table cell may visually wrap across two or more lines in the source.
-That is still ONE cell — do NOT emit extra rows or split it.
-Collapse all in-cell line breaks into a single value using \\n escape, then quote it.
+### Quoting
+Wrap a value in double quotes only when it contains a comma, a colon, or a newline.
+Everything else stays unquoted.
 
-  Source cell (spans 2 visual lines):
-    "Heavy-Duty Bolt
-     Galvanised, Grade 8"
-  → one quoted cell: "Heavy-Duty Bolt\\nGalvanised, Grade 8"
-
-  Full row example:
-  items[1]{id,description,qty}:
-    A002,"Heavy-Duty Bolt\\nGalvanised, Grade 8",50
-
-  ❌ WRONG — emitting two rows for one cell:
-  items[2]{id,description,qty}:
-    A002,Heavy-Duty Bolt,50
-    ,Galvanised Grade 8,
-
-#### 4b. Vertical / rotated column header tables
-Some tables print column headers rotated 90° or stacked vertically
-(common in financial statements, spec sheets, and compliance matrices).
-The rotation is purely visual — ignore it.
-Read each rotated header top-to-bottom as its plain text label, then
-declare them left-to-right exactly as if they were horizontal.
-
-  Source table (column labels are rotated, values below):
-    [Jan] [Feb] [Mar]    ← headers printed vertically
-     100   200   150    ← data row
-
-  → revenue[1]{jan,feb,mar}:
-       100,200,150
-
-  Stacked multi-word header (each word on its own visual line):
-    [Unit]     → unit_price
-    [Price]
-    [Gross]    → gross_margin
-    [Margin]
-
-  Treat each stacked header group as ONE lower_snake_case field name.
-  Count the number of data COLUMNS, not visual header lines, to set C.
-
----
-
-### 5. Quoting — mandatory rule for special characters
-Wrap a value in double quotes if and ONLY if it contains: a comma, a colon, or a newline.
-Do NOT quote values that are clean.
-
-✅ Correct:
-  notes: "Thank you for your order, please pay within 30 days."
-  address: "123 Main St, Suite 400"
-  items[2]{id,description,price}:
-    1,"Widget A, Special Edition",15.00
-    2,Standard Widget,25.00
-
-❌ Wrong — over-quoting clean values:
-  total: "1250.00"       ← WRONG, no comma/colon/newline
-  active: "true"         ← WRONG, boolean must be unquoted
-  name: "Alice"          ← WRONG, no special chars
-
----
-
-### 6. Quick-reference rules (memorise these)
-- lower_snake_case keys only: total_amount NOT TotalAmount NOT "Total Amount"
-- Numbers unquoted:  total: 1250.00   NOT  total: "1250.00"
-- Booleans unquoted: paid: true       NOT  paid: "true"
-- Null unquoted:     value: null      NOT  value: "null"
-- Array count mandatory: tags[3]: a,b,c   NOT  tags: a,b,c
-- Object array needs headers: items[2]{id,name}:   NOT  items[2]:
-- Row count = image row count: count first, then write — do NOT guess`;
+✅ notes: "Thank you for your order, please pay within 30 days."
+✅ address: "123 Main St, Suite 400"
+❌ total: "1250.00"   ← no special chars, don't quote
+❌ active: "true"     ← boolean, never quote
+❌ name: "Alice"      ← clean string, don't quote`;
 
 /**
- * Extraction example — demonstrates decomposition, number normalisation,
- * quoting rules, and nested structures in one cohesive document.
- *
- * This example is intentionally rich so that models at every capability
- * level have a concrete reference to imitate.
+ * Extraction example — a single, rich worked output the model can imitate.
  */
-const EXTRACTION_EXAMPLE = `## OUTPUT EXAMPLE
+const EXTRACTION_EXAMPLE = `## Output Example
 
-The following example shows a fully extracted invoice in TOON format.
-Study it carefully — your output must follow the same structure and rules.
+Study this fully extracted invoice. Your output must follow the same structure.
 
-# --- document identity ---
 document_type: invoice
 document_id: INV-2023-001
 date: 2023-10-27
 due_date: 2023-11-27
 is_paid: false
 
-# --- monetary totals — currency symbol stripped, stored separately ---
-# Source: "$1,234.56"  →  amount: 1234.56  +  currency: USD
+# monetary totals — currency symbol stripped, stored separately
 subtotal: 1040.50
 tax_rate: 0.19
 tax_amount: 197.70
 total_amount: 1238.20
 currency: USD
 
-# --- quality metadata — always include ---
 document_metadata:
   readability_score: 95
   data_usability_score: 98
 
-# --- issuer — fully decomposed; source was one compound string ---
-# Source OCR text: "Acme Corp · TIN US123456789 · Tel +1-555-0199
-#                  123 Tech Lane, Suite 5, San Francisco, CA 94105, USA"
-# → name, tax_id, phone split; address decomposed field-by-field; NEVER a blob
+# issuer — compound source string fully decomposed into granular fields
 issuer:
   name: Acme Corp
   tax_id: US123456789
@@ -178,261 +95,179 @@ issuer:
     zip: 94105
     country: USA
 
-# --- recipient — partial address (only city+country visible in doc) ---
-# Only include fields that are actually visible; omit the rest entirely
+# recipient — only fields visible in the document are included
 recipient:
   name: Global Logistics Ltd
   address:
     city: London
     country: UK
 
-# --- line items — object array, 3 rows, 5 columns ---
-# Row 1: description has a comma → quoted.
-# Row 2: description spans 2 visual lines in source → collapsed with \n, quoted.
-# Source qty "2 pcs" → qty: 2 (strip unit)
+# line items — row 1 has a comma in description (quoted), row 2 has multi-line cell (collapsed with \\n)
 items[3]{id,description,qty,unit_price,total}:
   1,"Premium Widget, Special Edition",2,500.00,1000.00
-  2,"Shipping Fee\nDomestic Only",1,40.50,40.50
+  2,"Shipping Fee\\nDomestic Only",1,40.50,40.50
   3,Tax Adjustment,1,0.00,0.00
 
-# --- payment accounts — 2 rows, 3 columns, all values clean → no quotes ---
 payment_accounts[2]{bank_name,account_no,currency}:
   JPMorgan Chase,88273645,USD
   Barclays Bank,UK-99283,GBP
 
-# --- vertical-header table — headers were rotated in source; read as plain text ---
-# Source: columns "Q1" "Q2" "Q3" printed sideways; one data row below
+# vertical-header table — rotated headers read as plain text, left-to-right
 quarterly_revenue[1]{q1,q2,q3}:
   120000,145000,98000
 
-# --- flat tag array — no commas inside values → no quotes ---
 tags[3]: urgent,electronics,b2b
 
-# --- free-text scalar — contains comma → MUST be quoted ---
 notes: "Thank you for your business. Please pay within 30 days."`;
 
 /**
- * Core extraction instructions.
- *
- * Rules are ordered by phase (scan → decompose → format → output) so both
- * low- and high-capability models follow a deterministic execution path.
- * Each rule is self-contained to avoid ambiguity.
+ * Core extraction instructions — phased pipeline from visual scan to final output.
  */
 function buildExtractionInstructions(): string {
-  return `## INSTRUCTIONS
+  return `## Instructions
 
-Follow these steps in order. Do not skip any step.
+Work through these phases in order. Don't skip any.
 
-### PHASE 1 — VISUAL SCAN
-1. Visually survey the entire document before writing anything. Use these visual
-   signals to understand structure:
-   - Bold / large text → section headers, document title, key labels
-   - Grid lines, cell borders, shading → table boundaries and row/column extent
-   - Indentation and spatial grouping → nested data relationships
-   - Colour highlights in cells → totals, summaries, or flagged rows
-   - Vertical / horizontal dividers → section separators
-2. Identify all logical sections using visual layout: document header, parties
-   (issuer/recipient), line items, totals/subtotals, payment details, notes, footer.
-3. If the page contains ONLY dense legal boilerplate, terms and conditions, or
-   large unstructured prose with no key-value business data, output exactly:
-     empty: true
-   Then stop. Do not output anything else.
+### Phase 1 — Visual Scan
+Before writing anything, survey the entire document image:
+- Bold or large text usually marks section headers, titles, or key labels.
+- Grid lines, cell borders, and shading reveal table boundaries.
+- Indentation and spatial grouping signal nested relationships.
+- Colour highlights in cells often mark totals or flagged rows.
 
-### PHASE 2 — DECOMPOSE DATA
-4. Break combined fields into the smallest meaningful units. NEVER store compound
-   data in a single blob string. Every compound field MUST be split into granular
-   child keys under a nested object.
+Identify the logical sections: document header, parties (issuer/recipient),
+line items, totals, payment details, notes, and footer.
 
-   #### ADDRESS DECOMPOSITION — MANDATORY
-   An address MUST always be broken into individual fields. NEVER output a full
-   address as one string value. Always nest under an \`address:\` object.
+If the page contains only dense legal boilerplate or unstructured prose with
+no key-value business data, output exactly:
+  empty: true
+Then stop.
 
-   Supported fields (use only what is visible; omit missing fields entirely):
-     address:
-       street:    (house number + street name, include suite/unit/floor if present)
-       district:  (sub-district, neighbourhood, or borough — if present)
-       city:      (city or municipality)
-       state:     (state, province, or region)
-       zip:       (postal / ZIP code)
-       country:   (full country name or ISO code as shown)
+### Phase 2 — Decompose Data
+Break combined fields into the smallest meaningful units. Never store compound
+data as a single blob — always split into granular child keys under a nested object.
 
-   Format examples:
-   - US single-line  "123 Main St, Suite 400, Austin, TX 78701, USA" →
-       address:
-         street: "123 Main St, Suite 400"
-         city: Austin
-         state: TX
-         zip: 78701
-         country: USA
+#### Address decomposition (mandatory)
+An address must always be broken into individual fields under an \`address:\` object.
+Use only the fields that are actually visible; omit anything missing entirely.
 
-   - Multi-line (OCR newlines become separate fields)
-       "Jl. Sudirman No. 10"
-       "Kec. Setiabudi, Jakarta Selatan 12920"
-       "Indonesia"
-     →
-       address:
-         street: Jl. Sudirman No. 10
-         district: Kec. Setiabudi
-         city: Jakarta Selatan
-         zip: 12920
-         country: Indonesia
+Supported fields: street, district, city, state, zip, country, po_box
 
-   - European  "Musterstraße 5, 10115 Berlin, Deutschland" →
-       address:
-         street: Musterstraße 5
-         zip: 10115
-         city: Berlin
-         country: Deutschland
+Examples:
 
-   - UK  "12 Baker Street, London, W1U 6TJ, United Kingdom" →
-       address:
-         street: 12 Baker Street
-         city: London
-         zip: W1U 6TJ
-         country: United Kingdom
+"123 Main St, Suite 400, Austin, TX 78701, USA" →
+  address:
+    street: "123 Main St, Suite 400"
+    city: Austin
+    state: TX
+    zip: 78701
+    country: USA
 
-   - PO Box  "P.O. Box 1234, Dubai, UAE" →
-       address:
-         po_box: 1234
-         city: Dubai
-         country: UAE
+"Jl. Sudirman No. 10 / Kec. Setiabudi, Jakarta Selatan 12920 / Indonesia" →
+  address:
+    street: Jl. Sudirman No. 10
+    district: Kec. Setiabudi
+    city: Jakarta Selatan
+    zip: 12920
+    country: Indonesia
 
-   ❌ NEVER do this (blob storage):
-     address: "123 Main St, Suite 400, Austin, TX 78701"
+"Musterstraße 5, 10115 Berlin, Deutschland" →
+  address:
+    street: Musterstraße 5
+    zip: 10115
+    city: Berlin
+    country: Deutschland
 
-5. Other decomposition examples:
-   - Name + tax ID "Acme Corp (TIN: 01.234.567)" →
-       name: Acme Corp
-       tax_id: 01.234.567
-   - Amount with unit "50 kg" →
-       weight: 50
-       weight_unit: kg
-   - Phone + fax "Tel: +1-555-0100 / Fax: +1-555-0199" →
-       phone: +1-555-0100
-       fax: +1-555-0199
-6. Group related fields into nested objects using lower_snake_case keys.
-   Example: issuer.address.city — NEVER flat keys like issuer_address_city.
+❌ Never do this: address: "123 Main St, Suite 400, Austin, TX 78701"
 
-### PHASE 3 — NORMALISE NUMBERS & CURRENCIES
-6. Strip currency symbols and units from numeric fields. Store the unit/currency
-   separately if it adds context. Examples:
-   - "$1,250.00"    →  amount: 1250.00  +  currency: USD
-   - "€ 1.250,00"  →  amount: 1250.00  +  currency: EUR   (European format)
-   - "Rp 1.500.000" →  amount: 1500000  +  currency: IDR
-   - "100,000 tons" →  quantity: 100000  +  unit: tons
-7. Remove thousands separators from all numeric values. Rules:
-   - English format  "1,234.56"  →  1234.56
-   - European format "1.234,56"  →  1234.56
-   - "100,000"       →  100000
-   - "1.000.000"     →  1000000
-8. For missing, illegible, or empty numeric values, use null — never 0 unless
-   the source explicitly shows zero.
+#### Other decomposition
+- Name + tax ID "Acme Corp (TIN: 01.234.567)" → name + tax_id as separate keys
+- Amount with unit "50 kg" → weight: 50 + weight_unit: kg
+- Phone + fax "Tel: +1-555-0100 / Fax: +1-555-0199" → phone + fax as separate keys
 
-### PHASE 4 — EXTRACT TABLES
-9. Detect tables visually: look for grid lines, column borders, alternating row
-   shading, or spatially aligned columns. Do not rely on whitespace alone.
-   For EVERY table found, follow this exact sequence:
-   a. COUNT columns: scan the header row left-to-right using visual column dividers
-      or spatial alignment. C = number of data columns. Declare exactly C header
-      names in {…}. Headers must be lower_snake_case, never quoted.
-   b. COUNT rows: scan all data rows top-to-bottom using row borders or shading.
-      N = total logical row count. A visual continuation line whose first cell is
-      visually blank belongs to the row above (see rule 10). Set [N] to logical
-      record count, not visual line count.
-   c. WRITE every row completely. Each row must have exactly C comma-separated
-      values. Do NOT stop early. Do NOT merge separate rows. Do NOT split one row.
-   d. QUOTE only cells whose value contains a comma, colon, or newline.
-      Leave all other cells unquoted.
-   Example — 2 columns, 2 rows, row 2 description has a comma:
-     products[2]{sku,description}:
-       A001,Standard Bolt
-       A002,"Heavy-Duty Bolt, Galvanised"
+Group related fields under nested objects with lower_snake_case keys.
+Use issuer.address.city — never flat keys like issuer_address_city.
 
-10. MULTI-LINE CELL DATA — a cell that wraps across multiple visual lines
-    in the source is still ONE cell in ONE row.
-    Rule: collapse all in-cell line breaks into a single quoted string using
-    the \\n escape sequence. Do NOT emit extra rows.
+### Phase 3 — Normalise Numbers & Currencies
+Strip currency symbols and units from numeric fields. Store the unit or currency
+in a sibling key when it adds context:
+- "$1,250.00"    → amount: 1250.00 + currency: USD
+- "€ 1.250,00"  → amount: 1250.00 + currency: EUR
+- "Rp 1.500.000" → amount: 1500000 + currency: IDR
 
-    Source (one logical row, description wraps onto line 2):
-      | A002 | Heavy-Duty Bolt      | 50 |
-      |      | Galvanised, Grade 8  |    |
-    → items[1]{id,description,qty}:
-         A002,"Heavy-Duty Bolt\\nGalvanised, Grade 8",50
+Remove thousands separators from all numbers:
+- "1,234.56" → 1234.56
+- "1.234,56" → 1234.56  (European)
+- "100,000"  → 100000
 
-    How to tell a multi-line CELL from a new ROW:
-    - Multi-line cell: the first column (or key column) of the visual line is BLANK.
-      Only the interior cell(s) contain text. It belongs to the row above.
-    - New row: the first column has a new value (new ID, new index, new date, etc.).
+For missing or illegible numeric values, use null — never 0 unless the source
+explicitly shows zero.
 
-11. VERTICAL / ROTATED COLUMN HEADERS — some tables print headers rotated 90°
-    or stacked vertically (common in spec sheets, financial matrices).
-    Rule: ignore the rotation; read each header top-to-bottom as its plain label.
-    Count data COLUMNS (not visual header lines) to determine C.
+### Phase 4 — Extract Tables
+Detect tables visually using grid lines, column borders, alternating row shading,
+or spatially aligned columns. For every table you find, follow this exact sequence:
 
-    Source (headers rotated; 3 columns; 2 data rows):
-      [Jan] [Feb] [Mar]   ← printed sideways
-       100   200   150
-       110   195   160
-    → monthly[2]{jan,feb,mar}:
-         100,200,150
-         110,195,160
+**Step A — Count columns.** Scan the header row left-to-right. C = number of
+columns. Declare exactly C lower_snake_case header names in {…}.
 
-    Stacked multi-word header (each word on its own visual line):
-      [Unit]  [Gross]
-      [Price] [Margin]
-    → treat each stack as ONE snake_case field: unit_price, gross_margin
-    Count the number of DATA columns to set C; do not count header lines.
+**Step B — Count rows.** Scan all data rows top-to-bottom. N = total logical
+row count (see multi-line cell rule below). Set [N] to that count.
 
-### PHASE 5 — VISUAL ELEMENTS
-   Vision models can detect document elements that text-only OCR cannot.
-   Handle each as follows:
+**Step C — Write every row.** Each row must have exactly C comma-separated values.
+Don't stop early, don't merge separate rows, don't split one row.
 
-12. STAMPS & OFFICIAL SEALS: extract text inside the stamp. Store under
-    a \`stamp\` or \`seal\` key. Example: stamp: APPROVED
-    If the stamp contains a date, extract it too: stamp_date: 2024-03-15
+**Quoting in tables:** quote only cells that contain a comma, colon, or newline.
+Leave everything else unquoted.
 
-13. HANDWRITTEN ANNOTATIONS: extract legible handwritten text separately from
-    printed content. Store under \`handwritten_notes\` or inline as
-    \`<field>_handwritten\` if the annotation modifies a specific field.
-    If illegible, use null.
+#### Multi-line cells
+A single table cell sometimes wraps across two or more visual lines. That's still
+one cell in one row — don't emit extra rows for it.
 
-14. CHECKBOXES & RADIO BUTTONS: represent checked state as a boolean.
-    Examples:
-      express_delivery: true    \u2190 box is visually checked/ticked
-      gift_wrap: false          \u2190 box is visually empty
-    If the checkbox label is a phrase, normalise to lower_snake_case.
+How to tell: if the first column of a visual line is blank, that line belongs to
+the row above. If it has a new value (new ID, date, etc.), it's a new row.
 
-15. HIGHLIGHTED / SHADED CELLS: if a table row or cell is visually highlighted
-    (coloured background, bold border, or shading) and the highlight appears
-    intentional (e.g. a totals row, a flagged item), add an \`is_highlighted: true\`
-    flag on that row's data or note it in a sibling key. Do not highlight every row.
+Collapse the wrapped text into a single quoted string using the \\\\n escape:
+  Source:
+    | A002 | Heavy-Duty Bolt      | 50 |
+    |      | Galvanised, Grade 8  |    |
+  → A002,"Heavy-Duty Bolt\\\\nGalvanised, Grade 8",50
 
-16. WATERMARKS: ignore purely decorative watermarks ("DRAFT", "COPY", large
-    diagonal text). If a watermark carries meaning ("VOID", "CANCELLED",
-    "CONFIDENTIAL"), capture it as: document_status: VOID
+#### Vertical or rotated column headers
+Some tables print headers rotated 90° or stacked vertically. Ignore the rotation —
+read each header top-to-bottom as plain text, then declare them left-to-right.
 
-17. LOGOS & SIGNATURES: do not extract image content (logos, signature images).
-    Note their presence only if structurally meaningful:
-      has_signature: true
-      has_company_logo: true
+Stacked multi-word headers (each word on its own line) become one snake_case field:
+  [Unit]  [Gross]
+  [Price] [Margin]  → unit_price, gross_margin
 
-### PHASE 6 — LANGUAGE & CONTENT RULES
-18. Do NOT translate. Extract text exactly as it appears in its original language.
-19. Exclude decorative or structural artefacts: page numbers ("Page 1 of 2"),
-    repeated headers/footers, and pure boilerplate disclaimers.
-20. Always append a document_metadata block at the end, even when a custom schema
-    is provided:
-      document_metadata:
-        readability_score: <0-100, visual clarity of the scan>
-        data_usability_score: <0-100, how much structured data was extractable>
+Count data columns, not visual header lines, to determine C.
 
-### PHASE 7 — OUTPUT
-21. Do NOT quote scalar values that contain no comma, colon, or newline.
-22. Output ONLY valid TOON — nothing before the first key, nothing after the last value.
-    No explanation. No preamble. No trailing text.
+### Phase 5 — Visual Elements
+You can see things that text-only OCR cannot. Handle these as follows:
 
-If the page has NO readable content or lacks any useful structured data:
-  output exactly → empty: true`;
+- **Stamps & seals:** extract any text inside → stamp: APPROVED / stamp_date: 2024-03-15
+- **Handwritten notes:** extract legible text under \`handwritten_notes\` or as
+  \`<field>_handwritten\`. If illegible, use null.
+- **Checkboxes:** represent as booleans → express_delivery: true (checked) / gift_wrap: false (empty)
+- **Highlighted cells:** if a row is intentionally highlighted (totals, flagged items),
+  add is_highlighted: true. Don't flag every row.
+- **Watermarks:** ignore decorative ones ("DRAFT", "COPY"). Capture meaningful ones
+  → document_status: VOID
+- **Logos & signatures:** note presence only → has_signature: true / has_company_logo: true
+
+### Phase 6 — Language & Content
+- Do not translate. Extract text exactly as it appears in its original language.
+- Skip decorative artefacts: page numbers, repeated headers/footers, boilerplate disclaimers.
+- Always append a document_metadata block at the end:
+    document_metadata:
+      readability_score: <0-100, visual clarity>
+      data_usability_score: <0-100, how much structured data was extractable>
+
+### Phase 7 — Output
+Output only valid TOON — nothing before the first key, nothing after the last value.
+
+If the page has no readable content or no useful structured data:
+  empty: true`;
 }
 
 /**
@@ -440,18 +275,14 @@ If the page has NO readable content or lacks any useful structured data:
  */
 export function buildOcrSystemPrompt(toonSchemaTemplate?: string): string {
   const schemaInstruction = toonSchemaTemplate
-    ? `\n## REQUIRED SCHEMA\n\nYou MUST extract data conforming EXACTLY to the following TOON structure.\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n\n> **ALWAYS append** a \`document_metadata\` block (\`readability_score\` + \`data_usability_score\`) after the schema fields, even when a custom schema is provided.\n`
+    ? `\n## Required Schema\n\nExtract data conforming exactly to this TOON structure:\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n\n> Always append a \`document_metadata\` block (readability_score + data_usability_score) after the schema fields.\n`
     : "";
 
-  return `You are a document intelligence engine with vision capability. You directly see the document image — use its visual layout, typography, borders, colors, and spatial structure to understand the document, not just the text content.${schemaInstruction}
+  return `You are a document intelligence engine with vision capability. You see the document image directly — use its visual layout, typography, borders, colours, and spatial structure to understand the document, not just the text.${schemaInstruction}
 
 ${TOON_RULES}
 
----
-
 ${EXTRACTION_EXAMPLE}
-
----
 
 ${buildExtractionInstructions()}`;
 }
