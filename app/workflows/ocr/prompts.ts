@@ -6,7 +6,25 @@
  */
 const TOON_RULES = `## TOON Format (Token-Oriented Object Notation)
 
-Output TOON only — no JSON, no markdown, no code fences, no preamble, no trailing text.
+### Output contract — read this first
+Your response MUST be raw TOON and nothing else.
+- Start immediately with the first key — zero words before it.
+- End immediately after the last value — zero words after it.
+- No greetings, no explanations, no "Here is the extracted data:", no "---", no code fences.
+
+❌ WRONG — any of these will fail the parser:
+  Here is the extracted TOON data:
+  document_type: invoice
+  ...
+
+❌ WRONG:
+  \`\`\`toon
+  document_type: invoice
+  \`\`\`
+
+✅ CORRECT — first character of your response is the first character of the first key:
+  document_type: invoice
+  ...
 
 ### Scalars
 One key-value per line. Numbers, booleans, and null stay unquoted.
@@ -118,7 +136,26 @@ quarterly_revenue[1]{q1,q2,q3}:
 
 tags[3]: urgent,electronics,b2b
 
-notes: "Thank you for your business. Please pay within 30 days."`;
+notes: "Thank you for your business. Please pay within 30 days."
+
+# --- multiple tables on one page — each gets its own key and header ---
+# First table: "CONSULTATION FEES" with 3 rows
+consultation_fees[3]{no,description,ed,opd,basic,standard,vip}:
+  1,CONSULTATION SPECIALIST IPD VISIT,null,null,100000,155000,190000
+  2,CONSULTATION NUTRITIONIST,null,50000,null,50000,50000
+  3,CONSULTATION SPECIALIST OPD,null,200000,null,null,null
+
+# Second table (different structure): "SURGEON OPERATOR FEES" with 2 rows
+surgeon_operator_fees[2]{no,procedure,ed,opd,basic,standard,vip}:
+  1,DOKTER OPERATOR TABLE TARIF I_1,750000,580000,580000,750000,1200000
+  2,DOKTER OPERATOR TABLE TARIF I_2,1575000,1218000,1218000,1575000,2520000
+
+# --- sub-header rows (NIGHT/SUNDAY/HOLIDAY) become a category, not data ---
+# The source table has a spanning row "NIGHT / SUNDAY / HOLIDAY" above some rows.
+# That label is absorbed into the description — not written as cell values.
+ed_fees[2]{no,description,category,ed,opd}:
+  1,ED CONSULTATION I_1,day,200000,200000
+  2,ED CONSULTATION I_1,night_sunday_holiday,250000,250000`;
 
 /**
  * Core extraction instructions — phased pipeline from visual scan to final output.
@@ -219,6 +256,76 @@ Don't stop early, don't merge separate rows, don't split one row.
 **Quoting in tables:** quote only cells that contain a comma, colon, or newline.
 Leave everything else unquoted.
 
+#### Multiple tables on one page
+A single page often contains several distinct tables — different fee schedules,
+different data categories, or tables with different column structures. Never merge
+them into one array. Each distinct table gets its own TOON object array with its
+own descriptive key name.
+
+How to recognise separate tables:
+- The row numbering resets (e.g. "No" column goes back to 1).
+- A new header row appears with different column names or a different column count.
+- A visual separator exists: bold divider line, section title, or large gap.
+- The data type changes (e.g. consultations above, surgical fees below).
+
+Give each table a unique, descriptive key name derived from its section header or
+content theme — never reuse the same key for different tables.
+
+Example — two tables on the same page:
+  Source has "CONSULTATION FEES" table (45 rows, 10 columns) followed by
+  "SURGEON OPERATOR FEES" table (19 rows, 10 columns) with different headers.
+  → Output as two separate arrays:
+    consultation_fees[45]{no,description,opd,ed,basic,...}:
+      ...
+    surgeon_operator_fees[19]{no,surgeon_fee,opd,ed,basic,...}:
+      ...
+
+  ❌ WRONG — merging both into one array:
+    items[64]{no,description,opd,ed,...}:
+      ...
+
+#### Sub-header and category rows
+Many tables contain rows that act as section dividers or category labels rather
+than actual data. These rows typically:
+- Span across multiple columns with a single label (e.g. "NIGHT / SUNDAY / HOLIDAY")
+- Contain text like day names ("SUNDAY"), time periods ("NIGHT"), or plan names
+  in columns that normally hold numbers
+- Have most cells empty or contain only labels, not values
+
+These are NOT data rows. Do not include them in the row count [N] and do not
+emit them as data rows. Instead, attach the category label to the relevant data
+rows using one of these approaches:
+
+Approach 1 — Prefix the description of subsequent rows:
+  Source table has a spanning row "NIGHT / SUNDAY / HOLIDAY" followed by fee rows.
+  → Prefix each subsequent row's description until the next category row:
+    ed_consultation_night[3]{no,description,ed,opd,...}:
+      13,"ED CONSULTATION I_1 - NIGHT/SUNDAY/HOLIDAY",250000,250000,...
+
+Approach 2 — Add a category column:
+  If there are many category sections, add a \`category\` column to capture the
+  grouping label:
+    fees[10]{no,description,category,opd,ed,...}:
+      13,ED CONSULTATION I_1,night_sunday_holiday,250000,0,...
+
+Either way, never write a day name ("SUNDAY"), time label ("NIGHT"), or plan name
+("HOLIDAY") into a numeric column. If a cell should hold a number but you see a
+category label there instead, it means the row is a sub-header — skip it.
+
+#### Column type consistency
+Once you've identified a column as numeric (prices, quantities, IDs), every value
+in that column must be either a number or null (for missing/empty cells).
+
+If you find yourself writing a text string into a numeric column, stop and ask
+yourself: is this actually a sub-header row or a merged cell? Almost always, yes.
+
+Common signs of misread sub-headers:
+- "SUNDAY" or "HOLIDAY" appearing in a price column
+- "0., 0., 0." appearing as a single value (this is three separate cells misread)
+- Category text like "REPORT & CONSULTATION RMO" in a price column
+
+When you spot these, don't emit that row. It's a category divider.
+
 #### Multi-line cells
 A single table cell sometimes wraps across two or more visual lines. That's still
 one cell in one row — don't emit extra rows for it.
@@ -264,9 +371,15 @@ You can see things that text-only OCR cannot. Handle these as follows:
       data_usability_score: <0-100, how much structured data was extractable>
 
 ### Phase 7 — Output
-Output only valid TOON — nothing before the first key, nothing after the last value.
+Your entire response is the TOON document — nothing else.
 
-If the page has no readable content or no useful structured data:
+- Do NOT write anything before the first key. Not a single word, sentence, or symbol.
+- Do NOT write anything after the last value. No sign-off, no summary, no separator.
+- Do NOT wrap output in markdown code fences (\`\`\`, \`\`\`toon, etc.).
+- Do NOT add comments explaining what you did.
+
+If the page has no readable content or no useful structured data, your entire
+response must be exactly two words — nothing more:
   empty: true`;
 }
 
@@ -278,7 +391,7 @@ export function buildOcrSystemPrompt(toonSchemaTemplate?: string): string {
     ? `\n## Required Schema\n\nExtract data conforming exactly to this TOON structure:\n\n\`\`\`\n${toonSchemaTemplate}\n\`\`\`\n\n> Always append a \`document_metadata\` block (readability_score + data_usability_score) after the schema fields.\n`
     : "";
 
-  return `You are a document intelligence engine with vision capability. You see the document image directly — use its visual layout, typography, borders, colours, and spatial structure to understand the document, not just the text.${schemaInstruction}
+  return `You are a document intelligence engine with vision capability. You see the document image directly — use its visual layout, typography, borders, colours, and spatial structure to understand the document, not just the text. Your response is always raw TOON only — no preamble, no explanation, no code fences.${schemaInstruction}
 
 ${TOON_RULES}
 

@@ -91,11 +91,13 @@ export function decodeToon(input: string): Record<string, any> {
           rowValues = attemptToFixMismatchedColumns(rowValues, headers.length);
         }
 
-        if (r >= count) {
-          if ((headers && rowValues.length !== headers.length) || isKey) {
-            break;
-          }
-        } else if (isKey) {
+        // Stop when we hit a new TOON key declaration at this or outer indent level.
+        // After [N] declared rows are consumed we keep accepting rows as long as column
+        // count matches — the LLM often miscounts [N] and we should not silently drop rows.
+        if (isKey) {
+          break;
+        }
+        if (r >= count && headers && rowValues.length !== headers.length) {
           break;
         }
 
@@ -236,14 +238,36 @@ function parseCsvLine(line: string): string[] {
 
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
+
+    if (char === '\\' && inQuotes && i + 1 < line.length) {
+      const next = line[i + 1];
+      // Handle escape sequences inside quoted strings
+      if (next === '"') {
+        current += '"';
+        i++;
+        continue;
+      }
+      if (next === 'n') {
+        current += '\\n'; // preserve \n as literal escape for castValue to handle later
+        i++;
+        continue;
+      }
+      if (next === '\\') {
+        current += '\\';
+        i++;
+        continue;
+      }
+    }
+
     if (char === '"') {
       if (inQuotes && line[i + 1] === '"') {
+        // RFC 4180-style doubled-quote escape
         current += '"';
         i++;
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (char === "," && !inQuotes) {
+    } else if (char === ',' && !inQuotes) {
       result.push(current.trim());
       current = "";
     } else {
