@@ -144,11 +144,8 @@ export function decodeToon(input: string): Record<string, any> {
       const values = valStr ? parseCsvLine(valStr).map(v => castValue(v)) : [];
 
       if (values.length !== count) {
-        throw createError(
-          `Array count mismatch for '${key}'. Expected [${count}] items, but found ${values.length}.`,
-          lineNum,
-          key,
-          valStr
+        console.warn(
+          `[TOON] Lenient array count: '${key}' declared [${count}] items but found ${values.length}. Accepting found items.`
         );
       }
 
