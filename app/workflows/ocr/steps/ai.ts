@@ -304,10 +304,10 @@ export async function runOcrOnPage(
       msg.toLowerCase().includes("rate limit")
     ) {
       const { attempt } = getStepMetadata();
-      const delayMs = 30000 + (attempt - 1) * 10000;
+      const delayMs = 15000 + (attempt - 1) * 10000;
       throw new RetryableError(
         "Rate limited by AI provider (429). Please try again later.",
-        { retryAfter: `${delayMs}ms` },
+        { retryAfter: `${delayMs}ms` }
       );
     }
 
@@ -325,6 +325,8 @@ export async function runOcrOnPage(
     };
   }
 }
+
+runOcrOnPage.maxRetries = 5;
 
 export async function repairOcrPage(
   pageBlobUrl: string,
@@ -540,7 +542,7 @@ export async function repairOcrPage(
       msg.toLowerCase().includes("rate limit")
     ) {
       const { attempt } = getStepMetadata();
-      const delayMs = 30000 + (attempt - 1) * 10000;
+      const delayMs = 15000 + (attempt - 1) * 10000;
       throw new RetryableError(
         "Rate limited by AI provider (429). Please try again later.",
         { retryAfter: `${delayMs}ms` },
@@ -561,6 +563,8 @@ export async function repairOcrPage(
     };
   }
 }
+
+repairOcrPage.maxRetries = 5;
 
 export async function processOcrPage(
   page: {
