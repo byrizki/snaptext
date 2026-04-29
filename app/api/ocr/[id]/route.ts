@@ -88,10 +88,24 @@ export async function GET(
   // Merge data on the fly
   let mergedData: any = null;
   const pagesWithData = pages.filter(p => p.parsedData !== null);
-  const extractedPages = pagesWithData.filter((p) => !(p.parsedData as any).empty);
-  const emptyPages = pagesWithData.filter((p) => !!(p.parsedData as any).empty);
-  const failedPages = extractedPages.filter((p) => !!(p.parsedData as any).parse_error);
-  const mergeablePages = extractedPages.filter((p) => !(p.parsedData as any).parse_error);
+
+  const isEmptyPage = (p: any) => {
+    const data = p.parsedData as any;
+    if (!data.empty) return false;
+    const keys = Object.keys(data).filter(
+      (k) => k !== "empty" && k !== "document_metadata"
+    );
+    return keys.length === 0;
+  };
+
+  const emptyPages = pagesWithData.filter(isEmptyPage);
+  const extractedPages = pagesWithData.filter((p) => !isEmptyPage(p));
+  const failedPages = extractedPages.filter(
+    (p) => !!(p.parsedData as any).parse_error
+  );
+  const mergeablePages = extractedPages.filter(
+    (p) => !(p.parsedData as any).parse_error
+  );
 
   if (mergeablePages.length > 0) {
     try {

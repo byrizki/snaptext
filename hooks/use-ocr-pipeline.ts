@@ -82,29 +82,31 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           runId: string;
           status: string;
           filename: string;
-          totalPages: number;
-          completedPages: number;
-          pdfUrl: string;
-          createdAt: string;
-          updatedAt: string;
-          hasSchema: boolean;
+          metadata: {
+            totalPages: number;
+            completedPages: number;
+            pdfUrl: string;
+            createdAt: string;
+            updatedAt: string;
+            hasSchema: boolean;
+            modelName?: string;
+          };
           data: Record<string, unknown> | null;
           error: string | null;
-          modelName?: string;
         };
 
         const mappedResult: OcrResult = {
           runId: json.runId || json.id,
-          pdfUrl: json.pdfUrl,
-          totalPages: json.totalPages ?? 0,
-          completedPages: json.completedPages ?? 0,
+          pdfUrl: json.metadata.pdfUrl,
+          totalPages: json.metadata.totalPages ?? 0,
+          completedPages: json.metadata.completedPages ?? 0,
           pages: [],
           merged: json.data ?? {},
-          createdAt: json.createdAt,
-          updatedAt: json.updatedAt,
-          hasSchema: json.hasSchema,
+          createdAt: json.metadata.createdAt,
+          updatedAt: json.metadata.updatedAt,
+          hasSchema: json.metadata.hasSchema,
           filename: json.filename,
-          modelName: json.modelName,
+          modelName: json.metadata.modelName,
         };
         setResult(mappedResult);
 
@@ -130,7 +132,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
         }
 
         // Fingerprint to detect progress: status + presence of result + completed pages
-        const currentFingerprint = `${json.status}-${!!json.data}-${json.completedPages}`;
+        const currentFingerprint = `${json.status}-${!!json.data}-${json.metadata.completedPages}`;
 
         // Defer with exponentially increasing timing when returning same status fingerprint
         if (currentFingerprint === lastStatusRef.current) {
