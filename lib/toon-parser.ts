@@ -70,9 +70,9 @@ export function decodeToon(input: string): Record<string, any> {
         let rowValues = parseCsvLine(rowLine.trim());
         const isKey = /^\s*[\w_]+(\[\d+\](?:\{[^}]+\})?)?:/.test(rowLine);
 
-        // Auto-correction: if we have more values than headers, try fixing unquoted thousand separators
+        // Auto-correction: if we have more values than headers, try fixing unquoted commas
         if (headers && rowValues.length > headers.length) {
-          rowValues = attemptToFixNumericCommas(rowValues, headers.length);
+          rowValues = attemptToFixMismatchedColumns(rowValues, headers.length);
         }
 
         if (r >= count) {
@@ -163,7 +163,7 @@ export function decodeToon(input: string): Record<string, any> {
       const count = parseInt(countStr, 10);
       let rowValues = valStr ? parseCsvLine(valStr) : [];
       if (rowValues.length > count) {
-        rowValues = attemptToFixNumericCommas(rowValues, count);
+        rowValues = attemptToFixMismatchedColumns(rowValues, count);
       }
       const values = rowValues.map(v => castValue(v));
 
@@ -254,23 +254,66 @@ function castValue(val: string): any {
   return result;
 }
 
-function attemptToFixNumericCommas(values: string[], targetCount: number): string[] {
-  const result = [...values];
+const COMMON_SUFFIXES = ["ltd", "inc", "co", "corp", "corporation", "branch", "llc", "limited"];
+
+function calculateMergeScore(v1: string, v2: string): number {
+  const v2Lower = v2.toLowerCase();
+  // 1. Check for common business suffixes/continuations at start of v2
+  if (COMMON_SUFFIXES.some(s => v2Lower.startsWith(s))) return 100;
+  
+  // 2. Check if both contain spaces (likely multi-word text fields)
+  if (v1.includes(" ") && v2.includes(" ")) return 50;
+  
+  // 3. Check if v2 starts with a lowercase letter (likely a continuation)
+  if (/^[a-z]/.test(v2)) return 30;
+  
+  return 0;
+}
+
+function attemptToFixMismatchedColumns(values: string[], targetCount: number): string[] {
+  let result = [...values];
+  
+  // Phase 1: Fix numeric thousand separators (high certainty)
   let i = 0;
   while (result.length > targetCount && i < result.length - 1) {
     const curr = result[i];
     const next = result[i + 1];
-    
-    // Heuristic: if current is numeric and next is exactly 3 digits, 
-    // it's highly likely an unquoted thousand separator (e.g., 100,000 -> ["100", "000"])
     if (/^\d+$/.test(curr) && /^\d{3}$/.test(next)) {
       result[i] = curr + next;
       result.splice(i + 1, 1);
-      // Stay at i to check if more segments follow (e.g., 1,000,000)
     } else {
       i++;
     }
   }
+
+  // Phase 2: Fix unquoted commas in text fields (heuristic)
+  while (result.length > targetCount) {
+    let bestIdx = -1;
+    let highestScore = -1;
+
+    for (let j = 0; j < result.length - 1; j++) {
+      const score = calculateMergeScore(result[j], result[j + 1]);
+      if (score > highestScore) {
+        highestScore = score;
+        bestIdx = j;
+      }
+    }
+
+    if (bestIdx !== -1 && highestScore > 0) {
+      result[bestIdx] = result[bestIdx] + ", " + result[bestIdx + 1];
+      result.splice(bestIdx + 1, 1);
+    } else {
+      // Fallback: if we still have extra columns and it's a small surplus, 
+      // assume they belong to the last column (common for descriptions/addresses)
+      if (result.length > targetCount && result.length <= targetCount + 2) {
+        const lastIdx = targetCount - 1;
+        const merged = result.slice(lastIdx).join(", ");
+        return [...result.slice(0, lastIdx), merged];
+      }
+      break; 
+    }
+  }
+  
   return result;
 }
 
