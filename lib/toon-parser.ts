@@ -53,6 +53,22 @@ export function decodeToon(input: string): Record<string, any> {
       const rows: any[] = [];
 
       i++;
+
+      // Detect YAML-style object array: items are "- key: value" blocks (no CSV headers).
+      // Peek at the next meaningful line; if it starts with "- ", use YAML parsing mode.
+      if (!headers) {
+        let peekYaml = i;
+        while (peekYaml < lines.length && (!lines[peekYaml].trim() || lines[peekYaml].trim().startsWith("#"))) {
+          peekYaml++;
+        }
+        if (peekYaml < lines.length && lines[peekYaml].trim().startsWith("- ")) {
+          const { items, nextLine } = parseYamlObjectArray(lines, i, indent, count);
+          currentObj[key] = items;
+          i = nextLine;
+          continue;
+        }
+      }
+
       let r = 0;
       let stoppedAtEof = false;
       while (i < lines.length) {
@@ -179,10 +195,15 @@ export function decodeToon(input: string): Record<string, any> {
     }
 
     // 3. Scalar or Object Start: key: value or key:
-    const colonIndex = trimmedLine.indexOf(":");
+    // Also tolerates YAML-style list items ("- key: value") emitted by some LLMs.
+    let scalarLine = trimmedLine;
+    if (scalarLine.startsWith("- ")) {
+      scalarLine = scalarLine.slice(2).trim();
+    }
+    const colonIndex = scalarLine.indexOf(":");
     if (colonIndex !== -1) {
-      const key = trimmedLine.substring(0, colonIndex).trim();
-      const valueStr = trimmedLine.substring(colonIndex + 1).trim();
+      const key = scalarLine.substring(0, colonIndex).trim();
+      const valueStr = scalarLine.substring(colonIndex + 1).trim();
 
       if (valueStr === "") {
         // Object start
@@ -197,7 +218,12 @@ export function decodeToon(input: string): Record<string, any> {
       continue;
     }
 
-    throw createError(`Invalid TOON syntax. Expected 'key: value', 'key:', or 'key[N]:'.`, lineNum, undefined, trimmedLine);
+    // Unrecognised line — skip with a warning rather than aborting the parse.
+    // Common causes: model-emitted separators ("--- TOON END ---"), stray markdown,
+    // or other non-TOON artefacts that should not corrupt the rest of the output.
+    console.warn(`[TOON] Skipping unrecognised line ${lineNum}: ${trimmedLine}`);
+    i++;
+    continue;
   }
 
   return result;
@@ -226,6 +252,87 @@ function parseCsvLine(line: string): string[] {
   }
   result.push(current.trim());
   return result;
+}
+
+/**
+ * Parses a YAML-style object array:
+ *
+ *   offices[2]:
+ *     - name: HANOI OFFICE
+ *       address:
+ *         city: Hanoi
+ *     - name: HO CHI MINH OFFICE
+ *       address:
+ *         city: Hochiminh
+ *
+ * Each "- " item is collected into its own set of lines, indentation is
+ * normalised relative to the item start, then decodeToon is called
+ * recursively to produce a plain object for each item.
+ */
+function parseYamlObjectArray(
+  lines: string[],
+  startLine: number,
+  arrayIndent: number,
+  maxItems: number,
+): { items: Record<string, any>[]; nextLine: number } {
+  const items: Record<string, any>[] = [];
+  let i = startLine;
+
+  while (i < lines.length && items.length < maxItems) {
+    // Skip blank lines and comments
+    while (i < lines.length && (!lines[i].trim() || lines[i].trim().startsWith("#"))) {
+      i++;
+    }
+    if (i >= lines.length) break;
+
+    const line = lines[i];
+    const lineIndent = line.search(/\S/);
+    const trimmed = line.trim();
+
+    // Exited the array scope (lower or equal indent to array declaration)
+    if (lineIndent <= arrayIndent) break;
+
+    // Each item must start with "- "
+    if (!trimmed.startsWith("- ")) break;
+
+    const itemIndent = lineIndent;
+
+    // Build the lines for this item.
+    // First line: strip "- " prefix, re-add spacing so relative indent is preserved.
+    const itemLines: string[] = [
+      " ".repeat(itemIndent) + trimmed.slice(2).trim(),
+    ];
+    i++;
+
+    // Collect all continuation lines that belong to this item (indent > itemIndent)
+    while (i < lines.length) {
+      const nextRaw = lines[i];
+      const nextTrimmed = nextRaw.trim();
+      if (!nextTrimmed || nextTrimmed.startsWith("#")) {
+        i++;
+        continue;
+      }
+      const nextIndent = nextRaw.search(/\S/);
+      if (nextIndent <= itemIndent) break;
+      itemLines.push(nextRaw);
+      i++;
+    }
+
+    // Normalise: strip itemIndent leading spaces so decodeToon sees root-level keys.
+    const normalised = itemLines.map((l) => {
+      if (!l.trim()) return "";
+      return l.slice(itemIndent);
+    });
+
+    try {
+      const obj = decodeToon(normalised.join("\n"));
+      items.push(obj);
+    } catch (e) {
+      console.warn(`[TOON] Skipping malformed YAML-style array item: ${e}`);
+    }
+  }
+
+  return { items, nextLine: i };
 }
 
 function castValue(val: string): any {

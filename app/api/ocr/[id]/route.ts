@@ -201,7 +201,13 @@ export async function GET(
     },
     data: mergedData,
     pagesData: processedPages
-      .filter((x) => x && !(x.parsedData as any)?.parse_error)
+      .filter(
+        (x) =>
+          x &&
+          !(
+            process.env.NODE_ENV === "production" && (x.parsedData as any)?.parse_error
+          ),
+      )
       .map((p) => {
         const copy: any = { ...(p.parsedData || {}) };
         delete copy.empty;
