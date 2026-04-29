@@ -623,6 +623,7 @@ export async function processOcrPage(
       ocrModelConfig,
       stopState,
       toonSchemaTemplate,
+      userId,
     );
 
     if (
