@@ -7,7 +7,7 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { DurableAgent } from "@workflow/ai/agent";
 import { stepCountIs, createGateway } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
-import { fetch, getStepMetadata, getWritable, RetryableError } from "workflow";
+import { fetch, getStepMetadata, RetryableError } from "workflow";
 import { OCR_VISION_MODEL } from "../models";
 import { buildOcrSystemPrompt } from "../prompts";
 import { buildToonTools } from "../tools";
@@ -151,7 +151,7 @@ export async function runOcrOnPage(
         },
       ],
       stopWhen: stepCountIs(1),
-      writable: getWritable(),
+      writable: new WritableStream({ write() {} }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
         return {};
@@ -415,7 +415,7 @@ export async function repairOcrPage(
         },
       ],
       stopWhen: stepCountIs(6),
-      writable: getWritable(),
+      writable: new WritableStream({ write() {} }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };
         return {};
