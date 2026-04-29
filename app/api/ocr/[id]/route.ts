@@ -30,11 +30,9 @@ export async function GET(
     .select({
       job: jobs,
       ocrModelName: ocrModels.name,
-      result: jobResults,
     })
     .from(jobs)
     .leftJoin(ocrModels, eq(jobs.ocrModelId, ocrModels.id))
-    .leftJoin(jobResults, eq(jobs.id, jobResults.jobId))
     .where(
       isWorkflowRunId
         ? eq(jobs.workflowRunId, id)
@@ -44,7 +42,6 @@ export async function GET(
 
   const job = data?.job;
   const ocrModelName = data?.ocrModelName;
-  const result = data?.result;
 
   let status = "unknown";
 
@@ -68,14 +65,15 @@ export async function GET(
     status = "failed";
   }
 
-
-
-  const [completedPagesRow] = job
+  const pages = job
     ? await db
-        .select({ count: count() })
+        .select()
         .from(jobPages)
-        .where(and(eq(jobPages.jobId, job.id), isNotNull(jobPages.parsedData)))
-    : [{ count: 0 }];
+        .where(eq(jobPages.jobId, job.id))
+        .orderBy(jobPages.pageNumber)
+    : [];
+
+  const completedPages = pages.filter(p => p.parsedData !== null).length;
 
   if (status === "failed" || status === "cancelled") {
     return NextResponse.json({
@@ -87,8 +85,67 @@ export async function GET(
     });
   }
 
-  if (result?.mergedData) {
-    delete (result.mergedData as any).empty;
+  // Merge data on the fly
+  let mergedData: any = null;
+  const pagesWithData = pages.filter(p => p.parsedData !== null);
+  const extractedPages = pagesWithData.filter((p) => !(p.parsedData as any).empty);
+  const emptyPages = pagesWithData.filter((p) => !!(p.parsedData as any).empty);
+  const failedPages = extractedPages.filter((p) => !!(p.parsedData as any).parse_error);
+  const mergeablePages = extractedPages.filter((p) => !(p.parsedData as any).parse_error);
+
+  if (mergeablePages.length > 0) {
+    try {
+      if (mergeablePages.length === 1) {
+        mergedData = { ...(mergeablePages[0].parsedData as any) };
+      } else {
+        mergedData = mergeablePages.reduce((acc, curr) => {
+          return deepMergeWithArrayConcat(acc, curr.parsedData);
+        }, {} as any);
+
+        // Compute average metadata scores if possible
+        if (
+          mergedData.document_metadata &&
+          typeof mergedData.document_metadata === "object"
+        ) {
+          let totalReadability = 0;
+          let readabilityCount = 0;
+          let totalUsability = 0;
+          let usabilityCount = 0;
+
+          for (const p of mergeablePages) {
+            const md = p.parsedData as any;
+            if (md?.document_metadata) {
+              if (typeof md.document_metadata.readability_score === "number") {
+                totalReadability += md.document_metadata.readability_score;
+                readabilityCount++;
+              }
+              if (typeof md.document_metadata.data_usability_score === "number") {
+                totalUsability += md.document_metadata.data_usability_score;
+                usabilityCount++;
+              }
+            }
+          }
+
+          if (readabilityCount > 0) {
+            mergedData.document_metadata.readability_score = Math.round(
+              totalReadability / readabilityCount
+            );
+          }
+          if (usabilityCount > 0) {
+            mergedData.document_metadata.data_usability_score = Math.round(
+              totalUsability / usabilityCount
+            );
+          }
+        }
+      }
+
+      if (mergedData) {
+        delete mergedData.empty;
+      }
+    } catch (err) {
+      console.error("[API] Error merging pages on the fly:", err);
+      // We'll return what we have or null if it completely failed
+    }
   }
 
   return NextResponse.json({
@@ -96,14 +153,46 @@ export async function GET(
     runId: job?.workflowRunId || id,
     status,
     filename: job?.filename,
-    totalPages: job?.totalPages ?? 0,
-    completedPages: completedPagesRow?.count ?? 0,
-    pdfUrl: job?.pdfBlobUrl,
-    createdAt: job?.createdAt,
-    updatedAt: job?.updatedAt,
-    hasSchema: !!job?.jsonSchema,
-    modelName: ocrModelName ?? result?.model ?? null,
-    data: result?.mergedData ?? null,
+    metadata: {
+      totalPages: job?.totalPages ?? 0,
+      completedPages: completedPages,
+      extractedPages: extractedPages.length,
+      emptyPages: emptyPages.length,
+      failedPages: failedPages.length,
+      mergeablePages: mergeablePages.length,
+      pdfUrl: job?.pdfBlobUrl,
+      createdAt: job?.createdAt,
+      updatedAt: job?.updatedAt,
+      hasSchema: !!job?.jsonSchema,
+      modelName: ocrModelName ?? (pages[0]?.model) ?? null,
+    },
+    data: mergedData,
+    pagesData: pages.map(p => p.parsedData),
     error: job?.error ?? null,
   });
+}
+
+function deepMergeWithArrayConcat(target: any, source: any): any {
+  if (Array.isArray(target) && Array.isArray(source)) {
+    return target.concat(source);
+  }
+  if (
+    target &&
+    typeof target === "object" &&
+    source &&
+    typeof source === "object"
+  ) {
+    const merged = { ...target };
+    for (const key of Object.keys(source)) {
+      if (key in target) {
+        merged[key] = deepMergeWithArrayConcat(target[key], source[key]);
+      } else {
+        merged[key] = source[key];
+      }
+    }
+    return merged;
+  }
+  return target !== undefined && target !== null && target !== ""
+    ? target
+    : source;
 }
