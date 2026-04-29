@@ -172,6 +172,7 @@ export function ScanHistory() {
                     disabled={isRerunning === job.id}
                     className="size-8 rounded-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Rerun Scan"
+                    aria-label="Rerun Scan"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`size-4 ${isRerunning === job.id ? 'animate-spin' : ''}`}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -185,6 +186,7 @@ export function ScanHistory() {
                     disabled={isStopping === job.id}
                     className="size-8 rounded-full flex items-center justify-center border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Stop Scan"
+                    aria-label="Stop Scan"
                   >
                     {isStopping === job.id ? (
                       <span className="size-3 rounded-full border-2 border-red-400 border-t-transparent animate-spin" />
