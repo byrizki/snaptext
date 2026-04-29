@@ -31,8 +31,8 @@ function getAiModel(
     const [providerId] = actualModelId.split("/");
 
     const gateway = createGateway({
-      apiKey: userId && process.env.AI_GATEWAY_API_KEY_PAID
-        ? process.env.AI_GATEWAY_API_KEY_PAID
+      apiKey: !userId
+        ? process.env.AI_GATEWAY_API_KEY_FREE
         : process.env.AI_GATEWAY_API_KEY,
     });
 
@@ -119,7 +119,12 @@ export async function runOcrOnPage(
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};
 
-    const { model, providerConfig } = getAiModel(modelId, config, fileHash, userId);
+    const { model, providerConfig } = getAiModel(
+      modelId,
+      config,
+      fileHash,
+      userId,
+    );
     console.log(
       `[Workflow] Using model: ${modelId}, config: ${JSON.stringify(providerConfig)}`,
     );
@@ -181,7 +186,7 @@ export async function runOcrOnPage(
           console.log(
             `[Step] Stopping OCR stream for page ${pageNumber} as stop requested`,
           );
-          throw new Error("Stopped execution")
+          throw new Error("Stopped execution");
         }
       },
     });
@@ -349,7 +354,12 @@ export async function repairOcrPage(
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};
 
-    const { model, providerConfig } = getAiModel(modelId, config, fileHash, userId);
+    const { model, providerConfig } = getAiModel(
+      modelId,
+      config,
+      fileHash,
+      userId,
+    );
     const startedAt = "N/A";
 
     let parsedResult: {
@@ -439,7 +449,7 @@ export async function repairOcrPage(
           console.log(
             `[Step] Stopping OCR stream for page ${pageNumber} as stop requested`,
           );
-          throw new Error("Stopped execution")
+          throw new Error("Stopped execution");
         }
       },
     });

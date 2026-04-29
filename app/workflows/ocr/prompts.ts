@@ -61,6 +61,7 @@ notes[2]: "hello, world","line1\nline2"
 - Row count MUST match [N]: count ALL rows in the image FIRST, then set [N]. Write every single row — do not stop early.
 - Header count MUST match columns: count the image header columns FIRST, then declare exactly that many in {…}. Every row MUST have the same number of comma-separated values as there are headers.
 - Headers must NEVER be quoted: {id,description,total}  NOT  {"id","description","total"}
+- Keys MUST be lower_snake_case: total_amount: 100  NOT  Total Amount: 100 or totalAmount: 100
 - COMMA IN VALUE → MUST QUOTE: notes: "Acme Corp, Inc."  NOT  notes: Acme Corp, Inc.
 - COMMA IN ARRAY CELL → MUST QUOTE: 1,"Widget A, Pro",2  NOT  1,Widget A, Pro,2
 - No backticks, no markdown fences, no preamble, no trailing text. Output RAW TOON.`;
@@ -134,7 +135,7 @@ function buildExtractionInstructions(): string {
 1. Carefully ${readVerb} before writing anything.
 2. Identify all sections: header, parties, line items, totals, notes, footer.
 3. Extract ONLY useful, structured business data. EXCLUDE generic page headers/footers (e.g. "Page 1 of 2"), unreadable text, watermarks, or boilerplate disclaimers.
-4. Group extracted data into logical nested structures using snake_case keys.
+4. Group extracted data into logical nested structures using lower_snake_case keys.
 5. DECOMPOSE combined data into granular fields (e.g., split address into street/city/state/zip, separate currency from amount).
 6. DO NOT TRANSLATE — extract text exactly as it appears in its original language.
 7. NUMBER FORMATTING EDGE CASES:

@@ -12,9 +12,9 @@ export async function GET() {
   }
 
   try {
-    const freeGW = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY });
-    const paidGW = process.env.AI_GATEWAY_API_KEY_PAID
-      ? createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY_PAID })
+    const freeGW = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY_FREE });
+    const paidGW = process.env.AI_GATEWAY_API_KEY
+      ? createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY })
       : null;
 
     const freeBalance = await freeGW.getCredits();

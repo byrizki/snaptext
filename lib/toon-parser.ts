@@ -34,13 +34,23 @@ export function decodeToon(input: string): Record<string, any> {
 
     const currentObj = stack[stack.length - 1].obj;
 
-    // 1. Object Array (Tabular): key[N]{h1,h2}:
-    const tabularMatch = trimmedLine.match(/^([\w_]+)\[(\d+)\]\{([^}]+)\}:$/);
+    // 1. Object Array (Tabular): key[N]{h1,h2}: or key[N]:
+    const tabularMatch = trimmedLine.match(/^([\w_]+)\[(\d+)\](?:\{([^}]+)\})?:$/);
     if (tabularMatch) {
       const [, key, countStr, headersStr] = tabularMatch;
       const count = parseInt(countStr, 10);
-      const headers = headersStr.split(",").map(h => h.trim());
-      const rows: Record<string, any>[] = [];
+      let headers = headersStr ? headersStr.split(",").map(h => h.trim()) : null;
+
+      // Fallback: look for a sibling array that might be the headers (usually defined just before)
+      if (!headers) {
+        const keys = Object.keys(currentObj);
+        const lastKey = keys[keys.length - 1];
+        if (lastKey && Array.isArray(currentObj[lastKey])) {
+          headers = currentObj[lastKey];
+        }
+      }
+
+      const rows: any[] = [];
 
       i++;
       let r = 0;
@@ -57,11 +67,16 @@ export function decodeToon(input: string): Record<string, any> {
         }
 
         const rowLine = lines[peek];
-        const rowValues = parseCsvLine(rowLine.trim());
+        let rowValues = parseCsvLine(rowLine.trim());
         const isKey = /^\s*[\w_]+(\[\d+\](?:\{[^}]+\})?)?:/.test(rowLine);
 
+        // Auto-correction: if we have more values than headers, try fixing unquoted thousand separators
+        if (headers && rowValues.length > headers.length) {
+          rowValues = attemptToFixNumericCommas(rowValues, headers.length);
+        }
+
         if (r >= count) {
-          if (rowValues.length !== headers.length || isKey) {
+          if ((headers && rowValues.length !== headers.length) || isKey) {
             break;
           }
         } else if (isKey) {
@@ -70,49 +85,54 @@ export function decodeToon(input: string): Record<string, any> {
 
         i = peek;
 
-        if (rowValues.length > headers.length) {
-          const surplus = rowValues.length - headers.length;
-          const ratio = surplus / headers.length;
-          if (ratio > 0.2) {
-            throw createError(
-              `Column mismatch in '${key}' at row ${r + 1}. ` +
-              `Expected ${headers.length} columns (${headersStr}), but got ${rowValues.length} values — too many. ` +
-              `A value likely contains an unquoted comma. Line content: '${rowLine.trim()}' ` +
-              `Quote any value containing a comma: e.g. "value, with comma".`,
-              i + 1,
-              key,
-              rowLine.trim()
+        if (headers) {
+          if (rowValues.length > headers.length) {
+            const surplus = rowValues.length - headers.length;
+            const ratio = surplus / headers.length;
+            if (ratio > 0.2) {
+              throw createError(
+                `Column mismatch in '${key}' at row ${r + 1}. ` +
+                `Expected ${headers.length} columns (${headers.join(",")}), but got ${rowValues.length} values — too many. ` +
+                `A value likely contains an unquoted comma. Line content: '${rowLine.trim()}' ` +
+                `Quote any value containing a comma: e.g. "value, with comma".`,
+                i + 1,
+                key,
+                rowLine.trim()
+              );
+            }
+            console.warn(
+              `[TOON] Lenient trim: '${key}' row ${r + 1} has ${rowValues.length} values, expected ${headers.length}. Trimming ${surplus} extra trailing column(s).`
             );
+            rowValues.splice(headers.length);
           }
-          console.warn(
-            `[TOON] Lenient trim: '${key}' row ${r + 1} has ${rowValues.length} values, expected ${headers.length}. Trimming ${surplus} extra trailing column(s).`
-          );
-          rowValues.splice(headers.length);
-        }
-        if (rowValues.length < headers.length) {
-          const missing = headers.length - rowValues.length;
-          const ratio = rowValues.length / headers.length;
-          if (ratio < 0.5) {
-            throw createError(
-              `Row ${r + 1} of '${key}' has only ${rowValues.length} of ${headers.length} expected values \u2014 likely a truncated or broken line. ` +
-              `Line content: '${rowLine.trim()}'`,
-              i + 1,
-              key,
-              rowLine.trim()
+          if (rowValues.length < headers.length) {
+            const missing = headers.length - rowValues.length;
+            const ratio = rowValues.length / headers.length;
+            if (ratio < 0.5) {
+              throw createError(
+                `Row ${r + 1} of '${key}' has only ${rowValues.length} of ${headers.length} expected values \u2014 likely a truncated or broken line. ` +
+                `Line content: '${rowLine.trim()}'`,
+                i + 1,
+                key,
+                rowLine.trim()
+              );
+            }
+            console.warn(
+              `[TOON] Lenient pad: '${key}' row ${r + 1} has ${rowValues.length} values, expected ${headers.length}. Padding ${missing} missing trailing column(s) with null.`
             );
+            while (rowValues.length < headers.length) rowValues.push("null");
           }
-          console.warn(
-            `[TOON] Lenient pad: '${key}' row ${r + 1} has ${rowValues.length} values, expected ${headers.length}. Padding ${missing} missing trailing column(s) with null.`
-          );
-          while (rowValues.length < headers.length) rowValues.push("null");
+
+          const rowObj: Record<string, any> = {};
+          headers.forEach((h, idx) => {
+            rowObj[h] = castValue(rowValues[idx]);
+          });
+          rows.push(rowObj);
+        } else {
+          // No headers: parse as raw array of values
+          rows.push(rowValues.map(v => castValue(v)));
         }
 
-        const rowObj: Record<string, any> = {};
-        headers.forEach((h, idx) => {
-          rowObj[h] = castValue(rowValues[idx]);
-        });
-        rows.push(rowObj);
-        
         r++;
         i++;
       }
@@ -141,7 +161,11 @@ export function decodeToon(input: string): Record<string, any> {
     if (flatArrayMatch) {
       const [, key, countStr, valStr] = flatArrayMatch;
       const count = parseInt(countStr, 10);
-      const values = valStr ? parseCsvLine(valStr).map(v => castValue(v)) : [];
+      let rowValues = valStr ? parseCsvLine(valStr) : [];
+      if (rowValues.length > count) {
+        rowValues = attemptToFixNumericCommas(rowValues, count);
+      }
+      const values = rowValues.map(v => castValue(v));
 
       if (values.length !== count) {
         console.warn(
@@ -227,6 +251,26 @@ function castValue(val: string): any {
     result = result.replace(/\\n/g, "\n");
   }
   
+  return result;
+}
+
+function attemptToFixNumericCommas(values: string[], targetCount: number): string[] {
+  const result = [...values];
+  let i = 0;
+  while (result.length > targetCount && i < result.length - 1) {
+    const curr = result[i];
+    const next = result[i + 1];
+    
+    // Heuristic: if current is numeric and next is exactly 3 digits, 
+    // it's highly likely an unquoted thousand separator (e.g., 100,000 -> ["100", "000"])
+    if (/^\d+$/.test(curr) && /^\d{3}$/.test(next)) {
+      result[i] = curr + next;
+      result.splice(i + 1, 1);
+      // Stay at i to check if more segments follow (e.g., 1,000,000)
+    } else {
+      i++;
+    }
+  }
   return result;
 }
 

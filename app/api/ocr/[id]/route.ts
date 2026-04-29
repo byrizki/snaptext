@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getRun } from "workflow/api";
 
 import { getDb, jobPages, jobResults, jobs, ocrModels } from "@/db";
+import { decodeToon } from "@/lib/toon-parser";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -11,7 +12,7 @@ interface RouteParams {
 
 export async function GET(
   request: Request,
-  { params }: RouteParams
+  { params }: RouteParams,
 ): Promise<NextResponse> {
   const { id } = await params;
   const { searchParams } = new URL(request.url);
@@ -36,7 +37,7 @@ export async function GET(
     .where(
       isWorkflowRunId
         ? eq(jobs.workflowRunId, id)
-        : or(eq(jobs.id, id), eq(jobs.workflowRunId, id))
+        : or(eq(jobs.id, id), eq(jobs.workflowRunId, id)),
     )
     .limit(1);
 
@@ -51,7 +52,10 @@ export async function GET(
     status = await run.status;
   } catch (error: any) {
     // If the workflow run is not found (e.g., deleted or expired), fallback to the DB status
-    if (error.name === "WorkflowRunNotFoundError" || error.message?.includes("not found")) {
+    if (
+      error.name === "WorkflowRunNotFoundError" ||
+      error.message?.includes("not found")
+    ) {
       status = job?.status ?? "unknown";
     } else {
       console.error("Workflow status error:", error);
@@ -73,8 +77,6 @@ export async function GET(
         .orderBy(jobPages.pageNumber)
     : [];
 
-  const completedPages = pages.filter(p => p.parsedData !== null).length;
-
   if (status === "failed" || status === "cancelled") {
     return NextResponse.json({
       id: job?.id || id,
@@ -87,13 +89,26 @@ export async function GET(
 
   // Merge data on the fly
   let mergedData: any = null;
-  const pagesWithData = pages.filter(p => p.parsedData !== null);
+  const processedPages = pages.map((p) => {
+    if (p.parsedData && (p.parsedData as any).parse_error && p.toonOutput) {
+      try {
+        const reparsed = decodeToon(p.toonOutput);
+        return { ...p, parsedData: reparsed };
+      } catch (err) {
+        // Still failed, keep as is
+      }
+    }
+    return p;
+  });
+
+  const pagesWithData = processedPages.filter((p) => p.parsedData !== null);
+  const completedPages = pagesWithData.length;
 
   const isEmptyPage = (p: any) => {
     const data = p.parsedData as any;
     if (!data.empty) return false;
     const keys = Object.keys(data).filter(
-      (k) => k !== "empty" && k !== "document_metadata"
+      (k) => k !== "empty" && k !== "document_metadata",
     );
     return keys.length === 0;
   };
@@ -101,10 +116,10 @@ export async function GET(
   const emptyPages = pagesWithData.filter(isEmptyPage);
   const extractedPages = pagesWithData.filter((p) => !isEmptyPage(p));
   const failedPages = extractedPages.filter(
-    (p) => !!(p.parsedData as any).parse_error
+    (p) => !!(p.parsedData as any).parse_error,
   );
   const mergeablePages = extractedPages.filter(
-    (p) => !(p.parsedData as any).parse_error
+    (p) => !(p.parsedData as any).parse_error,
   );
 
   if (mergeablePages.length > 0) {
@@ -133,7 +148,9 @@ export async function GET(
                 totalReadability += md.document_metadata.readability_score;
                 readabilityCount++;
               }
-              if (typeof md.document_metadata.data_usability_score === "number") {
+              if (
+                typeof md.document_metadata.data_usability_score === "number"
+              ) {
                 totalUsability += md.document_metadata.data_usability_score;
                 usabilityCount++;
               }
@@ -142,12 +159,12 @@ export async function GET(
 
           if (readabilityCount > 0) {
             mergedData.document_metadata.readability_score = Math.round(
-              totalReadability / readabilityCount
+              totalReadability / readabilityCount,
             );
           }
           if (usabilityCount > 0) {
             mergedData.document_metadata.data_usability_score = Math.round(
-              totalUsability / usabilityCount
+              totalUsability / usabilityCount,
             );
           }
         }
@@ -170,18 +187,26 @@ export async function GET(
     metadata: {
       totalPages: job?.totalPages ?? 0,
       completedPages: completedPages,
-      extractedPages: extractedPages.length,
-      emptyPages: emptyPages.length,
-      failedPages: failedPages.length,
-      mergeablePages: mergeablePages.length,
       pdfUrl: job?.pdfBlobUrl,
       createdAt: job?.createdAt,
       updatedAt: job?.updatedAt,
       hasSchema: !!job?.jsonSchema,
-      modelName: ocrModelName ?? (pages[0]?.model) ?? null,
+      modelName: ocrModelName ?? processedPages[0]?.model ?? null,
+      metrics: {
+        extractedPages: extractedPages.length,
+        emptyPages: emptyPages.length,
+        failedPages: failedPages.length,
+        mergeablePages: mergeablePages.length,
+      },
     },
     data: mergedData,
-    pagesData: pages.map(p => p.parsedData),
+    pagesData: processedPages
+      .filter((x) => x && !(x.parsedData as any)?.parse_error)
+      .map((p) => {
+        const copy: any = { ...(p.parsedData || {}) };
+        delete copy.empty;
+        return copy;
+      }),
     error: job?.error ?? null,
   });
 }
