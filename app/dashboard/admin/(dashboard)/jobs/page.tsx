@@ -16,7 +16,15 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ReloadIcon,
+  ViewIcon,
+  FileAttachmentIcon,
+  UserIcon,
+  Activity01Icon,
+  Database01Icon,
+  Copy01Icon,
 } from "@hugeicons/core-free-icons";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function JobHistoryPage() {
   const { data = [], isLoading } = useSWR(
@@ -24,6 +32,7 @@ export default function JobHistoryPage() {
     (url: string) => fetch(url).then((r) => r.json())
   );
   const jobs = Array.isArray(data) ? data : [];
+  const router = useRouter();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [rerunningIds, setRerunningIds] = useState<Set<string>>(new Set());
@@ -102,7 +111,11 @@ export default function JobHistoryPage() {
               const status = getStatusProps(job.status);
               
               return (
-                <div key={job.id} className="p-4 lg:px-6 lg:py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                <div 
+                  key={job.id} 
+                  className="p-4 lg:px-6 lg:py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer group"
+                  onClick={() => router.push(`/dashboard/admin/jobs/${job.id}`)}
+                >
                   <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.25fr_1.5fr_1.5fr_1fr_1fr_1fr] gap-4 lg:items-center">
                     
                     {/* File Name */}
