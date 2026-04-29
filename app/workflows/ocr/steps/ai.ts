@@ -299,9 +299,12 @@ export async function runOcrOnPage(
     const status = e?.status || e?.statusCode;
     if (
       status === 429 ||
+      status === 503 ||
       msg.includes("429") ||
+      msg.includes("503") ||
       msg.includes("Too Many Requests") ||
-      msg.toLowerCase().includes("rate limit")
+      msg.toLowerCase().includes("rate limit") ||
+      msg.toLowerCase().includes("service unavailable")
     ) {
       const { attempt } = getStepMetadata();
       const delayMs = 15000 + (attempt - 1) * 10000;
@@ -536,10 +539,13 @@ export async function repairOcrPage(
     const status = e?.status || e?.statusCode;
     if (
       status === 429 ||
+      status === 503 ||
       msg.includes("429") ||
+      msg.includes("503") ||
       msg.includes("Too Many Requests") ||
       msg.includes("rate_limit") ||
-      msg.toLowerCase().includes("rate limit")
+      msg.toLowerCase().includes("rate limit") ||
+      msg.toLowerCase().includes("service unavailable")
     ) {
       const { attempt } = getStepMetadata();
       const delayMs = 15000 + (attempt - 1) * 10000;

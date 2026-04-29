@@ -6,33 +6,33 @@ import { CheckmarkBadge01Icon, Cancel01Icon, CpuIcon } from "@hugeicons/core-fre
 
 const models = [
   {
-    name: "Flux",
-    description: "Fast and efficient for clean documents.",
-    speed: "Ultra-fast (ms)",
-    reasoning: "Basic",
+    name: "Spark",
+    description: "Lightning fast for standard documents.",
+    speed: "Ultra-fast (< 1s)",
+    reasoning: "Essential",
     handwriting: false,
     complexLayouts: "Good",
-    bestFor: "Receipts, typed invoices, standard forms.",
+    bestFor: "Standard receipts, simple invoices, clean forms.",
     color: "blue"
   },
   {
-    name: "Spark",
-    description: "Balanced intelligence for complex structures.",
-    speed: "Fast (< 2s)",
+    name: "Flux",
+    description: "High precision for detailed documents.",
+    speed: "Slower (2-5s)",
     reasoning: "Advanced",
     handwriting: "Partial",
     complexLayouts: "Excellent",
-    bestFor: "Mixed tables, complex invoices, resumes.",
+    bestFor: "Medical records, multi-page reports, complex tables.",
     color: "violet"
   },
   {
     name: "Zenith",
-    description: "Deep reasoning for the hardest extractions.",
-    speed: "Moderate (2-5s)",
+    description: "Deep intelligence at top speed.",
+    speed: "Fast & Accurate",
     reasoning: "State-of-the-art",
     handwriting: true,
     complexLayouts: "Perfect",
-    bestFor: "Cursive, historical docs, blurry scans.",
+    bestFor: "Cursive, historical docs, blurry scans, anything.",
     color: "emerald"
   }
 ];
