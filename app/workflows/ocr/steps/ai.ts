@@ -429,7 +429,7 @@ export async function repairOcrPage(
           ],
         },
       ],
-      stopWhen: stepCountIs(6),
+      stopWhen: stepCountIs(30),
       writable: new WritableStream({ write() {} }),
       prepareStep: () => {
         if (stopState?.current) return { toolChoice: "none" };

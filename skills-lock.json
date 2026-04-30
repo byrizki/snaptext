@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "humanizer": {
+      "source": "zed-industries/zed",
+      "sourceType": "github",
+      "skillPath": ".factory/skills/humanizer/SKILL.md",
+      "computedHash": "421a3d9577f6bb31f61d2aa0d083d36a648fa687a4545c0e4d5bf349c07ad572"
+    },
+    "prompt-engineering-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/llm-application-dev/skills/prompt-engineering-patterns/SKILL.md",
+      "computedHash": "4a8810c06525c95fd9370fdb3311d969fc89a53a196fe500b5b4f8529b21c9a7"
+    },
     "toon-format": {
       "source": "aradotso/trending-skills",
       "sourceType": "github",

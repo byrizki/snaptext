@@ -50,6 +50,10 @@ export async function ocrWorkflow(
       ? schemaToToonModule.jsonSchemaToToon(JSON.parse(job.jsonSchema))
       : undefined;
 
+    console.log("================== toon schema template ==================")
+    console.log(toonSchemaTemplate)
+    console.log("================== toon schema template ==================")
+
     let pageImages = await dbGetExistingPages(jobId);
 
     if (pageImages.length === 0 || !pageImages.every((p) => p.pageBlobUrl)) {
