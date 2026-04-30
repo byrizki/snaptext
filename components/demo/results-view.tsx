@@ -32,6 +32,159 @@ function JsonViewer({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function SchemaTreeViewer({ schema, required = [] }: { schema: any; required?: string[] }) {
+  if (!schema) return null;
+
+  if (schema.type === "object" && schema.properties) {
+    return (
+      <div className="flex flex-col gap-3 w-full">
+        {Object.entries(schema.properties).map(([key, prop]: [string, any]) => {
+          const isRequired = required.includes(key);
+          return (
+            <div key={key} className="flex flex-col gap-1.5 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-sm text-zinc-900 dark:text-white">{key}</span>
+                {isRequired && <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest bg-red-500/10 px-1.5 py-0.5 rounded-md">Required</span>}
+                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                  {prop.type || "any"}
+                </span>
+                {prop.format && (
+                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                    fmt: {prop.format}
+                  </span>
+                )}
+                {prop.enum && (
+                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                    enum: {prop.enum.join(" | ")}
+                  </span>
+                )}
+              </div>
+              {prop.description && (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
+                  {prop.description}
+                </p>
+              )}
+              {prop.type === "object" && prop.properties && (
+                <div className="mt-3 pl-4 border-l-2 border-zinc-200 dark:border-zinc-800">
+                  <SchemaTreeViewer schema={prop} required={prop.required || []} />
+                </div>
+              )}
+              {prop.type === "array" && prop.items && (
+                <div className="mt-3 pl-4 border-l-2 border-zinc-200 dark:border-zinc-800">
+                  <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Array Items Schema:</div>
+                  <SchemaTreeViewer schema={prop.items} required={prop.items.required || []} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-xs">
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+          {schema.type || "any"}
+        </span>
+      </div>
+      {schema.description && (
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+          {schema.description}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SchemaViewer({ schema }: { schema: string }) {
+  const [isCopied, setIsCopied] = useState(false);
+  const [viewMode, setViewMode] = useState<"ui" | "raw">("ui");
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(schema);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy schema", err);
+    }
+  };
+
+  let parsedSchema: any = null;
+  let formattedSchema = schema;
+  try {
+    parsedSchema = JSON.parse(schema);
+    formattedSchema = JSON.stringify(parsedSchema, null, 2);
+  } catch {
+    // Keep raw
+  }
+
+  return (
+    <div className="relative w-full h-full flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">
+          Expected Data Structure
+        </h4>
+        <div className="flex items-center gap-2">
+          {parsedSchema && (
+            <div className="flex items-center p-0.5 bg-zinc-100 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+              <button
+                onClick={() => setViewMode("ui")}
+                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider ${
+                  viewMode === "ui"
+                    ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                }`}
+              >
+                UI View
+              </button>
+              <button
+                onClick={() => setViewMode("raw")}
+                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider ${
+                  viewMode === "raw"
+                    ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                }`}
+              >
+                Raw
+              </button>
+            </div>
+          )}
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors shadow-sm"
+          >
+            {isCopied ? (
+              <HugeiconsIcon icon={Tick01Icon} size={14} className="text-emerald-500" />
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" className="size-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+            {isCopied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto">
+        {viewMode === "raw" || !parsedSchema ? (
+          <pre className="font-mono text-sm text-amber-600 dark:text-amber-400 leading-relaxed overflow-x-auto whitespace-pre-wrap p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50">
+            {formattedSchema}
+          </pre>
+        ) : (
+          <div className="pb-4">
+            <SchemaTreeViewer schema={parsedSchema} required={parsedSchema.required || []} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StatBadge({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex flex-col items-center justify-center gap-0.5 px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800">
@@ -168,7 +321,7 @@ function StructuredViewer({ data, depth = 0 }: { data: any; depth?: number }) {
 }
 
 export function ResultsView({ result, onReset }: ResultsViewProps) {
-  const [activeTab, setActiveTab] = useState<"structured" | "json">("structured");
+  const [activeTab, setActiveTab] = useState<"structured" | "json" | "schema">("structured");
   const [isCopied, setIsCopied] = useState(false);
   
   const handleShare = async (e?: React.MouseEvent) => {
@@ -253,26 +406,31 @@ export function ResultsView({ result, onReset }: ResultsViewProps) {
             </h4>
           </div>
           <div className="flex items-center p-0.5 bg-zinc-100 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-            {(["structured", "json"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all capitalize ${
-                  activeTab === tab
-                    ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm"
-                    : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
-                }`}
-              >
-                {tab === "json" ? "Raw JSON" : tab}
-              </button>
-            ))}
+            {(["structured", "json", "schema"] as const).map((tab) => {
+              if (tab === "schema" && !result.schema) return null;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all capitalize ${
+                    activeTab === tab
+                      ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  {tab === "json" ? "Raw JSON" : tab}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-5">
           {activeTab === "structured" ? (
             <StructuredViewer data={displayData} />
-          ) : (
+          ) : activeTab === "json" ? (
             <JsonViewer data={displayData} />
+          ) : (
+            <SchemaViewer schema={result.schema || ""} />
           )}
         </div>
       </div>

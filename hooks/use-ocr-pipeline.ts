@@ -19,6 +19,7 @@ export interface OcrResult {
   createdAt?: string;
   updatedAt?: string;
   hasSchema?: boolean;
+  schema?: string;
   filename?: string;
 }
 
@@ -89,6 +90,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
             createdAt: string;
             updatedAt: string;
             hasSchema: boolean;
+            schema?: string;
             modelName?: string;
           };
           data: Record<string, unknown> | null;
@@ -105,6 +107,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
           createdAt: json.metadata.createdAt,
           updatedAt: json.metadata.updatedAt,
           hasSchema: json.metadata.hasSchema,
+          schema: json.metadata.schema,
           filename: json.filename,
           modelName: json.metadata.modelName,
         };

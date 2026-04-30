@@ -191,6 +191,7 @@ export async function GET(
       createdAt: job?.createdAt,
       updatedAt: job?.updatedAt,
       hasSchema: !!job?.jsonSchema,
+      schema: job?.jsonSchema,
       modelName: ocrModelName ?? processedPages[0]?.model ?? null,
       metrics: {
         extractedPages: extractedPages.length,
