@@ -16,6 +16,7 @@ export default function JobRunPage() {
   const {
     status,
     uploadProgress,
+    uploadPhase,
     runId,
     result,
     error,
@@ -67,6 +68,7 @@ export default function JobRunPage() {
               <DemoActiveWorkspace
                 status={status}
                 uploadProgress={uploadProgress}
+                uploadPhase={uploadPhase}
                 runId={runId || id}
                 result={result}
                 error={error}

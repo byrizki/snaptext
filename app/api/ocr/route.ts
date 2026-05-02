@@ -1,113 +1,98 @@
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 
 import { getDb, jobs } from "@/db";
 import { eq } from "drizzle-orm";
 import { ocrWorkflow } from "@/app/workflows/ocr";
-import { createHash } from "crypto";
-import { checkQuota, QuotaExceededError } from "@/lib/quota";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
 export const maxDuration = 60;
 
+/**
+ * Create an OCR job after the client has uploaded the PDF directly to
+ * Vercel Blob Storage.
+ *
+ * Request body (JSON):
+ *   - pdfUrl:       string        – public blob URL returned after client upload
+ *   - filename:     string        – original filename
+ *   - fileSize:     number        – size in bytes
+ *   - fileHash:     string        – SHA-256 hex (client-computed)
+ *   - ocrModelId?:  string | null
+ *   - jsonSchema?:  string | null
+ */
 export async function POST(request: Request): Promise<NextResponse> {
-  const formData = await request.formData();
-  const file = formData.get("file");
-  const ocrModelId = formData.get("ocrModelId") as string | null;
-  const jsonSchema = formData.get("jsonSchema") as string | null;
+	const body = await request.json();
+	const { pdfUrl, filename, fileSize, fileHash, ocrModelId, jsonSchema } =
+		body as {
+			pdfUrl?: string;
+			filename?: string;
+			fileSize?: number;
+			fileHash?: string;
+			ocrModelId?: string | null;
+			jsonSchema?: string | null;
+		};
 
-  if (!file || !(file instanceof File)) {
-    return NextResponse.json(
-      { error: "No file provided. Send a PDF as multipart/form-data field named 'file'." },
-      { status: 400 }
-    );
-  }
+	if (!pdfUrl || !filename || !fileSize || !fileHash) {
+		return NextResponse.json(
+			{
+				error: "Missing required fields: pdfUrl, filename, fileSize, fileHash",
+			},
+			{ status: 400 },
+		);
+	}
 
-  if (file.type !== "application/pdf") {
-    return NextResponse.json(
-      { error: "Only PDF files are supported." },
-      { status: 400 }
-    );
-  }
+	const session = await auth.api.getSession({ headers: await headers() });
+	const userId = session?.user?.id ?? null;
 
-  if (file.size > 20 * 1024 * 1024) {
-    return NextResponse.json(
-      { error: "File size exceeds the 20MB limit." },
-      { status: 400 }
-    );
-  }
+	const db = getDb();
 
-  const session = await auth.api.getSession({ headers: await headers() });
-  const userId = session?.user?.id ?? null;
-  const userRole = session?.user?.role ?? null;
+	// Dedup: file already has an active job
+	const [activeJob] = await db
+		.select()
+		.from(jobs)
+		.where(eq(jobs.fileHash, fileHash))
+		.limit(1);
 
-  try {
-    await checkQuota(userId, ocrModelId, userRole);
-  } catch (err) {
-    if (err instanceof QuotaExceededError) {
-      return NextResponse.json({ error: err.message }, { status: 429 });
-    }
-    throw err;
-  }
+	if (
+		activeJob &&
+		(activeJob.status === "pending" || activeJob.status === "running")
+	) {
+		return NextResponse.json({
+			jobId: activeJob.id,
+			runId: activeJob.workflowRunId ?? "",
+			pdfUrl: activeJob.pdfBlobUrl,
+			deduplicated: true,
+		});
+	}
 
-  const fileBuffer = await file.arrayBuffer();
-  const fileHash = createHash("sha256").update(Buffer.from(fileBuffer)).digest("hex");
+	// Reuse existing blob URL for previously-uploaded identical files
+	const pdfBlobUrl = activeJob?.pdfBlobUrl ?? pdfUrl;
 
-  const db = getDb();
+	const [job] = await db
+		.insert(jobs)
+		.values({
+			filename,
+			fileSize,
+			fileHash,
+			pdfBlobUrl,
+			userId,
+			ocrModelId: ocrModelId || null,
+			jsonSchema: jsonSchema || null,
+			status: "pending",
+		})
+		.returning({ id: jobs.id });
 
-  const [activeJob] = await db
-    .select()
-    .from(jobs)
-    .where(eq(jobs.fileHash, fileHash))
-    .limit(1);
+	const run = await start(ocrWorkflow, [job.id, pdfBlobUrl, userId]);
 
-  if (activeJob && (activeJob.status === "pending" || activeJob.status === "running")) {
-    return NextResponse.json({
-      jobId: activeJob.id,
-      runId: activeJob.workflowRunId ?? "",
-      pdfUrl: activeJob.pdfBlobUrl,
-      deduplicated: true,
-    });
-  }
+	await db
+		.update(jobs)
+		.set({ workflowRunId: run.runId })
+		.where(eq(jobs.id, job.id));
 
-  let pdfBlobUrl = "";
-  if (activeJob) {
-    pdfBlobUrl = activeJob.pdfBlobUrl;
-  } else {
-    const uploadResult = await put(
-      `uploads/${fileHash}.pdf`,
-      fileBuffer,
-      { access: "public", contentType: "application/pdf" }
-    );
-    pdfBlobUrl = uploadResult.url;
-  }
-
-  const [job] = await db
-    .insert(jobs)
-    .values({
-      filename: file.name,
-      fileSize: file.size,
-      fileHash,
-      pdfBlobUrl,
-      userId,
-      ocrModelId: ocrModelId || null,
-      jsonSchema: jsonSchema || null,
-      status: "pending",
-    })
-    .returning({ id: jobs.id });
-
-  const run = await start(ocrWorkflow, [job.id, pdfBlobUrl, userId]);
-
-  await db
-    .update(jobs)
-    .set({ workflowRunId: run.runId })
-    .where(eq(jobs.id, job.id));
-
-  return NextResponse.json({
-    jobId: job.id,
-    runId: run.runId,
-    pdfUrl: pdfBlobUrl,
-  });
+	return NextResponse.json({
+		jobId: job.id,
+		runId: run.runId,
+		pdfUrl: pdfBlobUrl,
+	});
 }

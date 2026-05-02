@@ -1,292 +1,405 @@
 import { useCallback, useRef, useState } from "react";
+import { put } from "@vercel/blob/client";
 
-export type OcrStatus = "idle" | "uploading" | "scanning" | "completed" | "error";
+export type OcrStatus =
+	| "idle"
+	| "uploading"
+	| "scanning"
+	| "completed"
+	| "error";
 
 export interface OcrPageResult {
-  pageNumber: number;
-  rawToon: string;
-  data: Record<string, unknown>;
+	pageNumber: number;
+	rawToon: string;
+	data: Record<string, unknown>;
 }
 
 export interface OcrResult {
-  runId: string;
-  pdfUrl: string;
-  totalPages: number;
-  completedPages: number;
-  pages: OcrPageResult[];
-  merged: Record<string, unknown>;
-  modelName?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  hasSchema?: boolean;
-  schema?: string;
-  filename?: string;
+	runId: string;
+	pdfUrl: string;
+	totalPages: number;
+	completedPages: number;
+	pages: OcrPageResult[];
+	merged: Record<string, unknown>;
+	modelName?: string;
+	createdAt?: string;
+	updatedAt?: string;
+	hasSchema?: boolean;
+	schema?: string;
+	filename?: string;
 }
 
 export interface UseOcrPipelineReturn {
-  status: OcrStatus;
-  uploadProgress: number;
-  runId: string | null;
-  result: OcrResult | null;
-  error: string | null;
-  currentFile: File | null;
-  startOcr: (file: File, ocrModelId?: string, jsonSchema?: string) => Promise<void>;
-  rerunOcr: (jobId: string, filename: string) => Promise<void>;
-  viewJob: (jobId: string, filename: string) => Promise<void>;
-  stopJob: (runId: string) => Promise<void>;
-  reset: () => void;
+	status: OcrStatus;
+	uploadProgress: number;
+	uploadPhase: UploadPhase;
+	runId: string | null;
+	result: OcrResult | null;
+	error: string | null;
+	currentFile: File | null;
+	startOcr: (
+		file: File,
+		ocrModelId?: string,
+		jsonSchema?: string,
+	) => Promise<void>;
+	rerunOcr: (jobId: string, filename: string) => Promise<void>;
+	viewJob: (jobId: string, filename: string) => Promise<void>;
+	stopJob: (runId: string) => Promise<void>;
+	reset: () => void;
 }
 
 const POLL_INTERVAL_MS = 2500;
 const MAX_POLL_ATTEMPTS = 120;
 
+export type UploadPhase = "hashing" | "uploading";
+
+/** Spawn a web worker to compute SHA-256 off the main thread */
+function hashViaWorker(buffer: ArrayBuffer): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const worker = new Worker(new URL("./hash.worker.ts", import.meta.url), {
+			type: "module",
+		});
+		worker.onmessage = (e: MessageEvent<string>) => {
+			resolve(e.data);
+			worker.terminate();
+		};
+		worker.onerror = () => {
+			reject(new Error("Hash worker failed"));
+			worker.terminate();
+		};
+		worker.postMessage(buffer);
+	});
+}
+
 export function useOcrPipeline(): UseOcrPipelineReturn {
-  const [status, setStatus] = useState<OcrStatus>("idle");
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [runId, setRunId] = useState<string | null>(null);
-  const [result, setResult] = useState<OcrResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [currentFile, setCurrentFile] = useState<File | null>(null);
+	const [status, setStatus] = useState<OcrStatus>("idle");
+	const [uploadProgress, setUploadProgress] = useState(0);
+	const [uploadPhase, setUploadPhase] = useState<UploadPhase>("hashing");
+	const [runId, setRunId] = useState<string | null>(null);
+	const [result, setResult] = useState<OcrResult | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [currentFile, setCurrentFile] = useState<File | null>(null);
 
-  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastStatusRef = useRef<string | null>(null);
-  const currentIntervalRef = useRef<number>(POLL_INTERVAL_MS);
+	const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const lastStatusRef = useRef<string | null>(null);
+	const currentIntervalRef = useRef<number>(POLL_INTERVAL_MS);
 
-  const clearPollTimer = useCallback(() => {
-    if (pollTimerRef.current) {
-      clearTimeout(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-    lastStatusRef.current = null;
-    currentIntervalRef.current = POLL_INTERVAL_MS;
-  }, []);
+	const clearPollTimer = useCallback(() => {
+		if (pollTimerRef.current) {
+			clearTimeout(pollTimerRef.current);
+			pollTimerRef.current = null;
+		}
+		lastStatusRef.current = null;
+		currentIntervalRef.current = POLL_INTERVAL_MS;
+	}, []);
 
-  const getViewParam = useCallback(() => {
-    return typeof window !== "undefined" && window.location.pathname.startsWith("/dashboard")
-      ? ""
-      : "?view=demo";
-  }, []);
+	const getViewParam = useCallback(() => {
+		return typeof window !== "undefined" &&
+			window.location.pathname.startsWith("/dashboard")
+			? ""
+			: "?view=demo";
+	}, []);
 
-  const pollStatus = useCallback(
-    async function poll(id: string, attempt = 0) {
-      if (attempt >= MAX_POLL_ATTEMPTS) {
-        setStatus("error");
-        setError("OCR timed out. The document may be too large or complex.");
-        return;
-      }
+	const pollStatus = useCallback(
+		async function poll(id: string, attempt = 0) {
+			if (attempt >= MAX_POLL_ATTEMPTS) {
+				setStatus("error");
+				setError("OCR timed out. The document may be too large or complex.");
+				return;
+			}
 
-      try {
-        const viewParam = getViewParam();
-        const response = await fetch(`/api/ocr/${id}${viewParam}`);
-        const json = (await response.json()) as {
-          id: string;
-          runId: string;
-          status: string;
-          filename: string;
-          metadata: {
-            totalPages: number;
-            completedPages: number;
-            pdfUrl: string;
-            createdAt: string;
-            updatedAt: string;
-            hasSchema: boolean;
-            schema?: string;
-            modelName?: string;
-          };
-          data: Record<string, unknown> | null;
-          error: string | null;
-        };
+			try {
+				const viewParam = getViewParam();
+				const response = await fetch(`/api/ocr/${id}${viewParam}`);
+				const json = (await response.json()) as {
+					id: string;
+					runId: string;
+					status: string;
+					filename: string;
+					metadata: {
+						totalPages: number;
+						completedPages: number;
+						pdfUrl: string;
+						createdAt: string;
+						updatedAt: string;
+						hasSchema: boolean;
+						schema?: string;
+						modelName?: string;
+					};
+					data: Record<string, unknown> | null;
+					error: string | null;
+				};
 
-        const mappedResult: OcrResult = {
-          runId: json.runId || json.id,
-          pdfUrl: json.metadata.pdfUrl,
-          totalPages: json.metadata.totalPages ?? 0,
-          completedPages: json.metadata.completedPages ?? 0,
-          pages: [],
-          merged: json.data ?? {},
-          createdAt: json.metadata.createdAt,
-          updatedAt: json.metadata.updatedAt,
-          hasSchema: json.metadata.hasSchema,
-          schema: json.metadata.schema,
-          filename: json.filename,
-          modelName: json.metadata.modelName,
-        };
-        setResult(mappedResult);
+				const mappedResult: OcrResult = {
+					runId: json.runId || json.id,
+					pdfUrl: json.metadata.pdfUrl,
+					totalPages: json.metadata.totalPages ?? 0,
+					completedPages: json.metadata.completedPages ?? 0,
+					pages: [],
+					merged: json.data ?? {},
+					createdAt: json.metadata.createdAt,
+					updatedAt: json.metadata.updatedAt,
+					hasSchema: json.metadata.hasSchema,
+					schema: json.metadata.schema,
+					filename: json.filename,
+					modelName: json.metadata.modelName,
+				};
+				setResult(mappedResult);
 
-        if (json.status === "completed") {
-          const mergedData = json.data || {};
-          const hasEmptyFlag = mergedData.empty === true;
-          const dataKeys = Object.keys(mergedData).filter(k => k !== 'document_metadata');
-          
-          if (hasEmptyFlag || dataKeys.length === 0) {
-            setStatus("error");
-            setError("No readable data could be extracted from this document.");
-            return;
-          }
+				if (json.status === "completed") {
+					const mergedData = json.data || {};
+					const hasEmptyFlag = mergedData.empty === true;
+					const dataKeys = Object.keys(mergedData).filter(
+						(k) => k !== "document_metadata",
+					);
 
-          setStatus("completed");
-          return;
-        }
+					if (hasEmptyFlag || dataKeys.length === 0) {
+						setStatus("error");
+						setError("No readable data could be extracted from this document.");
+						return;
+					}
 
-        if (json.status === "failed" || json.status === "cancelled") {
-          setStatus("error");
-          setError(json.error ?? "Workflow failed unexpectedly.");
-          return;
-        }
+					setStatus("completed");
+					return;
+				}
 
-        // Fingerprint to detect progress: status + presence of result + completed pages
-        const currentFingerprint = `${json.status}-${!!json.data}-${json.metadata.completedPages}`;
+				if (json.status === "failed" || json.status === "cancelled") {
+					setStatus("error");
+					setError(json.error ?? "Workflow failed unexpectedly.");
+					return;
+				}
 
-        // Defer with exponentially increasing timing when returning same status fingerprint
-        if (currentFingerprint === lastStatusRef.current) {
-          currentIntervalRef.current = Math.min(
-            currentIntervalRef.current * 1.5,
-            15000,
-          );
-        } else {
-          lastStatusRef.current = currentFingerprint;
-          currentIntervalRef.current = POLL_INTERVAL_MS;
-        }
+				// Fingerprint to detect progress: status + presence of result + completed pages
+				const currentFingerprint = `${json.status}-${!!json.data}-${json.metadata.completedPages}`;
 
-        pollTimerRef.current = setTimeout(
-          () => void poll(id, attempt + 1),
-          currentIntervalRef.current,
-        );
-      } catch {
-        pollTimerRef.current = setTimeout(
-          () => void poll(id, attempt + 1),
-          POLL_INTERVAL_MS,
-        );
-      }
-    },
-    [getViewParam],
-  );
+				// Defer with exponentially increasing timing when returning same status fingerprint
+				if (currentFingerprint === lastStatusRef.current) {
+					currentIntervalRef.current = Math.min(
+						currentIntervalRef.current * 1.5,
+						15000,
+					);
+				} else {
+					lastStatusRef.current = currentFingerprint;
+					currentIntervalRef.current = POLL_INTERVAL_MS;
+				}
 
-  const startOcr = useCallback(
-    async (file: File, ocrModelId?: string, jsonSchema?: string) => {
-      clearPollTimer();
-      setStatus("uploading");
-      setUploadProgress(0);
-      setRunId(null);
-      setResult(null);
-      setError(null);
-      setCurrentFile(file);
+				pollTimerRef.current = setTimeout(
+					() => void poll(id, attempt + 1),
+					currentIntervalRef.current,
+				);
+			} catch {
+				pollTimerRef.current = setTimeout(
+					() => void poll(id, attempt + 1),
+					POLL_INTERVAL_MS,
+				);
+			}
+		},
+		[getViewParam],
+	);
 
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => Math.min(prev + 8, 90));
-      }, 80);
+	const startOcr = useCallback(
+		async (file: File, ocrModelId?: string, jsonSchema?: string) => {
+			clearPollTimer();
+			setStatus("uploading");
+			setUploadProgress(0);
+			setRunId(null);
+			setResult(null);
+			setError(null);
+			setCurrentFile(file);
 
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        if (ocrModelId) formData.append("ocrModelId", ocrModelId);
-        if (jsonSchema) formData.append("jsonSchema", jsonSchema);
+			try {
+				// --- Step 1: hash file in web worker ---
+			setUploadPhase("hashing");
+				const fileBuffer = await file.arrayBuffer();
+				const fileHash = await hashViaWorker(fileBuffer);
 
-        const response = await fetch("/api/ocr", {
-          method: "POST",
-          body: formData,
-        });
+				// --- Step 2: request signed upload URL from server ---
+				const uploadUrlRes = await fetch("/api/ocr/upload-url", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						filename: file.name,
+						fileSize: file.size,
+						fileHash,
+						ocrModelId: ocrModelId ?? null,
+						jsonSchema: jsonSchema ?? null,
+					}),
+				});
 
-        clearInterval(progressInterval);
-        setUploadProgress(100);
+				if (!uploadUrlRes.ok) {
+					const err = (await uploadUrlRes.json()) as { error?: string };
+					throw new Error(err.error ?? "Failed to obtain upload URL");
+				}
 
-        if (!response.ok) {
-          const err = await response.json() as { error?: string };
-          throw new Error(err.error ?? "Upload failed");
-        }
+				const uploadUrlData = (await uploadUrlRes.json()) as {
+					token?: string;
+					pathname?: string;
+					uploadUrl?: string;
+					deduplicated?: boolean;
+					jobId?: string;
+					runId?: string;
+					pdfUrl?: string;
+				};
 
-        const json = await response.json() as { jobId: string; runId: string };
-        const idToTrack = json.jobId || json.runId;
-        setRunId(idToTrack);
-        setStatus("scanning");
+				// If dedup hit, skip straight to polling
+				if (uploadUrlData.deduplicated) {
+					setUploadProgress(100);
+					const idToTrack = uploadUrlData.jobId || uploadUrlData.runId!;
+					setRunId(idToTrack);
+					setStatus("scanning");
+					await pollStatus(idToTrack);
+					return;
+				}
 
-        await pollStatus(idToTrack);
-      } catch (err) {
-        clearInterval(progressInterval);
-        setStatus("error");
-        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
-      }
-    },
-    [clearPollTimer, pollStatus, getViewParam]
-  );
+				// --- Step 3: upload file directly to Vercel Blob ---
+				const { token, pathname } = uploadUrlData;
 
-  const rerunOcr = useCallback(
-    async (jobId: string, filename: string) => {
-      clearPollTimer();
-      setStatus("scanning"); // Skip uploading phase
-      setUploadProgress(100);
-      setRunId(null);
-      setResult(null);
-      setError(null);
-      // We don't have the File object, but we can mock enough for the UI to display the name
-      setCurrentFile(new File([], filename));
+				setUploadPhase("uploading");
 
-      try {
-        const response = await fetch(`/api/ocr/${jobId}/rerun`, {
-          method: "POST",
-        });
+				const blobResult = await put(pathname!, file, {
+					access: "public",
+					token: token!,
+					contentType: "application/pdf",
+					onUploadProgress: (e) => {
+						setUploadProgress(e.percentage);
+					},
+				});
 
-        if (!response.ok) {
-          const err = await response.json() as { error?: string };
-          throw new Error(err.error ?? "Rerun failed");
-        }
+				const pdfUrl = blobResult.url;
 
-        const json = await response.json() as { jobId: string; runId: string };
-        const idToTrack = json.jobId || json.runId;
-        setRunId(idToTrack);
+				// --- Step 4: submit job ---
+				const jobRes = await fetch("/api/ocr", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						pdfUrl,
+						filename: file.name,
+						fileSize: file.size,
+						fileHash,
+						ocrModelId: ocrModelId ?? null,
+						jsonSchema: jsonSchema ?? null,
+					}),
+				});
 
-        await pollStatus(idToTrack);
-      } catch (err) {
-        setStatus("error");
-        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
-      }
-    },
-    [clearPollTimer, pollStatus, getViewParam]
-  );
+				if (!jobRes.ok) {
+					const err = (await jobRes.json()) as { error?: string };
+					throw new Error(err.error ?? "Failed to create OCR job");
+				}
 
-  const viewJob = useCallback(
-    async (jobId: string, filename: string) => {
-      clearPollTimer();
-      setStatus("scanning"); // Show loading UI while fetching
-      setUploadProgress(100);
-      setRunId(jobId);
-      setResult(null);
-      setError(null);
-      setCurrentFile(new File([], filename));
+				const jobData = (await jobRes.json()) as {
+					jobId: string;
+					runId: string;
+				};
+				const idToTrack = jobData.jobId || jobData.runId;
+				setRunId(idToTrack);
+				setStatus("scanning");
 
-      await pollStatus(jobId);
-    },
-    [clearPollTimer, pollStatus]
-  );
+				await pollStatus(idToTrack);
+			} catch (err) {
+				setStatus("error");
+				setError(
+					err instanceof Error ? err.message : "An unexpected error occurred.",
+				);
+			}
+		},
+		[clearPollTimer, pollStatus, getViewParam],
+	);
 
-  const stopJob = useCallback(
-    async (jobId: string) => {
-      clearPollTimer();
-      try {
-        await fetch(`/api/ocr/${jobId}/stop`, {
-          method: "POST",
-        });
-      } catch (err) {
-        console.error("Failed to stop job:", err);
-      }
-      setStatus("idle");
-      setRunId(null);
-      setResult(null);
-      setError(null);
-      setCurrentFile(null);
-    },
-    [clearPollTimer, getViewParam],
-  );
+	const rerunOcr = useCallback(
+		async (jobId: string, filename: string) => {
+			clearPollTimer();
+			setStatus("scanning"); // Skip uploading phase
+			setUploadProgress(100);
+			setRunId(null);
+			setResult(null);
+			setError(null);
+			// We don't have the File object, but we can mock enough for the UI to display the name
+			setCurrentFile(new File([], filename));
 
-  const reset = useCallback(() => {
-    clearPollTimer();
-    setStatus("idle");
-    setUploadProgress(0);
-    setRunId(null);
-    setResult(null);
-    setError(null);
-    setCurrentFile(null);
-  }, [clearPollTimer]);
+			try {
+				const response = await fetch(`/api/ocr/${jobId}/rerun`, {
+					method: "POST",
+				});
 
-  return { status, uploadProgress, runId, result, error, currentFile, startOcr, rerunOcr, viewJob, stopJob, reset };
+				if (!response.ok) {
+					const err = (await response.json()) as { error?: string };
+					throw new Error(err.error ?? "Rerun failed");
+				}
+
+				const json = (await response.json()) as {
+					jobId: string;
+					runId: string;
+				};
+				const idToTrack = json.jobId || json.runId;
+				setRunId(idToTrack);
+
+				await pollStatus(idToTrack);
+			} catch (err) {
+				setStatus("error");
+				setError(
+					err instanceof Error ? err.message : "An unexpected error occurred.",
+				);
+			}
+		},
+		[clearPollTimer, pollStatus, getViewParam],
+	);
+
+	const viewJob = useCallback(
+		async (jobId: string, filename: string) => {
+			clearPollTimer();
+			setStatus("scanning"); // Show loading UI while fetching
+			setUploadProgress(100);
+			setRunId(jobId);
+			setResult(null);
+			setError(null);
+			setCurrentFile(new File([], filename));
+
+			await pollStatus(jobId);
+		},
+		[clearPollTimer, pollStatus],
+	);
+
+	const stopJob = useCallback(
+		async (jobId: string) => {
+			clearPollTimer();
+			try {
+				await fetch(`/api/ocr/${jobId}/stop`, {
+					method: "POST",
+				});
+			} catch (err) {
+				console.error("Failed to stop job:", err);
+			}
+			setStatus("idle");
+			setRunId(null);
+			setResult(null);
+			setError(null);
+			setCurrentFile(null);
+		},
+		[clearPollTimer, getViewParam],
+	);
+
+	const reset = useCallback(() => {
+		clearPollTimer();
+		setStatus("idle");
+		setUploadProgress(0);
+		setRunId(null);
+		setResult(null);
+		setError(null);
+		setCurrentFile(null);
+	}, [clearPollTimer]);
+
+	return {
+		status,
+		uploadProgress,
+		uploadPhase,
+		runId,
+		result,
+		error,
+		currentFile,
+		startOcr,
+		rerunOcr,
+		viewJob,
+		stopJob,
+		reset,
+	};
 }

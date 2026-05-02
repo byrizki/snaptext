@@ -73,6 +73,8 @@ export async function GET(
     let totalTokens = 0;
     let cost = 0;
 
+    const pageMetrics = new Map<string, { promptTokens: number, completionTokens: number, totalTokens: number, cost: number }>();
+
     for (const log of logs) {
       promptTokens += log.promptTokens;
       completionTokens += log.completionTokens;
@@ -82,8 +84,18 @@ export async function GET(
         ?? VERCEL_AI_GATEWAY_PRICING[jobData.modelId as keyof typeof VERCEL_AI_GATEWAY_PRICING]
         ?? { input: 0, output: 0 };
       
-      cost += log.promptTokens * (pricing.input / 1_000_000);
-      cost += log.completionTokens * (pricing.output / 1_000_000);
+      const logCost = (log.promptTokens * (pricing.input / 1_000_000)) + (log.completionTokens * (pricing.output / 1_000_000));
+      cost += logCost;
+
+      if (log.jobPageId) {
+        const existing = pageMetrics.get(log.jobPageId) || { promptTokens: 0, completionTokens: 0, totalTokens: 0, cost: 0 };
+        pageMetrics.set(log.jobPageId, {
+          promptTokens: existing.promptTokens + log.promptTokens,
+          completionTokens: existing.completionTokens + log.completionTokens,
+          totalTokens: existing.totalTokens + log.totalTokens,
+          cost: existing.cost + logCost,
+        });
+      }
     }
 
     // Logic from app/api/ocr/[id]/route.ts
@@ -168,10 +180,17 @@ export async function GET(
               ),
           )
           .map((p) => {
+            const metrics = pageMetrics.get(p.id) || { promptTokens: 0, completionTokens: 0, totalTokens: 0, cost: 0 };
             const copy: any = { 
               pageNumber: p.pageNumber,
               model: p.model,
               createdAt: p.createdAt,
+              usage: {
+                promptTokens: metrics.promptTokens,
+                completionTokens: metrics.completionTokens,
+                totalTokens: metrics.totalTokens,
+              },
+              cost: metrics.cost,
               ...(p.parsedData || {}) 
             };
             delete copy.empty;

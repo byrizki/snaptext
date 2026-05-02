@@ -15,6 +15,7 @@ export default function DemoPage() {
   const {
     status,
     uploadProgress,
+    uploadPhase,
     runId,
     result,
     error,
@@ -73,6 +74,7 @@ export default function DemoPage() {
               <DemoActiveWorkspace
                 status={status}
                 uploadProgress={uploadProgress}
+                uploadPhase={uploadPhase}
                 runId={runId}
                 result={result}
                 error={error}

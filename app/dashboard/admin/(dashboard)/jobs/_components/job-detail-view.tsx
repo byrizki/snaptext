@@ -147,6 +147,23 @@ function PageCollapsible({ page }: { page: any }) {
           </div>
           <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">Page {page.pageNumber}</span>
           <Badge variant="secondary" className="text-[9px] font-mono py-0 h-5 opacity-70">{page.model}</Badge>
+
+          <div className="hidden sm:flex items-center gap-6 ml-auto mr-4">
+            <div className="flex flex-col items-end">
+              <span className="text-[8px] text-zinc-400 font-bold uppercase leading-none mb-1">In / Out Tokens</span>
+              <span className="text-[10px] font-mono font-bold text-zinc-500">
+                {(page.usage?.promptTokens || 0).toLocaleString()} <span className="text-zinc-300 dark:text-zinc-700">/</span> {(page.usage?.completionTokens || 0).toLocaleString()}
+              </span>
+            </div>
+            {page.cost !== undefined && (
+              <div className="flex flex-col items-end">
+                <span className="text-[8px] text-zinc-400 font-bold uppercase leading-none mb-1">Cost</span>
+                <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  ${page.cost.toFixed(4)}
+                </span>
+              </div>
+            )}
+          </div>
         </CollapsibleTrigger>
         
         <div className="flex items-center p-0.5 bg-zinc-200/50 dark:bg-zinc-900/50 rounded-lg border border-zinc-200/50 dark:border-zinc-800/50">
@@ -471,8 +488,13 @@ export function JobDetailView({ jobId }: JobDetailViewProps) {
                         <div className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 truncate">{log.stepName}</div>
                         <div className="text-[9px] text-zinc-400 truncate">{log.model}</div>
                       </div>
-                      <div className="text-[10px] font-black text-zinc-500 tabular-nums">
-                        {log.totalTokens?.toLocaleString()}
+                      <div className="text-right">
+                        <div className="text-[10px] font-black text-zinc-600 dark:text-zinc-300 tabular-nums mb-0.5">
+                          {log.totalTokens?.toLocaleString()}
+                        </div>
+                        <div className="text-[8px] text-zinc-400 font-mono">
+                          {log.promptTokens?.toLocaleString()} / {log.completionTokens?.toLocaleString()}
+                        </div>
                       </div>
                     </div>
                   ))}

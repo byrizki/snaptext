@@ -112,9 +112,9 @@ export async function runOcrOnPage(
       `[Step] runOcrOnPage started for jobId: ${jobId}, page: ${pageNumber} (attempt: ${attempt})`,
     );
 
-    const base64Image = await fetchImageBase64(pageBlobUrl);
-
     const modelId = ocrModelConfig?.modelId ?? OCR_VISION_MODEL;
+    const isInterfaze = modelId.includes("interfaze");
+    const base64Image = isInterfaze ? null : await fetchImageBase64(pageBlobUrl);
     const temperature = ocrModelConfig?.temperature;
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};
@@ -142,17 +142,24 @@ export async function runOcrOnPage(
       messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "file",
-              data: base64Image,
-              mediaType: "image/png",
-            },
-            {
-              type: "text",
-              text: `Extract all data from this document page (page ${pageNumber}) and output it in TOON format as instructed.`,
-            },
-          ],
+          content: isInterfaze
+            ? [
+                {
+                  type: "text",
+                  text: `[DOCUMENT_URL]: ${pageBlobUrl}\n\nExtract all data from this document page (page ${pageNumber}) and output it in TOON format as instructed.`,
+                },
+              ]
+            : [
+                {
+                  type: "file",
+                  data: base64Image!,
+                  mediaType: "image/png",
+                },
+                {
+                  type: "text",
+                  text: `Extract all data from this document page (page ${pageNumber}) and output it in TOON format as instructed.`,
+                },
+              ],
         },
       ],
       stopWhen: stepCountIs(1),
@@ -352,9 +359,9 @@ export async function repairOcrPage(
     console.log(
       `[Step] repairOcrPage started for jobId: ${jobId}, page: ${pageNumber} (attempt: ${attempt})`,
     );
-    const base64Image = await fetchImageBase64(pageBlobUrl);
-
     const modelId = "@vercel/google/gemini-2.5-flash-lite-preview-09-2025";
+    const isInterfaze = modelId.includes("interfaze");
+    const base64Image = isInterfaze ? null : await fetchImageBase64(pageBlobUrl);
     const temperature = ocrModelConfig?.temperature;
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};
@@ -395,38 +402,68 @@ export async function repairOcrPage(
       messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "file",
-              data: base64Image,
-              mediaType: "image/png",
-            },
-            {
-              type: "text",
-              text: [
-                `A TOON extraction failed validation. Your job is to fix it by patching the broken parts.`,
-                ``,
-                `ERROR: ${errorMsg}`,
-                ``,
-                `BROKEN TOON:`,
-                `\`\`\``,
-                brokenToon,
-                `\`\`\``,
-                ``,
-                `REPAIR INSTRUCTIONS:`,
-                `1. Read the error message carefully — it tells you the exact key, row, and expected vs actual column count.`,
-                `2. For a "column mismatch" error:`,
-                `   a. Count the headers declared in {…} for that key. That is the expected column count C.`,
-                `   b. Count the comma-separated values in the failing row (remember: quoted values like "a, b" count as ONE value).`,
-                `   c. If the row has too many values, look at the image to find which cell contains an unquoted comma and wrap it in double quotes.`,
-                `   d. If the header count is wrong, fix the {…} header list to match the actual image column count.`,
-                `3. For a "row count" error: count ALL rows in the image table and update [N] to the correct number.`,
-                `4. Call patch_toon with the minimal search string (1–2 lines). The search MUST exactly match the current TOON text.`,
-                `5. patch_toon will re-validate after each patch. Repeat until it returns success: true.`,
-                `6. Do NOT submit the same patch twice if it already failed — diagnose the next error instead.`,
-              ].join("\n"),
-            },
-          ],
+          content: isInterfaze
+            ? [
+                {
+                  type: "text",
+                  text: [
+                    `[DOCUMENT_URL]: ${pageBlobUrl}`,
+                    ``,
+                    `A TOON extraction failed validation. Your job is to fix it by patching the broken parts.`,
+                    ``,
+                    `ERROR: ${errorMsg}`,
+                    ``,
+                    `BROKEN TOON:`,
+                    `\`\`\``,
+                    brokenToon,
+                    `\`\`\``,
+                    ``,
+                    `REPAIR INSTRUCTIONS:`,
+                    `1. Read the error message carefully — it tells you the exact key, row, and expected vs actual column count.`,
+                    `2. For a "column mismatch" error:`,
+                    `   a. Count the headers declared in {…} for that key. That is the expected column count C.`,
+                    `   b. Count the comma-separated values in the failing row (remember: quoted values like "a, b" count as ONE value).`,
+                    `   c. If the row has too many values, look at the image to find which cell contains an unquoted comma and wrap it in double quotes.`,
+                    `   d. If the header count is wrong, fix the {…} header list to match the actual image column count.`,
+                    `3. For a "row count" error: count ALL rows in the image table and update [N] to the correct number.`,
+                    `4. Call patch_toon with the minimal search string (1–2 lines). The search MUST exactly match the current TOON text.`,
+                    `5. patch_toon will re-validate after each patch. Repeat until it returns success: true.`,
+                    `6. Do NOT submit the same patch twice if it already failed — diagnose the next error instead.`,
+                  ].join("\n"),
+                },
+              ]
+            : [
+                {
+                  type: "file",
+                  data: base64Image!,
+                  mediaType: "image/png",
+                },
+                {
+                  type: "text",
+                  text: [
+                    `A TOON extraction failed validation. Your job is to fix it by patching the broken parts.`,
+                    ``,
+                    `ERROR: ${errorMsg}`,
+                    ``,
+                    `BROKEN TOON:`,
+                    `\`\`\``,
+                    brokenToon,
+                    `\`\`\``,
+                    ``,
+                    `REPAIR INSTRUCTIONS:`,
+                    `1. Read the error message carefully — it tells you the exact key, row, and expected vs actual column count.`,
+                    `2. For a "column mismatch" error:`,
+                    `   a. Count the headers declared in {…} for that key. That is the expected column count C.`,
+                    `   b. Count the comma-separated values in the failing row (remember: quoted values like "a, b" count as ONE value).`,
+                    `   c. If the row has too many values, look at the image to find which cell contains an unquoted comma and wrap it in double quotes.`,
+                    `   d. If the header count is wrong, fix the {…} header list to match the actual image column count.`,
+                    `3. For a "row count" error: count ALL rows in the image table and update [N] to the correct number.`,
+                    `4. Call patch_toon with the minimal search string (1–2 lines). The search MUST exactly match the current TOON text.`,
+                    `5. patch_toon will re-validate after each patch. Repeat until it returns success: true.`,
+                    `6. Do NOT submit the same patch twice if it already failed — diagnose the next error instead.`,
+                  ].join("\n"),
+                },
+              ],
         },
       ],
       stopWhen: stepCountIs(30),
