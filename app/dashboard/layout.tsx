@@ -33,6 +33,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               New Scan
             </Link>
+            <Link
+              href="/dashboard/developer"
+              className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors"
+            >
+              Developer
+            </Link>
           </nav>
 
           <div className="flex items-center gap-3">

@@ -87,6 +87,19 @@ export function UserNav() {
               <p className="text-xs text-zinc-500 truncate">{session.user.email}</p>
             </div>
 
+            <div className="p-2 border-b border-zinc-100 dark:border-zinc-800">
+              <Link
+                href="/dashboard/developer"
+                onClick={() => setOpen(false)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors font-medium"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                Developer Portal
+              </Link>
+            </div>
+
             <div className="p-2">
               <button
                 id="user-nav-signout"

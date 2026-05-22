@@ -1,0 +1,121 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Snaptext Developer API",
+    "version": "1.0.0",
+    "description": "Snaptext OCR & Structured Document Extraction API. Power your apps with clean markdown/JSON layout results.\n\n## API Usage Flow\n\nHere is the recommended workflow to integrate Snaptext programmatically:\n\n### 1. Authentication\nInclude your API Key in the `Authorization` header for all requests:\n```http\nAuthorization: Bearer st-your_api_key\n```\n\n### 2. Submitting a Document\nYou have two ways to submit a PDF document for structured extraction:\n\n#### Option A: Submit via Public URL (Simplest)\nIf your PDF is already hosted on a public URL, submit it directly:\n* **Endpoint:** `POST /v1/jobs`\n* **Payload:**\n  ```json\n  {\n    \"pdfUrl\": \"https://example.com/document.pdf\",\n    \"filename\": \"document.pdf\",\n    \"fileSize\": 102450,\n    \"fileHash\": \"sha256_hash_of_file_here\",\n    \"ocrModelId\": \"Spark\"\n  }\n  ```\n\n#### Option B: Direct File Upload (Secure & Fast)\nIf the file is local, use secure pre-signed uploads:\n1. **Generate Upload URL:** Call `POST /v1/jobs/upload-url` with your file details.\n2. **Upload Binary:** Perform an HTTP PUT upload to the returned `uploadUrl` using the client `token` as authentication.\n3. **Submit Job:** Once uploaded, submit the job to `POST /v1/jobs` using the generated `pdfUrl` from step 1.\n\n### 3. Retrieve Extraction Results\nDocument processing runs asynchronously in the background. Periodically poll the job status:\n* **Endpoint:** `GET /v1/jobs/{id}` (supports either the UUID `jobId` or the `wrun_` run ID).\n* **States:** `pending` -> `running` -> `completed` (or `failed`).\n* **Output:** Once `completed`, the response will contain `data` (fully merged structured layout) and `pagesData` (individual page outputs).\n\n### 4. Cancel active tasks\n* To abort an active or pending extraction, call `POST /v1/jobs/{id}/cancel`."
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Format: Bearer st-<key>"
+      }
+    }
+  },
+  "defaultResponseSet": "common",
+  "responseSets": {
+    "common": [
+      "400",
+      "500"
+    ],
+    "auth": [
+      "400",
+      "401",
+      "403",
+      "500"
+    ],
+    "public": [
+      "400",
+      "500"
+    ]
+  },
+  "errorConfig": {
+    "template": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string",
+          "example": "{{ERROR_MESSAGE}}"
+        }
+      }
+    },
+    "codes": {
+      "400": {
+        "description": "Bad Request",
+        "variables": {
+          "ERROR_MESSAGE": "Invalid request parameters"
+        }
+      },
+      "401": {
+        "description": "Unauthorized",
+        "variables": {
+          "ERROR_MESSAGE": "Authentication required"
+        }
+      },
+      "403": {
+        "description": "Forbidden",
+        "variables": {
+          "ERROR_MESSAGE": "Access denied"
+        }
+      },
+      "404": {
+        "description": "Not Found",
+        "variables": {
+          "ERROR_MESSAGE": "Resource not found"
+        }
+      },
+      "429": {
+        "description": "Too Many Requests",
+        "variables": {
+          "ERROR_MESSAGE": "Quota exceeded"
+        }
+      },
+      "500": {
+        "description": "Internal Server Error",
+        "variables": {
+          "ERROR_MESSAGE": "An unexpected error occurred"
+        }
+      }
+    }
+  },
+  "schemaType": "zod",
+  "schemaFiles": [],
+  "docsUrl": "api-docs",
+  "ui": "scalar",
+  "outputFile": "openapi.json",
+  "outputDir": "./public",
+  "diagnostics": {
+    "enabled": true
+  },
+  "ignoreRoutes": [
+    "/admin/**",
+    "/auth/**",
+    "/dashboard/**",
+    "/models/**",
+    "/ocr/**"
+  ],
+  "debug": false,
+  "apiDir": "./app/api",
+  "routerType": "app",
+  "schemaDir": "./app/api/v1",
+  "framework": {
+    "kind": "nextjs",
+    "router": "app"
+  },
+  "next": {},
+  "includeOpenApiRoutes": true
+}

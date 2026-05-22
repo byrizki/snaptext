@@ -28,6 +28,8 @@ export const ocrModels = pgTable("ocr_models", {
   provider: text("provider").notNull().default("vercel"),
   modelId: text("model_id").notNull(),
   temperature: real("temperature").notNull().default(0.3),
+  inputPrice: real("input_price").notNull().default(0),
+  outputPrice: real("output_price").notNull().default(0),
   maxOutputTokens: integer("max_output_tokens").notNull().default(4096),
   config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -210,3 +212,27 @@ export const systemSettings = pgTable("system_settings", {
 
 export type SystemSettings = typeof systemSettings.$inferSelect;
 export type NewSystemSettings = typeof systemSettings.$inferInsert;
+
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    maskedKey: text("masked_key").notNull(), // e.g. "st-xxxx...abcd"
+    hashedKey: text("hashed_key").notNull().unique(), // sha256 hash of the full raw key
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("api_keys_user_id_idx").on(t.userId),
+    index("api_keys_hashed_key_idx").on(t.hashedKey),
+  ]
+);
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;
+

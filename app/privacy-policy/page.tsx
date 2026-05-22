@@ -62,7 +62,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-4">4. Data Storage and Security</h2>
               <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                Your documents are stored securely using Vercel Blob storage, and your account data is managed in an encrypted PostgreSQL database. 
+                Your documents are stored securely using encrypted cloud storage, and your account data is managed in an encrypted database. 
                 We use industry-standard security measures to protect your information, but please be aware that no method of transmission over the 
                 internet is 100% secure.
               </p>
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-6 space-y-2 text-zinc-600 dark:text-zinc-400">
                 <li><strong>Better Auth:</strong> For secure authentication and session management.</li>
                 <li><strong>Cloudflare AI:</strong> For processing document extraction via AI models.</li>
-                <li><strong>Vercel:</strong> For application hosting and blob storage.</li>
+                <li><strong>Hosting Providers:</strong> For application hosting and secure cloud storage.</li>
                 <li><strong>Neon:</strong> For our serverless PostgreSQL database.</li>
               </ul>
             </section>

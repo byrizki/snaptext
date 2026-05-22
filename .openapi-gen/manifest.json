@@ -1,0 +1,33 @@
+{
+  "configPath": "/mnt/development/snaptext/openapi-gen.config.json",
+  "outputFile": "/mnt/development/snaptext/public/openapi.json",
+  "diagnostics": [],
+  "performance": {
+    "prepareTemplateMs": 0.08617500000002565,
+    "loadCustomFragmentsMs": 0.0005419999999958236,
+    "prepareDocumentMs": 0.08671700000002147,
+    "scanRouteFilesMs": 1.475808000000029,
+    "deriveRoutePathMs": 0.27197200000006205,
+    "filterRouteCandidatesMs": 0.16064699999992627,
+    "sourcePrecheckMs": 0.43819000000002006,
+    "readRouteFilesMs": 0.13361800000006951,
+    "parseRouteFilesMs": 18.277295000000038,
+    "analyzeRouteFilesMs": 17.787349999999947,
+    "typescriptResponseInferenceMs": 0,
+    "processRouteFilesMs": 36.441821999999945,
+    "registerRouteMs": 164.12690900000007,
+    "getSchemaContentMs": 113.74547799999999,
+    "createRequestParamsMs": 0.3234599999998977,
+    "createRequestBodyMs": 0,
+    "processResponsesMs": 48.92822799999999,
+    "createResponseSchemaMs": 0,
+    "buildOperationsMs": 164.168519,
+    "sortAndMergePathsMs": 0.4963430000000244,
+    "buildPathsMs": 0.4963430000000244,
+    "defaultComponentsAndErrorsMs": 0.21040500000003703,
+    "mergeSchemasMs": 0.49696899999992183,
+    "finalizeDocumentMs": 2.2665920000000597,
+    "totalMs": 206.98269799999997,
+    "scanRoutesMs": 202.08614899999998
+  }
+}
