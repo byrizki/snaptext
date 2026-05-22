@@ -10,20 +10,20 @@ import { validateApiKey } from "@/lib/api-key";
 import { resolveModel } from "@/lib/model-resolution";
 
 export const CreateUploadUrlRequest = z.object({
-  filename: z.string().describe("Original name of the file to be uploaded"),
-  fileSize: z.number().int().positive().max(20 * 1024 * 1024).describe("File size in bytes (max 20MB)"),
-  fileHash: z.string().describe("SHA-256 hash of the file payload"),
-  ocrModelId: z.string().nullable().optional().describe("OCR Model Name (e.g., 'Flux', 'Spark', 'Zenith'), Model ID (e.g., 'google/gemini-3.1-flash-lite-preview'), or model UUID")
+  filename: z.string().describe("The original name of the PDF file to be uploaded."),
+  fileSize: z.number().int().positive().max(20 * 1024 * 1024).describe("The total size of the file in bytes (supports files up to 20MB)."),
+  fileHash: z.string().describe("A unique SHA-256 hash of the PDF file to identify duplicates before upload."),
+  ocrModelId: z.string().nullable().optional().describe("The OCR model identifier (friendly name, provider model ID, or database UUID) to pre-validate quota limits.")
 });
 
 export const CreateUploadUrlResponse = z.object({
-  token: z.string().optional().describe("Ephemeral client upload token for storage"),
-  pathname: z.string().optional().describe("Storage pathname destination"),
-  uploadUrl: z.url().optional().describe("Direct storage upload target URL"),
-  deduplicated: z.boolean().optional().describe("Indicates if an identical job is already processing"),
-  jobId: z.uuid().optional().describe("UUID of the existing job if deduplicated"),
-  runId: z.string().optional().describe("Workflow execution run ID if deduplicated"),
-  pdfUrl: z.url().optional().describe("Source URL of the existing job if deduplicated")
+  token: z.string().optional().describe("A temporary, secure client token to authorize direct binary upload to cloud storage."),
+  pathname: z.string().optional().describe("The target storage destination path generated for this upload."),
+  uploadUrl: z.url().optional().describe("The direct target URL where the file binary should be PUT."),
+  deduplicated: z.boolean().optional().describe("True if a job for an identical file is already in progress, indicating that no upload is required."),
+  jobId: z.uuid().optional().describe("The UUID of the existing active job if deduplicated."),
+  runId: z.string().optional().describe("The workflow execution run ID of the existing job if deduplicated."),
+  pdfUrl: z.url().optional().describe("The storage source URL of the existing job if deduplicated.")
 });
 
 export const maxDuration = 30;

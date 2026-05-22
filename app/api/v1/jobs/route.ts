@@ -12,25 +12,25 @@ import { resolveModel } from "@/lib/model-resolution";
 export const maxDuration = 60;
 
 export const CreateJobRequest = z.object({
-  pdfUrl: z.url().describe("Publicly accessible URL or pre-signed storage URL of the PDF"),
-  filename: z.string().describe("Original filename of the PDF"),
-  fileSize: z.number().int().positive().describe("File size in bytes"),
-  fileHash: z.string().describe("SHA-256 hash of the file to prevent duplicate runs"),
-  ocrModelId: z.string().nullable().optional().describe("OCR Model Name (e.g., 'Flux', 'Spark', 'Zenith'), Model ID (e.g., 'google/gemini-3.1-flash-lite-preview'), or model UUID"),
-  jsonSchema: z.union([z.string(), z.record(z.string(), z.any())]).nullable().optional().describe("Optional JSON Schema for custom structured extraction layout")
+  pdfUrl: z.url().describe("The direct public URL or secure storage URL of the PDF document to extract."),
+  filename: z.string().describe("The original name of the PDF file (e.g., document.pdf)."),
+  fileSize: z.number().int().positive().describe("The total size of the PDF file in bytes."),
+  fileHash: z.string().describe("A unique SHA-256 hash of the PDF file. This is used to automatically prevent duplicate processing runs."),
+  ocrModelId: z.string().nullable().optional().describe("Specify the OCR model using a friendly name (e.g., 'Flux', 'Spark', 'Zenith'), a provider model ID (e.g., 'google/gemini-3.1-flash-lite-preview'), or a model UUID."),
+  jsonSchema: z.union([z.string(), z.record(z.string(), z.any())]).nullable().optional().describe("An optional JSON Schema to enforce custom structured layout or schema extraction during OCR processing.")
 });
 
 export const JobSubmissionResponse = z.object({
-  jobId: z.uuid().describe("Unique identifier of the submitted job"),
-  runId: z.string().describe("Underlying workflow execution run ID"),
-  pdfUrl: z.url().describe("Validated storage/source URL of the PDF"),
-  status: z.string().describe("Status of the job, defaults to pending"),
-  deduplicated: z.boolean().optional().describe("Indicates if an active job was reused")
+  jobId: z.uuid().describe("The unique UUID of the newly created OCR job."),
+  runId: z.string().describe("The underlying execution run ID of the OCR workflow."),
+  pdfUrl: z.url().describe("The verified public or secure storage URL of the processed PDF."),
+  status: z.string().describe("The current processing status of the job (typically starting as 'pending')."),
+  deduplicated: z.boolean().optional().describe("True if an identical file was already being processed and this request reused that active job.")
 });
 
 export const ListJobsParams = z.object({
-  limit: z.coerce.number().int().min(1).max(100).optional().default(20).describe("Number of items to return"),
-  offset: z.coerce.number().int().min(0).optional().default(0).describe("Offset for pagination")
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20).describe("The maximum number of jobs to return in a single page (between 1 and 100)."),
+  offset: z.coerce.number().int().min(0).optional().default(0).describe("The number of jobs to skip for paginating through results.")
 });
 
 export const JobListItem = z.object({

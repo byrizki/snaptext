@@ -131,7 +131,7 @@ export default function DeveloperPage() {
             Developer Portal
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-[15px]">
-            Manage your API keys, read integration guides, and build programmatic ocr triggers.
+            Create and manage your API keys, explore integration guides, and connect SnapText's OCR engine to your applications.
           </p>
         </div>
 
@@ -184,7 +184,7 @@ export default function DeveloperPage() {
                         Copy Your API Key
                       </h3>
                       <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-2xl">
-                        This key will be displayed **only once** for your security. Please save it in a secure password manager immediately.
+                        For security reasons, this key is only displayed **once**. Please copy it and store it safely in a secure password manager now—you will not be able to retrieve it again.
                       </p>
                       
                       <div className="flex items-center gap-3 mt-4 max-w-xl">
@@ -216,7 +216,7 @@ export default function DeveloperPage() {
               <div className="p-6 border-b border-zinc-150 dark:border-zinc-800/80 flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">API Keys</h2>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Use keys to scan PDFs from your apps and terminals.</p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Use these keys to authenticate requests from your servers, workflows, or scripts.</p>
                 </div>
                 <button
                   onClick={() => setIsModalOpen(true)}
@@ -243,7 +243,7 @@ export default function DeveloperPage() {
                   </div>
                   <div>
                     <p className="font-semibold text-sm">No active API keys found</p>
-                    <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">Generate a key to integrate SnapText OCR directly into your custom pipelines and scripts.</p>
+                    <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">Generate a key to connect SnapText's OCR engine directly into your developer workflows, pipelines, and applications.</p>
                   </div>
                 </div>
               ) : (
@@ -318,8 +318,8 @@ export default function DeveloperPage() {
                       </svg>
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Approach A: Hosted PDF Link</div>
-                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">Submit files hosted on your own storage or external public links. Single request.</div>
+                      <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Use your own PDF accessible URL</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">Best if your files are already hosted online. Submit a direct public link to the PDF in a single API call.</div>
                     </div>
                   </button>
 
@@ -337,8 +337,8 @@ export default function DeveloperPage() {
                       </svg>
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Approach B: Signed Upload Token</div>
-                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">Generate secure signed token, upload directly to storage, trigger job. Avoids server payload limits.</div>
+                      <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Store PDF at SnapText secure storage</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">Best for local files. Request a secure upload URL, upload the PDF directly, and trigger the job without exposing your server to large files.</div>
                     </div>
                   </button>
                 </div>
@@ -346,25 +346,37 @@ export default function DeveloperPage() {
 
               {/* Endpoint Reference Panel */}
               <div className="bg-white dark:bg-zinc-950 p-6 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-md space-y-4">
-                <h3 className="font-bold text-zinc-900 dark:text-zinc-50 text-sm">Endpoint Index</h3>
+                <h3 className="font-bold text-zinc-900 dark:text-zinc-50 text-sm">Endpoint Reference</h3>
                 <div className="space-y-3 font-mono text-[11px]">
-                  <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                    <span className="font-bold text-blue-600 dark:text-blue-400">POST</span>
-                    <span className="text-zinc-700 dark:text-zinc-300">/api/v1/jobs</span>
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Submit OCR Job</span>
+                      <span className="font-bold text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full">POST</span>
+                    </div>
+                    <span className="text-zinc-700 dark:text-zinc-300 font-mono">/api/v1/jobs</span>
                   </div>
                   {activeApproach === "approachB" && (
-                    <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                      <span className="font-bold text-blue-600 dark:text-blue-400">POST</span>
-                      <span className="text-zinc-700 dark:text-zinc-300">/api/v1/jobs/upload-url</span>
+                    <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Generate Upload URL</span>
+                        <span className="font-bold text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full">POST</span>
+                      </div>
+                      <span className="text-zinc-700 dark:text-zinc-300 font-mono">/api/v1/jobs/upload-url</span>
                     </div>
                   )}
-                  <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                    <span className="font-bold text-violet-600 dark:text-violet-400">GET</span>
-                    <span className="text-zinc-700 dark:text-zinc-300">/api/v1/jobs/[id]</span>
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Get Job Status</span>
+                      <span className="font-bold text-[10px] text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 rounded-full">GET</span>
+                    </div>
+                    <span className="text-zinc-700 dark:text-zinc-300 font-mono">/api/v1/jobs/[id]</span>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                    <span className="font-bold text-red-600 dark:text-red-400">POST</span>
-                    <span className="text-zinc-700 dark:text-zinc-300">/api/v1/jobs/[id]/cancel</span>
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Cancel Active Job</span>
+                      <span className="font-bold text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-full">POST</span>
+                    </div>
+                    <span className="text-zinc-700 dark:text-zinc-300 font-mono">/api/v1/jobs/[id]/cancel</span>
                   </div>
                 </div>
               </div>
@@ -413,8 +425,8 @@ export default function DeveloperPage() {
                 {/* Preformatted Code Content */}
                 <div className="flex-1 p-6 font-mono text-xs overflow-x-auto text-zinc-350 select-all leading-relaxed whitespace-pre bg-zinc-900 shadow-inner">
                   {activeApproach === "approachA" && activeLang === "curl" && (
-                    <code className="text-emerald-400">
-{`# 1. Trigger the job using an external hosted PDF link
+                    <code id="active-code-sample" className="text-emerald-400">
+{`# 1. Submit the URL of a hosted PDF file to begin extraction
 curl -X POST "${typeof window !== 'undefined' ? window.location.origin : 'https://snaptext.io'}/api/v1/jobs" \\
   -H "Authorization: Bearer <YOUR_API_KEY>" \\
   -H "Content-Type: application/json" \\
@@ -427,15 +439,16 @@ curl -X POST "${typeof window !== 'undefined' ? window.location.origin : 'https:
     "jsonSchema": null
   }'
 
-# Returns:
+# Returns a unique jobId to poll for the completed output:
 # {"jobId": "uuid-here", "runId": "wrun_...", "status": "pending"}`}
                     </code>
                   )}
 
                   {activeApproach === "approachA" && activeLang === "python" && (
-                    <code className="text-blue-400">
+                    <code id="active-code-sample" className="text-blue-400">
 {`import requests
 
+# 1. Submit a direct document link to the OCR endpoint
 url = "${typeof window !== 'undefined' ? window.location.origin : 'https://snaptext.io'}/api/v1/jobs"
 headers = {
     "Authorization": "Bearer YOUR_API_KEY",
@@ -450,13 +463,14 @@ payload = {
 
 res = requests.post(url, headers=headers, json=payload)
 job_info = res.json()
-print(f"Triggered Job ID: {job_info['jobId']}")`}
+print(f"Submitted Job ID: {job_info['jobId']}")`}
                     </code>
                   )}
 
                   {activeApproach === "approachA" && activeLang === "javascript" && (
-                    <code className="text-yellow-400">
-{`const res = await fetch("${typeof window !== 'undefined' ? window.location.origin : 'https://snaptext.io'}/api/v1/jobs", {
+                    <code id="active-code-sample" className="text-yellow-400">
+{`// 1. Submit a direct document link to the OCR endpoint
+const res = await fetch("${typeof window !== 'undefined' ? window.location.origin : 'https://snaptext.io'}/api/v1/jobs", {
   method: "POST",
   headers: {
     "Authorization": "Bearer YOUR_API_KEY",
@@ -476,8 +490,8 @@ console.log("Job status:", job.status);`}
                   )}
 
                   {activeApproach === "approachB" && activeLang === "curl" && (
-                    <code className="text-emerald-400">
-{`# 1. Request client upload credentials for secure storage
+                    <code id="active-code-sample" className="text-emerald-400">
+{`# 1. Request secure, direct upload credentials to bypass server file size limits
 curl -X POST "${typeof window !== 'undefined' ? window.location.origin : 'https://snaptext.io'}/api/v1/jobs/upload-url" \\
   -H "Authorization: Bearer <YOUR_API_KEY>" \\
   -H "Content-Type: application/json" \\
@@ -487,21 +501,21 @@ curl -X POST "${typeof window !== 'undefined' ? window.location.origin : 'https:
     "fileHash": "f3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }'
  
-# Returns:
+# Returns a temporary token, generated destination pathname, and direct uploadUrl:
 # {"token": "ey...", "pathname": "uploads/f3b...", "uploadUrl": "..."}
  
-# 2. Upload file directly to secure storage using PUT
-curl -X PUT "https://blob.vercel-storage.com/uploads/f3b0c442...pdf" \\
+# 2. Upload your local PDF binary directly to the secure storage target using HTTP PUT
+curl -X PUT "https://storage.snaptext.io/uploads/f3b0c442...pdf" \\
   -H "x-client-token: <RETURNED_TOKEN>" \\
   -H "Content-Type: application/pdf" \\
   --data-binary "@local.pdf"
  
-# 3. Create the OCR trigger with the uploaded public URL
+# 3. Trigger the OCR job using the returned secure storage URL from step 1
 curl -X POST "${typeof window !== 'undefined' ? window.location.origin : 'https://snaptext.io'}/api/v1/jobs" \\
   -H "Authorization: Bearer <YOUR_API_KEY>" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "pdfUrl": "https://<BLOB_ID>.public.blob.vercel-storage.com/uploads/f3b0c442...pdf",
+    "pdfUrl": "https://storage.snaptext.io/uploads/f3b0c442...pdf",
     "filename": "local.pdf",
     "fileSize": 1500000,
     "fileHash": "f3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -510,10 +524,10 @@ curl -X POST "${typeof window !== 'undefined' ? window.location.origin : 'https:
                   )}
  
                   {activeApproach === "approachB" && activeLang === "python" && (
-                    <code className="text-blue-400">
+                    <code id="active-code-sample" className="text-blue-400">
 {`import requests
  
-# 1. Get signed token details
+# 1. Request secure, direct upload credentials to bypass server file size limits
 url = "${typeof window !== 'undefined' ? window.location.origin : 'https://snaptext.io'}/api/v1/jobs/upload-url"
 headers = {"Authorization": "Bearer YOUR_API_KEY"}
 res = requests.post(url, headers=headers, json={
@@ -525,16 +539,16 @@ res = requests.post(url, headers=headers, json={
 token = res["token"]
 pathname = res["pathname"]
  
-# 2. Stream local binary directly to secure storage
+# 2. Upload your local PDF binary directly to the secure storage target using HTTP PUT
 with open("report.pdf", "rb") as f:
-    blob_res = requests.put(
-        f"https://blob.vercel-storage.com/{pathname}",
+    upload_res = requests.put(
+        f"https://storage.snaptext.io/{pathname}",
         headers={"x-client-token": token, "Content-Type": "application/pdf"},
         data=f
     )
-pdf_url = blob_res.url
+pdf_url = upload_res.url
  
-# 3. Create OCR scanning task
+# 3. Trigger the OCR job using the returned secure storage URL from step 1
 job_res = requests.post(
     "${typeof window !== 'undefined' ? window.location.origin : 'https://snaptext.io'}/api/v1/jobs",
     headers=headers,
@@ -545,13 +559,13 @@ job_res = requests.post(
         "fileHash": "f3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
 ).json()
-print("OCR Triggered:", job_res["jobId"])`}
+print("OCR Job Submitted:", job_res["jobId"])`}
                     </code>
                   )}
  
                   {activeApproach === "approachB" && activeLang === "javascript" && (
-                    <code className="text-yellow-400">
-{`// 1. Get signed token details
+                    <code id="active-code-sample" className="text-yellow-400">
+{`// 1. Request secure, direct upload credentials to bypass server file size limits
 const credentialsRes = await fetch("${typeof window !== 'undefined' ? window.location.origin : 'https://snaptext.io'}/api/v1/jobs/upload-url", {
   method: "POST",
   headers: { "Authorization": "Bearer YOUR_API_KEY" },
@@ -563,8 +577,8 @@ const credentialsRes = await fetch("${typeof window !== 'undefined' ? window.loc
 });
 const { token, pathname } = await credentialsRes.json();
  
-// 2. Upload file directly to secure storage (bypasses server body limit)
-const blobRes = await fetch(\`https://blob.vercel-storage.com/\${pathname}\`, {
+// 2. Upload your local PDF binary directly to the secure storage target using HTTP PUT
+const uploadRes = await fetch(\`https://storage.snaptext.io/\${pathname}\`, {
   method: "PUT",
   headers: {
     "x-client-token": token,
@@ -572,9 +586,9 @@ const blobRes = await fetch(\`https://blob.vercel-storage.com/\${pathname}\`, {
   },
   body: pdfBuffer // Buffer or Blob of target PDF file
 });
-const pdfUrl = blobRes.url;
+const pdfUrl = uploadRes.url;
  
-// 3. Initiate OCR job
+// 3. Trigger the OCR job using the returned secure storage URL from step 1
 const jobRes = await fetch("${typeof window !== 'undefined' ? window.location.origin : 'https://snaptext.io'}/api/v1/jobs", {
   method: "POST",
   headers: {
@@ -589,7 +603,7 @@ const jobRes = await fetch("${typeof window !== 'undefined' ? window.location.or
   })
 });
 const job = await jobRes.json();
-console.log("Started scanning:", job.jobId);`}
+console.log("OCR Job Submitted:", job.jobId);`}
                     </code>
                   )}
                 </div>
@@ -598,7 +612,7 @@ console.log("Started scanning:", job.jobId);`}
                 <div className="p-4 bg-zinc-950/40 border-t border-zinc-800 text-right">
                   <button
                     onClick={() => {
-                      const text = document.querySelector(".overflow-x-auto")?.textContent || "";
+                      const text = document.getElementById("active-code-sample")?.textContent || "";
                       handleCopy(text);
                     }}
                     className="h-8 px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors"
@@ -633,7 +647,7 @@ console.log("Started scanning:", job.jobId);`}
               className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-6 shadow-2xl z-10 w-full max-w-md relative overflow-hidden"
             >
               <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Generate API Key</h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Provide details to construct a secure credentials token prefixing with `st-`.</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Give your key a descriptive name and set an expiration period. Your new key will be prefixed with st- for easy identification.</p>
 
               <form onSubmit={handleCreateKey} className="space-y-4 mt-6">
                 <div className="space-y-1.5">
