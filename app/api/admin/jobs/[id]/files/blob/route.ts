@@ -31,7 +31,9 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
       .map((page) => page.pageBlobUrl)
       .filter((url): url is string => Boolean(url));
     const pdfBlobUrl = isVercelBlobUrl(job.pdfBlobUrl) ? job.pdfBlobUrl : null;
-    const blobUrls = Array.from(new Set([pdfBlobUrl, ...pageBlobUrls].filter(Boolean)));
+    const blobUrls = Array.from(
+      new Set([pdfBlobUrl, ...pageBlobUrls].filter((url): url is string => Boolean(url)))
+    );
 
     if (blobUrls.length === 0) {
       return NextResponse.json({
