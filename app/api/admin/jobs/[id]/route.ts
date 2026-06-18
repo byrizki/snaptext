@@ -182,7 +182,9 @@ export async function GET(
           .map((p) => {
             const metrics = pageMetrics.get(p.id) || { promptTokens: 0, completionTokens: 0, totalTokens: 0, cost: 0 };
             const copy: any = { 
+              id: p.id,
               pageNumber: p.pageNumber,
+              pageBlobUrl: p.pageBlobUrl,
               model: p.model,
               createdAt: p.createdAt,
               usage: {

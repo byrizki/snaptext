@@ -1,10 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { put } from "@vercel/blob";
-import {
-  definePDFJSModule,
-  getDocumentProxy,
-  renderPageAsImage,
-} from "unpdf";
+import { definePDFJSModule, getDocumentProxy } from "unpdf";
 import { grayscaleImage } from "../image-processing";
 
 export async function extractPdfPageImages(
@@ -63,10 +59,7 @@ export async function extractPdfPageImages(
     const pages: Array<{ pageNumber: number; pageBlobUrl: string }> = [];
 
     for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
-      const rawImageBuffer = await renderPageAsImage(pdf, pageNumber, {
-        canvasImport: () => import("@napi-rs/canvas"),
-        scale: 2.0,
-      });
+      const rawImageBuffer = await renderPdfPageWithForms(pdf, pageNumber, 2.0);
 
       const imageBuffer = await grayscaleImage(Buffer.from(rawImageBuffer));
 
@@ -77,7 +70,13 @@ export async function extractPdfPageImages(
       const { url: pageBlobUrl } = await put(
         blobKey,
         imageBuffer,
-        { access: "public", contentType: "image/png" },
+        {
+          access: "public",
+          addRandomSuffix: false,
+          allowOverwrite: true,
+          cacheControlMaxAge: 0,
+          contentType: "image/png",
+        },
       );
 
       pages.push({ pageNumber, pageBlobUrl });
@@ -91,3 +90,31 @@ export async function extractPdfPageImages(
   }
 }
 
+
+
+async function renderPdfPageWithForms(
+  pdf: Awaited<ReturnType<typeof getDocumentProxy>>,
+  pageNumber: number,
+  scale: number
+): Promise<Buffer> {
+  const [{ createCanvas, DOMMatrix, ImageData, Path2D }, { AnnotationMode }] = await Promise.all([
+    import("@napi-rs/canvas"),
+    import("pdfjs-dist"),
+  ]);
+
+  Object.assign(globalThis, { DOMMatrix, ImageData, Path2D });
+  const page = await pdf.getPage(pageNumber);
+  const viewport = page.getViewport({ scale });
+  const canvas = createCanvas(viewport.width, viewport.height);
+  const canvasContext = canvas.getContext("2d");
+
+  await page.render({
+    canvas: canvas as any,
+    canvasContext: canvasContext as any,
+    viewport,
+    intent: "print",
+    annotationMode: AnnotationMode.ENABLE_STORAGE,
+  }).promise;
+
+  return Buffer.from(await canvas.encode("png"));
+}

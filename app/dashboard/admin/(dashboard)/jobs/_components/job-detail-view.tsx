@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import useSWR from "swr";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,26 @@ import {
   ViewIcon,
   ArrowDown01Icon,
   ArrowUp01Icon,
+  ImageDeleteIcon,
+  MoreHorizontalIcon,
 } from "@hugeicons/core-free-icons";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -130,7 +150,11 @@ function DataVisualizer({ data, depth = 0 }: { data: any; depth?: number }) {
   return <span className="font-semibold text-zinc-900 dark:text-zinc-100">{String(data)}</span>;
 }
 
-function PageCollapsible({ page }: { page: any }) {
+function PageCollapsible({
+  page,
+}: {
+  page: any;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<"gui" | "raw">("gui");
 
@@ -147,6 +171,9 @@ function PageCollapsible({ page }: { page: any }) {
           </div>
           <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">Page {page.pageNumber}</span>
           <Badge variant="secondary" className="text-[9px] font-mono py-0 h-5 opacity-70">{page.model}</Badge>
+          <Badge variant={page.pageBlobUrl ? "outline" : "secondary"} className="text-[9px] font-mono py-0 h-5 opacity-70">
+            {page.pageBlobUrl ? "Image saved" : "No image"}
+          </Badge>
 
           <div className="hidden sm:flex items-center gap-6 ml-auto mr-4">
             <div className="flex flex-col items-end">
@@ -166,25 +193,64 @@ function PageCollapsible({ page }: { page: any }) {
           </div>
         </CollapsibleTrigger>
         
-        <div className="flex items-center p-0.5 bg-zinc-200/50 dark:bg-zinc-900/50 rounded-lg border border-zinc-200/50 dark:border-zinc-800/50">
-          {(["gui", "raw"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setView(t)}
-              className={`px-2 py-0.5 text-[9px] font-bold rounded-md transition-all uppercase tracking-tighter ${
-                view === t
-                  ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs"
-                  : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-8 rounded-xl shrink-0"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
+              </Button>
+            }
+          />
+          <PopoverContent align="end" className="w-56 gap-2 p-2">
+            <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+              Page Actions
+            </div>
+            {page.pageBlobUrl ? (
+              <>
+                <a
+                  href={page.pageBlobUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-9 justify-start rounded-xl px-2 text-xs font-bold")}
+                >
+                  <HugeiconsIcon icon={ViewIcon} size={15} />
+                  Open image
+                </a>
+
+              </>
+            ) : (
+              <div className="rounded-xl border border-dashed border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-400 dark:border-zinc-800">
+                No saved image for this page.
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
 
       <CollapsibleContent>
-        <div className="p-5 animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="p-5 animate-in fade-in slide-in-from-top-1 duration-200 space-y-4">
+          <div className="flex items-center justify-end">
+            <div className="flex items-center p-0.5 bg-zinc-100 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+              {(["gui", "raw"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setView(tab)}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider ${
+                    view === tab
+                      ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
           {view === "gui" ? (
             <DataVisualizer data={page} />
           ) : (
@@ -199,7 +265,7 @@ function PageCollapsible({ page }: { page: any }) {
 }
 
 export function JobDetailView({ jobId }: JobDetailViewProps) {
-  const { data: job, isLoading: isJobLoading } = useSWR(
+  const { data: job, isLoading: isJobLoading, mutate } = useSWR(
     jobId ? `/api/admin/jobs/${jobId}` : null,
     (url: string) => fetch(url).then((r) => r.json())
   );
@@ -218,9 +284,39 @@ export function JobDetailView({ jobId }: JobDetailViewProps) {
     }
   };
 
+  const [isDeletingStoredFiles, setIsDeletingStoredFiles] = useState(false);
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
+  };
+
+  const hasStoredFiles = Boolean(job?.pdfBlobUrl) || Boolean(ocr?.pages?.some((page: any) => page.pageBlobUrl));
+
+  const deleteStoredFiles = async () => {
+    if (!hasStoredFiles) {
+      toast.info("No stored files to delete");
+      return;
+    }
+
+    setIsDeletingStoredFiles(true);
+    try {
+      const response = await fetch(`/api/admin/jobs/${jobId}/files/blob`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete stored files");
+      }
+
+      toast.success(result.deleted > 0 ? `Deleted ${result.deleted} stored files` : "No stored files to delete");
+      mutate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete stored files");
+    } finally {
+      setIsDeletingStoredFiles(false);
+    }
   };
 
   if (isJobLoading) {
@@ -290,6 +386,60 @@ export function JobDetailView({ jobId }: JobDetailViewProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button variant="outline" size="icon" className="size-9 rounded-xl shrink-0">
+                  <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
+                </Button>
+              }
+            />
+            <PopoverContent align="end" className="w-64 gap-2 p-2">
+              <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                Job Actions
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-full justify-start rounded-xl px-2 text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/20"
+                      disabled={isDeletingStoredFiles || !hasStoredFiles}
+                    >
+                      <HugeiconsIcon icon={ImageDeleteIcon} size={15} />
+                      {isDeletingStoredFiles ? "Deleting files" : "Delete stored files"}
+                    </Button>
+                  }
+                />
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogMedia className="bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400">
+                      <HugeiconsIcon icon={ImageDeleteIcon} size={30} />
+                    </AlertDialogMedia>
+                    <AlertDialogTitle>Delete stored files?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This removes the stored PDF and every saved page image for this job from blob storage. Matching records that reference the same file URLs are cleared. OCR data remains available.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeletingStoredFiles}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-red-600 text-white hover:bg-red-700"
+                      onClick={deleteStoredFiles}
+                      disabled={isDeletingStoredFiles}
+                    >
+                      {isDeletingStoredFiles ? "Deleting..." : "Delete files"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <div className="px-2 pb-1 text-[10px] leading-relaxed text-zinc-400">
+                Removes stored files only. OCR data remains available.
+              </div>
+            </PopoverContent>
+          </Popover>
+
           {job.pdfBlobUrl && (
             <a 
               href={job.pdfBlobUrl} 
@@ -375,7 +525,7 @@ export function JobDetailView({ jobId }: JobDetailViewProps) {
                 <TabsContent value="pages" className="p-6 m-0 space-y-4">
                   {ocr?.pages?.length > 0 ? (
                     ocr.pages.map((p: any) => (
-                      <PageCollapsible key={p.pageNumber} page={p} />
+                      <PageCollapsible key={p.id || p.pageNumber} page={p} />
                     ))
                   ) : (
                     <div className="p-20 text-center text-zinc-400">No individual page data.</div>
