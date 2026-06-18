@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import useSWR from "swr";
-import { motion } from "framer-motion";
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
 
 interface QuotaData {
   limit: number;
@@ -23,8 +23,7 @@ function QuotaRing({ used, limit }: { used: number; limit: number }) {
   const percentage = isUnlimited ? 0 : limit > 0 ? Math.min(used / limit, 1) : 0;
   const dashOffset = circumference * (1 - percentage);
 
-  const color =
-    percentage >= 0.9 ? "#ef4444" : percentage >= 0.7 ? "#f59e0b" : "#3b82f6";
+  const color = percentage >= 0.9 ? "var(--destructive)" : "var(--primary)";
 
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
@@ -38,7 +37,7 @@ function QuotaRing({ used, limit }: { used: number; limit: number }) {
           strokeWidth={strokeWidth}
           className="text-zinc-200 dark:text-zinc-800"
         />
-        <motion.circle
+        <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -47,14 +46,12 @@ function QuotaRing({ used, limit }: { used: number; limit: number }) {
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
-          animate={{ strokeDashoffset: dashOffset }}
-          transition={{ duration: 1.2, ease: "easeOut" }}
+          strokeDashoffset={dashOffset}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{used}</span>
-        <span className="text-[11px] text-zinc-400 font-medium">
+        <span className="text-2xl font-bold text-foreground">{used}</span>
+        <span className="text-[11px] text-muted-foreground font-medium">
           / {isUnlimited ? "∞" : limit}
         </span>
       </div>
@@ -65,7 +62,7 @@ function QuotaRing({ used, limit }: { used: number; limit: number }) {
 function Stat({ label, value, color }: { label: string; value: number | string; color: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-zinc-500 dark:text-zinc-400">{label}</span>
+      <span className="text-sm text-muted-foreground">{label}</span>
       <span className={`text-sm font-semibold tabular-nums ${color}`}>{value}</span>
     </div>
   );
@@ -79,13 +76,13 @@ export function QuotaCard() {
   const resetCopy = data?.resetPeriod === "monthly" ? "Resets monthly" : "Resets at midnight";
 
   return (
-    <div className="rounded-[1.75rem] border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl shadow-lg p-8 flex flex-col gap-6">
+    <DashboardCard className="flex flex-col gap-6 p-5 sm:p-6">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          <h3 className="text-base font-semibold text-foreground">
             {resetLabel === "monthly" ? "Monthly" : "Daily"} Scans
           </h3>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">{resetCopy}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{resetCopy}</p>
         </div>
       </div>
 
@@ -101,30 +98,30 @@ export function QuotaCard() {
         <div className="flex items-center gap-8">
           <QuotaRing used={data.used} limit={data.limit} />
           <div className="space-y-4 flex-1">
-            <Stat label="Used" value={data.used} color="text-blue-600 dark:text-blue-400" />
+            <Stat label="Used" value={data.used} color="text-primary" />
             <Stat
               label="Remaining"
               value={isUnlimited ? "Unlimited" : data.remaining}
-              color="text-emerald-600 dark:text-emerald-400"
+              color="text-foreground"
             />
             <Stat
               label="Limit"
               value={isUnlimited ? "Unlimited" : data.limit}
-              color="text-zinc-500 dark:text-zinc-400"
+              color="text-muted-foreground"
             />
           </div>
         </div>
       )}
 
       {/* CTA — contact support for higher limits */}
-      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-        <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3 leading-relaxed">
+      <div className="border-t pt-2">
+        <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
           Need more scans? Contact us to request a higher limit for your account.
         </p>
         <Link
           href="/contact"
           id="quota-card-contact-support-btn"
-          className="flex items-center justify-center gap-2 w-full h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-200 text-sm font-semibold hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 dark:hover:border-blue-500 transition-all"
+          className="flex items-center justify-center gap-2 w-full h-10 rounded-xl border bg-background text-sm font-semibold text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -132,6 +129,6 @@ export function QuotaCard() {
           Request Higher Limits
         </Link>
       </div>
-    </div>
+    </DashboardCard>
   );
 }

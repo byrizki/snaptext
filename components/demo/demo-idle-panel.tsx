@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
+import { useEffect, useState } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CodeCircleIcon, Presentation02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
 import { ModelSelector } from "@/components/demo/model-selector";
 import { UploadZone } from "@/components/demo/upload-zone";
 import { HistoryList } from "@/components/demo/history-list";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { SparklesIcon, CodeCircleIcon, Presentation02Icon } from "@hugeicons/core-free-icons";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SchemaEditor } from "./schema-editor";
-import Link from "next/link";
 
 interface DemoIdlePanelProps {
   selectedModelId: string;
@@ -49,7 +51,6 @@ export function DemoIdlePanel({
   useEffect(() => {
     const saved = localStorage.getItem("snaptext_json_schema");
     if (saved) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setJsonSchema(saved);
       setShowAdvanced(true);
     }
@@ -65,223 +66,99 @@ export function DemoIdlePanel({
     }
   };
 
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { type: "spring", stiffness: 300, damping: 24 },
-    },
-  };
-
   return (
-    <div className="flex-1 flex flex-col items-center px-4 md:px-6 py-12 md:py-20 overflow-hidden relative">
-      {/* Background Decorative Blobs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-[100px] -z-10 mix-blend-multiply dark:mix-blend-screen pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 dark:bg-violet-500/20 rounded-full blur-[100px] -z-10 mix-blend-multiply dark:mix-blend-screen pointer-events-none" />
+    <section className="relative mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:py-12">
+      <div className="pointer-events-none absolute left-6 top-24 -z-10 size-72 rounded-full bg-primary/10 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-16 right-6 -z-10 size-72 rounded-full bg-accent/60 blur-3xl" />
 
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="w-full flex flex-col items-center gap-12"
-      >
-        <motion.div variants={itemVariants} className="flex flex-col items-center gap-4 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/20 bg-blue-500/5 text-blue-600 dark:text-blue-400 text-sm font-medium shadow-inner">
-            <HugeiconsIcon icon={SparklesIcon} className="w-4 h-4" />
-            <span>AI-Powered Document Intelligence</span>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="max-w-2xl">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-card/70 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
+            <HugeiconsIcon icon={SparklesIcon} className="size-4 text-primary" />
+            Public demo
           </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-500 max-w-md text-center leading-relaxed">
-            By uploading files, you agree that logs and documents may be recorded for model evaluation and quality improvement.
+          <h1 className="text-balance text-4xl font-semibold tracking-[-0.05em] text-foreground sm:text-5xl">
+            Scan one document and inspect the result.
+          </h1>
+          <p className="mt-4 text-pretty text-base leading-7 text-muted-foreground">
+            Upload a PDF or image, pick a model, and optionally shape the JSON output before the scan starts.
           </p>
-        </motion.div>
+        </div>
 
-        <motion.div 
-          layout
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          className={`w-full relative ${activeTab === 'history' ? 'max-w-5xl' : 'max-w-[85vw]'}`}
-        >
-          <AnimatePresence mode="wait">
-            {activeTab === 'upload' ? (
-              <motion.div 
-                key="upload"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="flex flex-col lg:flex-row gap-6 w-full items-stretch justify-center"
-              >
-                {/* Uploader Card */}
-                <motion.div 
-                  layout
-                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  className={`relative group w-full max-w-2xl mx-auto`}
-                >
-                  {/* Glowing Border Effect */}
-                  <div className="absolute -inset-0.5 rounded-[32px] bg-linear-to-r from-blue-500 via-violet-500 to-emerald-500 blur-lg opacity-20 dark:opacity-40 group-hover:opacity-40 dark:group-hover:opacity-60 transition-opacity duration-700" />
-                  
-                  <div className="relative h-full flex flex-col rounded-[30px] border border-white/40 dark:border-white/10 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-2xl shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5">
-                    {/* Top Toolbar */}
-                    <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-black/20 gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-red-400/80" />
-                          <div className="w-3 h-3 rounded-full bg-amber-400/80" />
-                          <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Use Schema:</span>
-                          <button
-                            onClick={() => setShowAdvanced(!showAdvanced)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showAdvanced ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                            role="switch"
-                            aria-checked={showAdvanced}
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAdvanced ? 'translate-x-6' : 'translate-x-1'}`}
-                            />
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-zinc-500 dark:text-zinc-400 font-medium hidden sm:inline-block">Model:</span>
-                          <ModelSelector value={selectedModelId} onChange={onModelChange} />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4 sm:p-6 flex-1 flex flex-col justify-center">
-                      <UploadZone 
-                        quota={quota}
-                        isLoadingQuota={isLoadingQuota}
-                        onFileSelect={(file) => onFileSelect(file, showAdvanced ? jsonSchema : undefined)} 
-                      />
-                    </div>
-                  </div>
-                </motion.div>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "upload" | "history")} className="lg:items-end">
+          <TabsList className="w-full sm:w-fit">
+            <TabsTrigger value="upload" className="px-5">New scan</TabsTrigger>
+            <TabsTrigger value="history" className="px-5">History</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
-                {/* Schema Editor Card */}
-                <AnimatePresence>
-                  {showAdvanced && (
-                    <motion.div
-                      layout
-                      initial={{ opacity: 0, scale: 0.95, x: -20 }}
-                      animate={{ opacity: 1, scale: 1, x: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, x: -20 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                      className="relative group w-full lg:w-1/2 flex flex-col"
-                    >
-                      {/* Glowing Border Effect for Schema */}
-                      <div className="absolute -inset-0.5 rounded-[32px] bg-linear-to-r from-violet-500 via-fuchsia-500 to-pink-500 blur-lg opacity-20 dark:opacity-40 group-hover:opacity-40 dark:group-hover:opacity-60 transition-opacity duration-700" />
-                      
-                      <div className="relative h-full flex flex-col rounded-[30px] border border-white/40 dark:border-white/10 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-2xl shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5">
-                        <div className="px-6 py-4 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-black/20 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <HugeiconsIcon icon={SparklesIcon} className="w-5 h-5 text-violet-500" />
-                            <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Output Schema</h3>
-                          </div>
-                          
-                          <div className="flex bg-zinc-100/50 dark:bg-zinc-800/50 p-1 rounded-lg border border-zinc-200/50 dark:border-zinc-700/30">
-                            <button
-                              onClick={() => setEditorMode("gui")}
-                              className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all flex items-center gap-1.5 ${
-                                editorMode === "gui"
-                                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
-                                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                              }`}
-                            >
-                              <HugeiconsIcon icon={Presentation02Icon} size={12} />
-                              GUI
-                            </button>
-                            <button
-                              onClick={() => setEditorMode("raw")}
-                              className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all flex items-center gap-1.5 ${
-                                editorMode === "raw"
-                                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
-                                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                              }`}
-                            >
-                              <HugeiconsIcon icon={CodeCircleIcon} size={12} />
-                              Raw
-                            </button>
-                          </div>
-                        </div>
-                        <div className="p-4 sm:p-6 flex-1 bg-zinc-50/50 dark:bg-zinc-900/50 overflow-y-auto">
-                          {isLoaded && <SchemaEditor schema={jsonSchema} onChange={handleSchemaChange} mode={editorMode} />}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ) : (
-              <motion.div 
-                key="history"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="w-full"
-              >
-                <div className="relative rounded-[30px] border border-white/40 dark:border-white/10 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-2xl shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5 p-4 sm:p-6">
-                  <HistoryList onRerun={onRerun} onView={onView} onStop={onStop} />
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "upload" | "history")} className="w-full">
+        <TabsContent value="upload" className="mt-0">
+          <div className="flex flex-col gap-4 lg:gap-6">
+            <Card className="bg-card/85 shadow-[0_0_64px_rgba(59,130,246,0.10)] backdrop-blur">
+              <CardHeader className="gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                <div>
+                  <CardTitle>Document</CardTitle>
+                  <CardDescription>PDF, image, or scanned file.</CardDescription>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <label className="flex items-center justify-between gap-3 rounded-2xl border bg-background px-3 py-2 text-sm font-medium sm:justify-start">
+                    <span>Schema</span>
+                    <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} />
+                  </label>
+                  <ModelSelector value={selectedModelId} onChange={onModelChange} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <UploadZone
+                  quota={quota}
+                  isLoadingQuota={isLoadingQuota}
+                  onFileSelect={(file) => onFileSelect(file, showAdvanced ? jsonSchema : undefined)}
+                />
+              </CardContent>
+            </Card>
 
-        <motion.div variants={itemVariants} className="flex p-1 bg-zinc-100/80 dark:bg-zinc-800/50 backdrop-blur-md rounded-2xl border border-zinc-200/80 dark:border-zinc-700/50 shadow-inner">
-          <button 
-            onClick={() => setActiveTab('upload')}
-            className={`relative px-8 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
-              activeTab === 'upload' 
-                ? 'text-zinc-900 dark:text-white shadow-md' 
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            {activeTab === 'upload' && (
-              <motion.div
-                layoutId="activeTabIndicator"
-                className="absolute inset-0 bg-white dark:bg-zinc-700 rounded-xl"
-                initial={false}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span className="relative z-10">New Scan</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('history')}
-            className={`relative px-8 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
-              activeTab === 'history' 
-                ? 'text-zinc-900 dark:text-white shadow-md' 
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            {activeTab === 'history' && (
-              <motion.div
-                layoutId="activeTabIndicator"
-                className="absolute inset-0 bg-white dark:bg-zinc-700 rounded-xl"
-                initial={false}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span className="relative z-10">History</span>
-          </button>
-        </motion.div>
+            {showAdvanced ? (
+              <Card className="bg-card/85 shadow-[0_0_48px_rgba(139,92,246,0.10)] backdrop-blur">
+                <CardHeader className="gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                  <div>
+                    <CardTitle>Output schema</CardTitle>
+                    <CardDescription>Define fields before scanning.</CardDescription>
+                  </div>
+                  <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as "raw" | "gui")}>
+                    <TabsList>
+                      <TabsTrigger value="gui" aria-label="Use visual schema editor">
+                        <HugeiconsIcon icon={Presentation02Icon} size={14} />
+                        GUI
+                      </TabsTrigger>
+                      <TabsTrigger value="raw" aria-label="Use raw schema editor">
+                        <HugeiconsIcon icon={CodeCircleIcon} size={14} />
+                        Raw
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </CardHeader>
+                <CardContent className="bg-muted/30 py-5">
+                  {isLoaded ? <SchemaEditor schema={jsonSchema} onChange={handleSchemaChange} mode={editorMode} /> : <Skeleton className="h-80 w-full rounded-2xl" />}
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
+        </TabsContent>
 
-      </motion.div>
-    </div>
+        <TabsContent value="history" className="mt-0">
+          <Card className="bg-card/85 shadow-[0_0_64px_rgba(59,130,246,0.10)] backdrop-blur">
+            <CardContent>
+              <HistoryList onRerun={onRerun} onView={onView} onStop={onStop} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <p className="max-w-2xl text-xs leading-6 text-muted-foreground">
+        Demo uploads can be logged for product quality and model evaluation. Do not upload sensitive documents here.
+      </p>
+    </section>
   );
 }

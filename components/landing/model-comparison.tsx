@@ -1,142 +1,90 @@
-"use client";
-
-import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { CheckmarkBadge01Icon, Cancel01Icon, CpuIcon } from "@hugeicons/core-free-icons";
+import { FlashIcon, PencilEdit02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { SectionHeading } from "@/components/landing/section-heading";
 
 const models = [
   {
     name: "Spark",
-    description: "Lightning fast for standard documents.",
-    speed: "Ultra-fast (< 1s)",
-    reasoning: "Essential",
-    handwriting: false,
-    complexLayouts: "Good",
-    bestFor: "Standard receipts, simple invoices, clean forms.",
-    color: "blue"
+    badge: "Fastest",
+    description: "Clean printed documents when speed matters most.",
+    speed: "under 1s",
+    reasoning: "basic",
+    handwriting: "No",
+    bestFor: "receipts, simple invoices, printed forms",
+    icon: FlashIcon,
   },
   {
     name: "Flux",
-    description: "High precision for detailed documents.",
-    speed: "Slower (2-5s)",
-    reasoning: "Advanced",
+    badge: "Balanced",
+    description: "Mixed layouts with tables, notes, and inconsistent spacing.",
+    speed: "2-5s",
+    reasoning: "advanced",
     handwriting: "Partial",
-    complexLayouts: "Excellent",
-    bestFor: "Medical records, multi-page reports, complex tables.",
-    color: "violet"
+    bestFor: "reports, tables, medical records",
+    icon: SparklesIcon,
   },
   {
     name: "Zenith",
-    description: "Deep intelligence at top speed.",
-    speed: "Fast & Accurate",
-    reasoning: "State-of-the-art",
-    handwriting: true,
-    complexLayouts: "Perfect",
-    bestFor: "Cursive, historical docs, blurry scans, anything.",
-    color: "emerald"
-  }
+    badge: "Hard scans",
+    description: "Blurry photos, older scans, and documents with handwriting.",
+    speed: "variable",
+    reasoning: "deep",
+    handwriting: "Yes",
+    bestFor: "cursive, old documents, low-quality photos",
+    icon: PencilEdit02Icon,
+  },
 ];
 
 export function ModelComparison() {
   return (
-    <section id="models" className="w-full py-24 relative overflow-hidden">
-      <div className="max-w-6xl mx-auto px-6 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.7 }}
-          className="text-center mb-16"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/20 bg-blue-500/5 text-blue-600 dark:text-blue-400 text-sm font-medium shadow-inner mb-6">
-            <HugeiconsIcon icon={CpuIcon} className="w-4 h-4" />
-            <span>Intelligence Levels</span>
-          </div>
-          <h2 className="text-4xl md:text-[48px] font-extrabold tracking-tight text-foreground mb-6 leading-tight">
-            Compare Our Models
-          </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 text-lg max-w-2xl mx-auto font-medium">
-            Choose the right level of intelligence for your document processing needs.
-          </p>
-        </motion.div>
+    <section id="models" className="relative z-10 px-4 py-16 sm:px-6 sm:py-24">
+      <div className="absolute right-0 top-24 -z-10 size-96 rounded-full bg-[oklch(0.6_0.18_300)]/12 blur-3xl" />
+      <div className="mx-auto max-w-7xl">
+        <SectionHeading
+          eyebrow="Models"
+          title="Match the model to the document."
+          description="Use a quick model for clean files and a deeper model when the scan quality or layout needs more reasoning."
+          align="center"
+        />
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.7, delay: 0.2 }}
-          className="w-full overflow-x-auto pb-4"
-        >
-          <div className="min-w-[800px] rounded-3xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl shadow-lg overflow-hidden">
-            <div className="grid grid-cols-4 bg-zinc-50/80 dark:bg-zinc-800/50 border-b border-zinc-200/50 dark:border-zinc-700/50">
-              <div className="p-6 font-semibold text-zinc-500 dark:text-zinc-400">Feature</div>
-              {models.map(model => (
-                <div key={model.name} className="p-6 border-l border-zinc-200/50 dark:border-zinc-700/50 text-center">
-                  <h3 className={`text-xl font-bold mb-2 ${
-                    model.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                    model.color === 'violet' ? 'text-violet-600 dark:text-violet-400' :
-                    'text-emerald-600 dark:text-emerald-400'
-                  }`}>
-                    {model.name}
-                  </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">{model.description}</p>
+        <div className="mt-10 grid gap-4 lg:grid-cols-3">
+          {models.map((model) => (
+            <Card key={model.name} className="group overflow-hidden rounded-[1.75rem] border-border/70 bg-card/85 shadow-sm transition hover:border-primary/30 hover:shadow-[0_0_56px_rgba(139,92,246,0.12)]">
+              <CardContent className="flex min-h-full flex-col">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                    <HugeiconsIcon icon={model.icon} className="size-5" />
+                  </div>
+                  <Badge variant="secondary" className="rounded-full">{model.badge}</Badge>
                 </div>
-              ))}
-            </div>
 
-            <div className="grid grid-cols-4 border-b border-zinc-200/30 dark:border-zinc-800/50">
-              <div className="p-6 font-medium text-zinc-700 dark:text-zinc-300 flex items-center">Speed</div>
-              {models.map(model => (
-                <div key={model.name} className="p-6 border-l border-zinc-200/30 dark:border-zinc-800/50 text-center text-sm font-medium text-zinc-600 dark:text-zinc-400 flex items-center justify-center">
-                  {model.speed}
+                <div className="mt-7 min-h-36">
+                  <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">{model.name}</h3>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{model.description}</p>
                 </div>
-              ))}
-            </div>
 
-            <div className="grid grid-cols-4 border-b border-zinc-200/30 dark:border-zinc-800/50">
-              <div className="p-6 font-medium text-zinc-700 dark:text-zinc-300 flex items-center">Reasoning Ability</div>
-              {models.map(model => (
-                <div key={model.name} className="p-6 border-l border-zinc-200/30 dark:border-zinc-800/50 text-center text-sm font-medium text-zinc-600 dark:text-zinc-400 flex items-center justify-center">
-                  {model.reasoning}
-                </div>
-              ))}
-            </div>
+                <dl className="mt-2 grid gap-2 text-sm">
+                  <div className="flex items-center justify-between rounded-2xl border bg-background/60 px-3 py-3">
+                    <dt className="text-muted-foreground">Speed</dt>
+                    <dd className="font-mono font-medium text-foreground">{model.speed}</dd>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl border bg-background/60 px-3 py-3">
+                    <dt className="text-muted-foreground">Reasoning</dt>
+                    <dd className="font-medium text-foreground">{model.reasoning}</dd>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl border bg-background/60 px-3 py-3">
+                    <dt className="text-muted-foreground">Handwriting</dt>
+                    <dd className="font-medium text-foreground">{model.handwriting}</dd>
+                  </div>
+                </dl>
 
-            <div className="grid grid-cols-4 border-b border-zinc-200/30 dark:border-zinc-800/50">
-              <div className="p-6 font-medium text-zinc-700 dark:text-zinc-300 flex items-center">Complex Layouts</div>
-              {models.map(model => (
-                <div key={model.name} className="p-6 border-l border-zinc-200/30 dark:border-zinc-800/50 text-center text-sm font-medium text-zinc-600 dark:text-zinc-400 flex items-center justify-center">
-                  {model.complexLayouts}
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-4 border-b border-zinc-200/30 dark:border-zinc-800/50">
-              <div className="p-6 font-medium text-zinc-700 dark:text-zinc-300 flex items-center">Handwriting Support</div>
-              {models.map(model => (
-                <div key={model.name} className="p-6 border-l border-zinc-200/30 dark:border-zinc-800/50 flex items-center justify-center">
-                  {model.handwriting === true ? (
-                    <HugeiconsIcon icon={CheckmarkBadge01Icon} className="w-6 h-6 text-emerald-500" />
-                  ) : model.handwriting === false ? (
-                    <HugeiconsIcon icon={Cancel01Icon} className="w-5 h-5 text-zinc-300 dark:text-zinc-600" />
-                  ) : (
-                    <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{model.handwriting}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-4 bg-zinc-50/30 dark:bg-zinc-800/20">
-              <div className="p-6 font-medium text-zinc-700 dark:text-zinc-300 flex items-center">Best For</div>
-              {models.map(model => (
-                <div key={model.name} className="p-6 border-l border-zinc-200/30 dark:border-zinc-800/50 text-center text-sm font-medium text-zinc-600 dark:text-zinc-400 flex items-center justify-center">
-                  {model.bestFor}
-                </div>
-              ))}
-            </div>
-
-          </div>
-        </motion.div>
+                <p className="mt-auto pt-6 text-sm leading-6 text-muted-foreground">Best for {model.bestFor}.</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </section>
   );

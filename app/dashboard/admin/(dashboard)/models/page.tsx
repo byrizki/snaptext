@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetDescription } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
+import { DashboardPageShell } from "@/components/dashboard/dashboard-page-shell";
 
 type OcrModel = {
   id: string;
@@ -122,20 +124,17 @@ export default function ModelsAdminPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">OCR Models</h1>
-          <p className="text-muted-foreground mt-1">Manage AI models available for document scanning.</p>
-        </div>
-        <div className="flex gap-3">
-          <Button onClick={() => handleOpenSheet()} className="gap-2 shadow-sm">
-            <HugeiconsIcon icon={Add01Icon} size={16} /> Add Model
-          </Button>
-        </div>
-      </div>
-
-      <div className="border rounded-xl bg-card shadow-sm overflow-hidden">
+    <DashboardPageShell
+      eyebrow="Admin"
+      title="OCR models"
+      description="Manage the model options available during document scanning."
+      actions={(
+        <Button onClick={() => handleOpenSheet()} className="gap-2 rounded-2xl shadow-sm">
+          <HugeiconsIcon icon={Add01Icon} size={16} /> Add model
+        </Button>
+      )}
+    >
+      <DashboardCard className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
@@ -195,7 +194,7 @@ export default function ModelsAdminPage() {
             </div>
           </div>
         )}
-      </div>
+      </DashboardCard>
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="sm:max-w-md overflow-y-auto min-w-lg">
@@ -252,6 +251,6 @@ export default function ModelsAdminPage() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
-    </div>
+    </DashboardPageShell>
   );
 }

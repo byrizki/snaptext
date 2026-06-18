@@ -1,195 +1,208 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { UploadProgress } from "@/components/demo/upload-progress";
 import { ScanningView } from "@/components/demo/scanning-view";
 import { ResultsView } from "@/components/demo/results-view";
 import { ErrorView } from "@/components/demo/error-view";
-import type {
-	OcrStatus,
-	OcrResult,
-	UploadPhase,
-} from "@/hooks/use-ocr-pipeline";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { OcrResult, OcrStatus, UploadPhase } from "@/hooks/use-ocr-pipeline";
 
 interface DemoActiveWorkspaceProps {
-	status: OcrStatus;
-	uploadProgress: number;
-	uploadPhase: UploadPhase;
-	runId: string | null;
-	result: OcrResult | null;
-	error: string | null;
-	currentFile: File | null;
-	onReset: () => void;
-	onStop?: () => void;
+  status: OcrStatus;
+  uploadProgress: number;
+  uploadPhase: UploadPhase;
+  runId: string | null;
+  result: OcrResult | null;
+  error: string | null;
+  currentFile: File | null;
+  onReset: () => void;
+  onStop?: () => void;
 }
-import { useRef } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 
 function PdfPane({ pdfUrl, filename }: { pdfUrl?: string; filename: string }) {
-	const stableUrlRef = useRef<string | null>(null);
-	if (pdfUrl) stableUrlRef.current = pdfUrl;
-	const displayUrl = stableUrlRef.current;
+  const stableUrlRef = useRef<string | null>(null);
+  if (pdfUrl) stableUrlRef.current = pdfUrl;
+  const displayUrl = stableUrlRef.current;
 
-	return (
-		<motion.div
-			initial={{ opacity: 0, x: -8 }}
-			animate={{ opacity: 1, x: 0 }}
-			transition={{ duration: 0.35, ease: "easeOut" }}
-			className="h-full flex flex-col rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl shadow-lg overflow-hidden"
-		>
-			<div className="flex items-center gap-2.5 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/60 shrink-0">
-				<div className="flex gap-1.5">
-					<span className="size-2.5 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-					<span className="size-2.5 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-					<span className="size-2.5 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-				</div>
-				<span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium truncate ml-1">
-					{filename}
-				</span>
-			</div>
-			{displayUrl ? (
-				<iframe
-					src={`${displayUrl}#toolbar=0`}
-					className="flex-1 w-full bg-white"
-					title="PDF Preview"
-				/>
-			) : (
-				<div className="flex-1 flex flex-col gap-3 p-5">
-					<div className="flex flex-col gap-2.5 flex-1">
-						{Array.from({ length: 12 }).map((_, i) => (
-							<div
-								key={i}
-								className="h-3 rounded-full bg-zinc-100 dark:bg-zinc-800 animate-pulse"
-								style={{
-									width: `${[100, 85, 92, 70, 88, 60, 95, 78, 84, 65, 90, 55][i]}%`,
-									animationDelay: `${i * 0.05}s`,
-								}}
-							/>
-						))}
-						<div
-							className="h-20 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse mt-1"
-							style={{ animationDelay: "0.6s" }}
-						/>
-						{Array.from({ length: 5 }).map((_, i) => (
-							<div
-								key={`b-${i}`}
-								className="h-3 rounded-full bg-zinc-100 dark:bg-zinc-800 animate-pulse"
-								style={{
-									width: `${[88, 72, 95, 68, 80][i]}%`,
-									animationDelay: `${(i + 12) * 0.05}s`,
-								}}
-							/>
-						))}
-					</div>
-				</div>
-			)}
-		</motion.div>
-	);
+  return (
+    <div className="flex h-full min-h-[860px] flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex gap-1.5" aria-hidden="true">
+            <span className="size-2.5 rounded-full bg-muted-foreground/25" />
+            <span className="size-2.5 rounded-full bg-muted-foreground/25" />
+            <span className="size-2.5 rounded-full bg-muted-foreground/25" />
+          </div>
+          <span className="truncate text-xs font-medium text-muted-foreground">{filename}</span>
+        </div>
+        <span className="rounded-full border bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+          Preview
+        </span>
+      </div>
+      {displayUrl ? (
+        <iframe src={`${displayUrl}#toolbar=0`} className="min-h-0 flex-1 bg-background" title="PDF preview" />
+      ) : (
+        <div className="flex flex-1 flex-col gap-3 p-5">
+          {Array.from({ length: 12 }).map((_, index) => (
+            <Skeleton
+              key={index}
+              className="h-3 rounded-full"
+              style={{ width: `${[100, 85, 92, 70, 88, 60, 95, 78, 84, 65, 90, 55][index]}%` }}
+            />
+          ))}
+          <Skeleton className="mt-1 h-24 rounded-xl" />
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Skeleton
+              key={`tail-${index}`}
+              className="h-3 rounded-full"
+              style={{ width: `${[88, 72, 95, 68, 80][index]}%` }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ResultPane({ children }: { children: React.ReactNode }) {
-	return (
-		<div className="relative group h-full flex flex-col">
-			<div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-blue-500 via-violet-500 to-emerald-500 blur-sm opacity-15 dark:opacity-20 group-hover:opacity-25 transition-opacity duration-700" />
-			<div className="relative h-full rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl shadow-lg overflow-hidden flex flex-col p-5">
-				{children}
-			</div>
-		</div>
-	);
+  return (
+    <div className="relative h-full min-h-[560px] rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+      {children}
+    </div>
+  );
 }
 
-const TRANSITION = { duration: 0.3, ease: "easeInOut" } as const;
+function StatusContent({
+  status,
+  uploadProgress,
+  uploadPhase,
+  runId,
+  result,
+  error,
+  filename,
+  onReset,
+  onStop,
+}: DemoActiveWorkspaceProps & { filename: string }) {
+  const transition = { duration: 0.3, ease: "easeInOut" } as const;
+
+  return (
+    <ResultPane>
+      <AnimatePresence mode="wait">
+        {status === "uploading" && (
+          <motion.div
+            key="uploading"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={transition}
+            className="flex h-full w-full items-center justify-center"
+          >
+            <UploadProgress progress={uploadProgress} filename={filename} phase={uploadPhase} />
+          </motion.div>
+        )}
+        {status === "scanning" && (
+          <motion.div
+            key="scanning"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={transition}
+            className="flex h-full w-full items-center justify-center"
+          >
+            <ScanningView
+              filename={filename}
+              runId={runId}
+              pagesProcessed={result?.completedPages ?? 0}
+              totalPages={result?.totalPages ?? 0}
+              onStop={onStop}
+            />
+          </motion.div>
+        )}
+        {status === "completed" && result && (
+          <motion.div
+            key="completed"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={transition}
+            className="flex h-full w-full flex-col"
+          >
+            <ResultsView result={result} onReset={onReset} />
+          </motion.div>
+        )}
+        {status === "error" && (
+          <motion.div
+            key="error"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={transition}
+            className="flex h-full w-full items-center justify-center"
+          >
+            <ErrorView message={error ?? "An unexpected error occurred."} onReset={onReset} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </ResultPane>
+  );
+}
 
 export function DemoActiveWorkspace({
-	status,
-	uploadProgress,
-	uploadPhase,
-	runId,
-	result,
-	error,
-	currentFile,
-	onReset,
-	onStop,
+  status,
+  uploadProgress,
+  uploadPhase,
+  runId,
+  result,
+  error,
+  currentFile,
+  onReset,
+  onStop,
 }: DemoActiveWorkspaceProps) {
-	const filename = result?.filename ?? currentFile?.name ?? "document.pdf";
+  const filename = result?.filename ?? currentFile?.name ?? "document.pdf";
+  const [activeTab, setActiveTab] = useState<"result" | "document">("result");
 
-	return (
-		<div className="flex-1 flex flex-col w-[95vw] mx-auto py-4">
-			<div
-				className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 w-full"
-				style={{ minHeight: "calc(100vh - 100px)" }}
-			>
-				<div className="lg:sticky lg:top-24 h-[calc(100vh-116px)] min-w-0">
-					<PdfPane pdfUrl={result?.pdfUrl} filename={filename} />
-				</div>
+  useEffect(() => {
+    if (status === "uploading" || status === "scanning" || status === "completed" || status === "error") {
+      setActiveTab("result");
+    }
+  }, [status]);
 
-				<div className="h-[calc(100vh-116px)] w-full flex-1 min-w-0">
-					<ResultPane>
-						<AnimatePresence mode="wait">
-							{status === "uploading" && (
-								<motion.div
-									key="uploading"
-									initial={{ opacity: 0, y: 12 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -12 }}
-									transition={TRANSITION}
-									className="w-full h-full flex items-center justify-center"
-								>
-									<UploadProgress
-										progress={uploadProgress}
-										filename={filename}
-										phase={uploadPhase}
-									/>
-								</motion.div>
-							)}
-							{status === "scanning" && (
-								<motion.div
-									key="scanning"
-									initial={{ opacity: 0, y: 12 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -12 }}
-									transition={TRANSITION}
-									className="w-full h-full flex items-center justify-center"
-								>
-									<ScanningView
-										filename={filename}
-										runId={runId}
-										pagesProcessed={result?.completedPages ?? 0}
-										totalPages={result?.totalPages ?? 0}
-										onStop={onStop}
-									/>
-								</motion.div>
-							)}
-							{status === "completed" && result && (
-								<motion.div
-									key="completed"
-									initial={{ opacity: 0, y: 12 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -12 }}
-									transition={TRANSITION}
-									className="w-full h-full flex flex-col"
-								>
-									<ResultsView result={result} onReset={onReset} />
-								</motion.div>
-							)}
-							{status === "error" && (
-								<motion.div
-									key="error"
-									initial={{ opacity: 0, y: 12 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -12 }}
-									transition={TRANSITION}
-									className="w-full h-full flex items-center justify-center"
-								>
-									<ErrorView
-										message={error ?? "An unexpected error occurred."}
-										onReset={onReset}
-									/>
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</ResultPane>
-				</div>
-			</div>
-		</div>
-	);
+  return (
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-4 sm:px-6">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "result" | "document")} className="flex min-h-0 flex-1 gap-4">
+        <div className="flex flex-col gap-3 rounded-2xl border bg-card/80 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 px-1">
+            <p className="truncate text-sm font-semibold text-foreground">{filename}</p>
+            <p className="text-xs text-muted-foreground">Switch between extraction output and source document.</p>
+          </div>
+          <TabsList className="w-full sm:w-fit">
+            <TabsTrigger value="result" className="flex-1 px-5 sm:flex-none">Result</TabsTrigger>
+            <TabsTrigger value="document" className="flex-1 px-5 sm:flex-none">Document</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="result" className="mt-0 min-h-0 flex-1">
+          <StatusContent
+            status={status}
+            uploadProgress={uploadProgress}
+            uploadPhase={uploadPhase}
+            runId={runId}
+            result={result}
+            error={error}
+            currentFile={currentFile}
+            filename={filename}
+            onReset={onReset}
+            onStop={onStop}
+          />
+        </TabsContent>
+
+        <TabsContent value="document" className="mt-0 min-h-0 flex-1">
+          <PdfPane pdfUrl={result?.pdfUrl} filename={filename} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }

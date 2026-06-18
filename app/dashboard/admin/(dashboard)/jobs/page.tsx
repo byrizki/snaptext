@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState } from "react";
 import useSWR, { mutate } from "swr";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { 
   CheckmarkCircle02Icon, 
@@ -23,8 +24,9 @@ import {
   Database01Icon,
   Copy01Icon,
 } from "@hugeicons/core-free-icons";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
+import { DashboardPageShell } from "@/components/dashboard/dashboard-page-shell";
 
 export default function JobHistoryPage() {
   const { data = [], isLoading } = useSWR(
@@ -79,15 +81,10 @@ export default function JobHistoryPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Job History</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Detailed telemetry and cost breakdown for all OCR extractions.</p>
-      </div>
-
-      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
+    <DashboardPageShell eyebrow="Admin" title="Job history" description="Review OCR runs, status, model use, and cost.">
+      <DashboardCard className="overflow-hidden">
         {/* Table Header */}
-        <div className="hidden lg:grid grid-cols-[1fr_1.25fr_1.5fr_1.5fr_1fr_1fr_1fr] gap-4 px-6 py-3 bg-zinc-50 dark:bg-zinc-800/40 border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+        <div className="hidden lg:grid grid-cols-[1fr_1.25fr_1.5fr_1.5fr_1fr_1fr_1fr] gap-4 px-6 py-3 bg-muted/40 border-b text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           <span>File Name</span>
           <span>User</span>
           <span>Status & Pages</span>
@@ -98,14 +95,14 @@ export default function JobHistoryPage() {
         </div>
 
         {/* Rows */}
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+        <div className="divide-y">
           {isLoading ? (
-            <div className="py-12 flex flex-col items-center justify-center gap-3 text-zinc-400">
+            <div className="py-12 flex flex-col items-center justify-center gap-3 text-muted-foreground">
               <div className="size-6 border-2 border-zinc-200 dark:border-zinc-700 border-t-zinc-500 rounded-full animate-spin" />
               <span className="text-sm font-medium">Loading history...</span>
             </div>
           ) : paginatedJobs.length === 0 ? (
-            <div className="py-12 text-center text-sm text-zinc-400">No jobs processed yet.</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">No jobs processed yet.</div>
           ) : (
             paginatedJobs.map((job: any) => {
               const status = getStatusProps(job.status);
@@ -113,14 +110,14 @@ export default function JobHistoryPage() {
               return (
                 <div 
                   key={job.id} 
-                  className="p-4 lg:px-6 lg:py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer group"
+                  className="p-4 lg:px-6 lg:py-4 hover:bg-accent/60 transition-colors cursor-pointer group"
                   onClick={() => router.push(`/dashboard/admin/jobs/${job.id}`)}
                 >
                   <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.25fr_1.5fr_1.5fr_1fr_1fr_1fr] gap-4 lg:items-center">
                     
                     {/* File Name */}
                     <div className="flex items-center min-w-0 pr-2">
-                      <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 truncate" title={job.filename}>
+                      <span className="text-sm font-semibold text-foreground truncate" title={job.filename}>
                         {job.filename || "Unknown file"}
                       </span>
                     </div>
@@ -131,19 +128,19 @@ export default function JobHistoryPage() {
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="size-6 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center overflow-hidden shrink-0 border border-zinc-300 dark:border-zinc-600">
                             {job.user.image ? (
-                              <img src={job.user.image} alt={job.user.name} className="w-full h-full object-cover" />
+                              <Image src={job.user.image} alt={job.user.name} width={24} height={24} className="size-6 object-cover" />
                             ) : (
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase">{job.user.name.charAt(0)}</span>
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase">{job.user.name.charAt(0)}</span>
                             )}
                           </div>
-                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate" title={job.user.email || job.user.name}>
+                          <span className="text-xs font-medium text-foreground truncate" title={job.user.email || job.user.name}>
                             {job.user.name}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-xs text-zinc-400 italic flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground italic flex items-center gap-1.5">
                           <div className="size-6 rounded-full bg-zinc-100 dark:bg-zinc-800/50 flex items-center justify-center border border-zinc-200 dark:border-zinc-800">
-                            <span className="text-[10px] text-zinc-400">?</span>
+                            <span className="text-[10px] text-muted-foreground">?</span>
                           </div>
                           Anonymous
                         </span>
@@ -156,7 +153,7 @@ export default function JobHistoryPage() {
                         <HugeiconsIcon icon={status.icon} size={14} />
                         <span className="text-[11px] font-bold uppercase tracking-wider">{job.status}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-zinc-500" title="Pages Processed">
+                      <div className="flex items-center gap-1 text-muted-foreground" title="Pages Processed">
                         <HugeiconsIcon icon={DocumentCodeIcon} size={14} />
                         <span className="text-xs font-medium">{job.totalPages || 0}</span>
                       </div>
@@ -166,15 +163,15 @@ export default function JobHistoryPage() {
                     <div className="flex flex-col gap-1.5 min-w-0">
                       {job.model ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate">
+                          <span className="text-xs font-medium text-foreground truncate">
                             {job.model.name || job.model}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-xs text-zinc-400 italic">Unknown Model</span>
+                        <span className="text-xs text-muted-foreground italic">Unknown Model</span>
                       )}
                       {job.duration && (
-                        <div className="text-[11px] text-zinc-400 flex items-center gap-1">
+                        <div className="text-[11px] text-muted-foreground flex items-center gap-1">
                           <HugeiconsIcon icon={FlashIcon} size={12} />
                           {(job.duration / 1000).toFixed(1)}s processing
                         </div>
@@ -191,7 +188,7 @@ export default function JobHistoryPage() {
                       <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
                         {job.totalTokens?.toLocaleString() || 0}
                       </span>
-                      <span className="text-[10px] text-zinc-400 font-medium">TOTAL TOKENS</span>
+                      <span className="text-[10px] text-muted-foreground font-medium">TOTAL TOKENS</span>
                     </div>
 
                     {/* Cost */}
@@ -206,7 +203,7 @@ export default function JobHistoryPage() {
                     </div>
 
                     {/* Date and Actions */}
-                    <div className="flex items-center justify-end gap-3 lg:text-right text-xs text-zinc-500 font-medium">
+                    <div className="flex items-center justify-end gap-3 lg:text-right text-xs text-muted-foreground font-medium">
                       <span>
                         {new Date(job.createdAt).toLocaleString(undefined, {
                           month: 'short',
@@ -245,7 +242,7 @@ export default function JobHistoryPage() {
         {/* Pagination */}
         {!isLoading && jobs.length > 0 && (
           <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/30 flex items-center justify-between gap-4">
-            <div className="text-xs text-zinc-500 font-medium tabular-nums">
+            <div className="text-xs text-muted-foreground font-medium tabular-nums">
               Showing {(currentPage - 1) * itemsPerPage + 1} – {Math.min(currentPage * itemsPerPage, jobs.length)} of {jobs.length}
             </div>
             
@@ -274,7 +271,7 @@ export default function JobHistoryPage() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </DashboardCard>
+    </DashboardPageShell>
   );
 }

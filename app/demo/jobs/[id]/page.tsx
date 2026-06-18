@@ -1,6 +1,7 @@
 "use client";
 
 import { DemoActiveWorkspace } from "@/components/demo/demo-active-workspace";
+import { ScanLoadingSkeleton } from "@/components/scan/scan-loading-skeleton";
 import { BackgroundGrid } from "@/components/landing/background-grid";
 import { Footer } from "@/components/landing/footer";
 import { Header } from "@/components/landing/header";
@@ -22,7 +23,6 @@ export default function JobRunPage() {
     error,
     currentFile,
     viewJob,
-    rerunOcr,
     stopJob,
   } = useOcrPipeline();
 
@@ -50,20 +50,20 @@ export default function JobRunPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-zinc-50 dark:bg-background text-foreground flex flex-col">
+    <div className="relative flex min-h-screen flex-col bg-background text-foreground">
       <BackgroundGrid />
       <Header />
 
-      <main className="relative z-10 flex-1 flex flex-col py-20 mx-auto max-w-[95vw]">
+      <main className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-20 sm:px-6">
         <AnimatePresence mode="wait">
-          {status !== "idle" && (
+          {status !== "idle" ? (
             <motion.div
               key="active"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
-              className="flex-1 flex flex-col w-full"
+              className="flex w-full flex-1 flex-col overflow-hidden rounded-[2rem] border bg-card/85 shadow-[0_0_64px_rgba(59,130,246,0.10)]"
             >
               <DemoActiveWorkspace
                 status={status}
@@ -79,6 +79,16 @@ export default function JobRunPage() {
                   if (jobId) stopJob(jobId);
                 } : undefined}
               />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="overflow-hidden rounded-[2rem] border bg-card/85 shadow-[0_0_64px_rgba(59,130,246,0.10)]"
+            >
+              <ScanLoadingSkeleton />
             </motion.div>
           )}
         </AnimatePresence>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { BackgroundGrid } from "@/components/landing/background-grid";
@@ -37,11 +37,11 @@ export default function DemoPage() {
   const isActive = status !== "idle";
 
   return (
-    <div className="relative min-h-screen bg-zinc-50 dark:bg-background text-foreground flex flex-col">
+    <div className="relative flex min-h-screen flex-col bg-background text-foreground">
       <BackgroundGrid />
       <Header />
 
-      <main className="relative z-10 flex-1 flex flex-col pt-20">
+      <main className="relative z-10 flex flex-1 flex-col pt-20">
         <AnimatePresence mode="wait">
           {!isActive ? (
             <motion.div
@@ -50,7 +50,7 @@ export default function DemoPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.3 }}
-              className="flex-1 flex flex-col"
+              className="flex flex-1 flex-col"
             >
               <DemoIdlePanel
                 selectedModelId={selectedModelId}
@@ -69,7 +69,7 @@ export default function DemoPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
-              className="flex-1 flex flex-col"
+              className="flex flex-1 flex-col"
             >
               <DemoActiveWorkspace
                 status={status}

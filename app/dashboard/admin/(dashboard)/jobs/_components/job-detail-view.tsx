@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import useSWR from "swr";
 import { toast } from "sonner";
@@ -585,7 +587,7 @@ export function JobDetailView({ jobId }: JobDetailViewProps) {
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800">
                   <div className="size-9 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center overflow-hidden border border-zinc-300 dark:border-zinc-600">
                     {job.user?.image ? (
-                      <img src={job.user.image} alt={job.user.name} className="w-full h-full object-cover" />
+                      <Image src={job.user.image} alt={job.user.name} width={36} height={36} className="size-9 object-cover" />
                     ) : (
                       <span className="text-xs font-bold text-zinc-500">{job.user?.name?.charAt(0) || "?"}</span>
                     )}

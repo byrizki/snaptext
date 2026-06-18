@@ -1,60 +1,65 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
-import { ThemeToggle } from "@/components/theme-toggle";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/auth-client";
 
+const navItems = [
+  { label: "Features", href: "#features" },
+  { label: "Models", href: "#models" },
+  { label: "FAQ", href: "#faq" },
+];
+
 export function Header() {
   const pathname = usePathname();
-  const isDemo = pathname.includes("/demo");
   const { data: session } = useSession();
+  const isHome = pathname === "/";
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 h-20 border-b border-zinc-200/50 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl transition-colors text-foreground">
-      <div className="flex h-full items-center justify-between px-6 max-w-7xl mx-auto w-full">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="size-10 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-center relative overflow-hidden shadow-sm transition-all">
-            <Image src="/logo.svg" alt="SnapText Logo" width={40} height={40} className="size-7 object-contain" />
-            <div className="absolute inset-x-0 top-0 h-[2px] bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,1)] opacity-0 group-hover:opacity-100 group-hover:animate-[scan_1.5s_ease-in-out_infinite]" />
-          </div>
-          <span className="font-bold text-xl tracking-tight"><span className="text-blue-600 dark:text-blue-500">Snap</span><span className="text-violet-600 dark:text-violet-500">Text</span></span>
+    <header className="fixed inset-x-0 top-0 z-50 border-b bg-background/82 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+        <Link href="/" className="flex min-w-0 items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-card ring-1 ring-border">
+            <Image src="/logo.svg" alt="SnapText logo" width={28} height={28} className="size-6" />
+          </span>
+          <span className="truncate text-lg font-semibold tracking-[-0.03em] text-foreground">SnapText</span>
         </Link>
-        
-        <nav className="hidden md:flex items-center gap-8 bg-zinc-50/80 dark:bg-zinc-900/40 px-6 py-2 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 backdrop-blur-md shadow-sm dark:shadow-none">
-          <Link href={isDemo ? "/#features" : "#features"} className="text-[14px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors">Features</Link>
-          <Link href={isDemo ? "/#faq" : "#faq"} className="text-[14px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors">FAQ</Link>
-          <Link href="/demo" className={cn(
-            "text-[14px] font-medium transition-colors",
-            isDemo ? "text-blue-600 dark:text-blue-400 font-semibold" : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-          )}>Demo</Link>
+
+        <nav className="hidden items-center gap-1 rounded-full bg-muted/80 p-1 md:flex" aria-label="Main navigation">
+          {navItems.map((item) => (
+            <Link
+              key={item.label}
+              href={isHome ? item.href : `/${item.href}`}
+              className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
-        
-        <div className="flex items-center gap-4">
+
+        <div className="flex items-center gap-2">
           <ThemeToggle />
-          {session?.user ? (
-            <Link href="/dashboard" className="text-[14px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors hidden sm:block">
-              Dashboard
-            </Link>
-          ) : (
-            <Link href="/login" className="text-[14px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors hidden sm:block">
-              Sign In
-            </Link>
-          )}
-          <Link href="/demo" className="h-10 px-5 rounded-xl bg-blue-600 dark:bg-blue-500 text-white text-[14px] font-semibold flex items-center justify-center hover:bg-blue-500 dark:hover:bg-blue-400 transition-all shadow-md hover:shadow-lg dark:shadow-[0_0_20px_rgba(59,130,246,0.25)] dark:hover:shadow-[0_0_30px_rgba(59,130,246,0.4)]">
-            Get Started
+          <Link
+            href={session?.user ? "/dashboard" : "/login"}
+            className="hidden rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:inline-flex"
+          >
+            {session?.user ? "Dashboard" : "Sign in"}
+          </Link>
+          <Link
+            href="/demo"
+            className={cn(
+              buttonVariants({ size: "lg", className: "h-10 px-4" }),
+              pathname.startsWith("/demo") && "bg-primary/90"
+            )}
+          >
+            Demo
           </Link>
         </div>
       </div>
-      <style dangerouslySetInnerHTML={{__html:`
-        @keyframes scan {
-          0% { top: 0; }
-          50% { top: 100%; }
-          100% { top: 0; }
-        }
-      `}} />
     </header>
   );
 }

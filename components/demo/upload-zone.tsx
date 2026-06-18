@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { File01Icon, Upload03Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface UploadZoneProps {
   onFileSelect: (file: File) => void;
@@ -25,70 +28,63 @@ export function UploadZone({ onFileSelect, quota, isLoadingQuota }: UploadZonePr
   );
 
   const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
       setIsDragging(false);
-      handleFiles(e.dataTransfer.files);
+      handleFiles(event.dataTransfer.files);
     },
     [handleFiles]
   );
 
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
   return (
     <div
       onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={() => setIsDragging(false)}
       onClick={() => inputRef.current?.click()}
-      className={`relative w-full rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 group/upload`}
+      className={cn(
+        "group/upload relative w-full cursor-pointer overflow-hidden rounded-[1.75rem] border border-dashed p-4 transition-all duration-300 focus-within:ring-[3px] focus-within:ring-ring/50",
+        isDragging ? "border-primary bg-primary/10 shadow-[0_0_48px_rgba(59,130,246,0.14)]" : "border-border bg-muted/30 hover:border-primary/40 hover:bg-muted/50"
+      )}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
-      aria-label="Upload PDF file"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") inputRef.current?.click();
+      }}
+      aria-label="Upload document file"
     >
-      {/* Animated Dash Border using SVG for precise control */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-        <rect
-          width="100%"
-          height="100%"
-          rx="16"
-          fill="none"
-          stroke={isDragging ? "#3b82f6" : "currentColor"}
-          strokeWidth="2"
-          strokeDasharray="8 8"
-          className={`transition-colors duration-300 ${
-            isDragging 
-              ? "text-blue-500 animate-[spin_4s_linear_infinite]" 
-              : "text-zinc-300 dark:text-zinc-700 group-hover/upload:text-blue-400/50"
-          }`}
-          style={{ strokeDashoffset: isDragging ? 100 : 0, transition: 'stroke-dashoffset 2s linear' }}
-        />
-      </svg>
-
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf"
+        accept="application/pdf,image/*"
         className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
-        id="pdf-file-input"
+        onChange={(event) => handleFiles(event.target.files)}
+        id="document-file-input"
       />
 
-      <div
-        className={`relative z-10 w-full p-12 md:p-16 flex flex-col items-center justify-center transition-all duration-300 ${
-          isDragging
-            ? "bg-blue-500/5 dark:bg-blue-500/10 scale-[0.98]"
-            : "bg-zinc-50/50 dark:bg-zinc-900/30 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-        }`}
-      >
+      <div className="relative flex min-h-[22rem] flex-col items-center justify-center rounded-[1.35rem] bg-card/55 px-5 py-12 text-center sm:px-8">
+        {isLoadingQuota ? (
+          <Skeleton className="absolute top-5 h-8 w-52 rounded-full" />
+        ) : quota ? (
+          <div className="absolute top-5 max-w-[calc(100%-2rem)] rounded-full border bg-background/80 px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+            {quota.limit > 1000000 ? (
+              <span className="text-primary">Unlimited scans available</span>
+            ) : (
+              <span>
+                <span className={quota.remaining > 0 ? "text-primary" : "text-destructive"}>{quota.remaining}</span> / {quota.limit} scans left today
+                {quota.isAnonymous && (
+                  <Link href="/signup" className="ml-1.5 text-primary hover:underline">
+                    Get more
+                  </Link>
+                )}
+              </span>
+            )}
+          </div>
+        ) : null}
+
         <div className="relative mb-6">
           <AnimatePresence>
             {isDragging && (
@@ -96,70 +92,30 @@ export function UploadZone({ onFileSelect, quota, isLoadingQuota }: UploadZonePr
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.5 }}
-                className="absolute inset-0 rounded-full bg-blue-500 blur-2xl opacity-20 dark:opacity-40"
+                className="absolute inset-0 rounded-full bg-primary/40 blur-2xl"
               />
             )}
           </AnimatePresence>
-
-          {isLoadingQuota ? (
-            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-8 bg-zinc-200/50 dark:bg-zinc-800/50 rounded-full animate-pulse z-20 backdrop-blur-md" />
-          ) : quota ? (
-            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-max max-w-[200px] sm:max-w-none text-[11px] font-medium bg-white/50 dark:bg-zinc-800/50 backdrop-blur-md border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 rounded-full shadow-sm whitespace-nowrap z-20">
-              {quota.limit > 1000000 ? (
-                <span className="text-emerald-600 dark:text-emerald-400">Unlimited scans available</span>
-              ) : (
-                <span className="text-zinc-600 dark:text-zinc-300">
-                  <span className={quota.remaining > 0 ? "text-blue-600 dark:text-blue-400" : "text-red-500"}>{quota.remaining}</span> / {quota.limit} scans remaining today.
-                  {quota.isAnonymous && (
-                    <Link href="/signup" className="ml-1.5 text-blue-600 dark:text-blue-400 hover:underline">
-                      Sign up for more &rarr;
-                    </Link>
-                  )}
-                </span>
-              )}
-            </div>
-          ) : null}
-
           <div
-            className={`relative size-20 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm border ${
-              isDragging
-                ? "bg-blue-500 border-blue-400 text-white shadow-blue-500/25 scale-110 rotate-3"
-                : "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 group-hover/upload:border-blue-200 dark:group-hover/upload:border-blue-900/50 group-hover/upload:-translate-y-1 group-hover/upload:shadow-lg"
-            }`}
+            className={cn(
+              "relative flex size-20 items-center justify-center rounded-3xl border bg-background text-muted-foreground shadow-sm transition-all duration-300",
+              isDragging ? "rotate-3 scale-105 border-primary bg-primary text-primary-foreground" : "group-hover/upload:-translate-y-1 group-hover/upload:border-primary/30 group-hover/upload:text-primary"
+            )}
           >
-            <HugeiconsIcon
-              icon={isDragging ? Upload03Icon : File01Icon}
-              size={36}
-              className={`transition-colors duration-300 ${
-                isDragging ? "text-white" : "group-hover/upload:text-blue-500 dark:group-hover/upload:text-blue-400"
-              }`}
-            />
+            <HugeiconsIcon icon={isDragging ? Upload03Icon : File01Icon} size={36} />
           </div>
         </div>
 
-        <h3 className="text-xl font-bold text-zinc-800 dark:text-zinc-100 mb-2 tracking-tight">
-          {isDragging ? "Drop document to scan" : "Click or drag document here"}
+        <h3 className="mb-2 text-balance text-2xl font-semibold tracking-[-0.03em] text-foreground">
+          {isDragging ? "Drop to scan" : "Drop a document here"}
         </h3>
-        
-        <p className="text-zinc-500 dark:text-zinc-400 text-sm max-w-sm text-center mb-8">
-          Upload any PDF up to 20MB. Our AI will analyze the content instantly and securely.
+        <p className="mb-8 max-w-sm text-sm leading-6 text-muted-foreground">
+          Upload a PDF or image up to 20MB. SnapText extracts text and structured fields from the file.
         </p>
-
-        <button
-          type="button"
-          className="relative overflow-hidden group/btn h-12 px-8 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-lg shadow-zinc-900/20 dark:shadow-white/10"
-        >
-          <span className="relative z-10 flex items-center gap-2">
-            <HugeiconsIcon icon={Upload03Icon} size={18} />
-            Browse Files
-          </span>
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-violet-500 to-blue-500 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300" />
-          {/* Re-render text on top of gradient */}
-          <span className="absolute inset-0 flex items-center justify-center gap-2 text-white opacity-0 group-hover/btn:opacity-100 z-20">
-            <HugeiconsIcon icon={Upload03Icon} size={18} />
-            Browse Files
-          </span>
-        </button>
+        <Button type="button" size="lg" className="h-12 px-7">
+          <HugeiconsIcon icon={Upload03Icon} size={18} />
+          Browse files
+        </Button>
       </div>
     </div>
   );

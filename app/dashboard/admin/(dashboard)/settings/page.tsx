@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState, useEffect, useCallback } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -27,6 +29,8 @@ import {
 import { toast } from "sonner";
 import useSWR from "swr";
 import { AnimatePresence, motion } from "framer-motion";
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
+import { DashboardPageShell } from "@/components/dashboard/dashboard-page-shell";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,7 +77,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+    <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
       {children}
     </p>
   );
@@ -83,9 +87,9 @@ function UserAvatar({ image, name }: { image: string | null; name: string }) {
   return (
     <div className="size-8 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 flex items-center justify-center ring-1 ring-white dark:ring-zinc-900">
       {image ? (
-        <img src={image} alt={name} className="w-full h-full object-cover" />
+        <Image src={image} alt={name} width={32} height={32} className="size-8 object-cover" />
       ) : (
-        <span className="text-[11px] font-bold text-zinc-400 uppercase">{name.charAt(0)}</span>
+        <span className="text-[11px] font-bold text-muted-foreground uppercase">{name.charAt(0)}</span>
       )}
     </div>
   );
@@ -121,8 +125,8 @@ function QuotaRow({
           {icon}
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{label}</p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{description}</p>
+          <p className="text-sm font-semibold text-foreground">{label}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         </div>
       </div>
 
@@ -133,9 +137,9 @@ function QuotaRow({
             min={0}
             value={quota.count}
             onChange={(e) => onChange({ ...quota, count: parseInt(e.target.value, 10) || 0 })}
-            className="w-14 bg-transparent text-sm font-bold text-zinc-900 dark:text-zinc-50 outline-none text-center tabular-nums"
+            className="w-14 bg-transparent text-sm font-bold text-foreground outline-none text-center tabular-nums"
           />
-          <span className="text-xs text-zinc-400 font-medium">docs</span>
+          <span className="text-xs text-muted-foreground font-medium">docs</span>
         </div>
 
         <Select
@@ -249,19 +253,19 @@ function UserOverrideEditor({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 h-8">
+      <div className="flex items-center gap-1.5 bg-card border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 h-8">
         <input
           type="number"
           min={0}
           value={count}
           onChange={(e) => setCount(parseInt(e.target.value, 10) || 0)}
-          className="w-12 bg-transparent text-sm font-bold outline-none text-center tabular-nums text-zinc-900 dark:text-zinc-50"
+          className="w-12 bg-transparent text-sm font-bold outline-none text-center tabular-nums text-foreground"
         />
-        <span className="text-xs text-zinc-400">docs</span>
+        <span className="text-xs text-muted-foreground">docs</span>
       </div>
 
       <Select value={period} onValueChange={(v) => v && setPeriod(v)}>
-        <SelectTrigger className="h-8 rounded-lg text-xs border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+        <SelectTrigger className="h-8 rounded-lg text-xs border-zinc-200 dark:border-zinc-700 bg-card">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -292,7 +296,7 @@ function UserOverrideEditor({
 
       <button
         onClick={onCancelled}
-        className="size-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+        className="size-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
       >
         <HugeiconsIcon icon={Cancel01Icon} size={14} />
       </button>
@@ -415,24 +419,15 @@ export default function SettingsPage() {
   const totalUsers = usersData?.total ?? 0;
 
   return (
-    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-3 duration-400">
-      {/* Header */}
-      <div className="mb-7">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Quota Settings</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-          Control scan limits for each access tier and individual users.
-        </p>
-      </div>
-
-      {/* ── Tier Defaults ──────────────────────────────────────────────────── */}
-      <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
-        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
+    <DashboardPageShell eyebrow="Admin" title="Quota settings" description="Control scan limits for tiers and individual users.">
+      <DashboardCard className="overflow-hidden">
+        <div className="px-6 py-4 border-b border">
           <SectionLabel>Tier Defaults</SectionLabel>
         </div>
 
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80 px-6">
+        <div className="divide-y divide-border px-6">
           {isLoading ? (
-            <div className="py-10 flex items-center justify-center gap-3 text-zinc-400">
+            <div className="py-10 flex items-center justify-center gap-3 text-muted-foreground">
               <div className="size-5 border-2 border-zinc-200 dark:border-zinc-700 border-t-zinc-500 rounded-full animate-spin" />
               <span className="text-sm">Loading…</span>
             </div>
@@ -464,24 +459,23 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="px-6 py-3 bg-zinc-50 dark:bg-zinc-800/40 border-t border-zinc-100 dark:border-zinc-800 flex items-start gap-2">
-          <HugeiconsIcon icon={Alert02Icon} size={13} className="text-zinc-400 mt-0.5 shrink-0" />
-          <p className="text-[11px] text-zinc-400 dark:text-zinc-500 leading-relaxed">
-            The <strong className="font-semibold text-zinc-500">registered</strong> default applies to all users
+        <div className="px-6 py-3 bg-muted/40 border-t flex items-start gap-2">
+          <HugeiconsIcon icon={Alert02Icon} size={13} className="text-muted-foreground mt-0.5 shrink-0" />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            The <strong className="font-semibold text-foreground">registered</strong> default applies to all users
             without a personal override. Admins are always unlimited.
           </p>
         </div>
-      </div>
+      </DashboardCard>
 
-      {/* ── System Settings ─────────────────────────────────────────────────── */}
-      <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
-        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
+      <DashboardCard className="overflow-hidden">
+        <div className="px-6 py-4 border-b border">
           <SectionLabel>System Settings</SectionLabel>
         </div>
 
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80 px-6">
+        <div className="divide-y divide-border px-6">
           {isLoading ? (
-            <div className="py-10 flex items-center justify-center gap-3 text-zinc-400">
+            <div className="py-10 flex items-center justify-center gap-3 text-muted-foreground">
               <div className="size-5 border-2 border-zinc-200 dark:border-zinc-700 border-t-zinc-500 rounded-full animate-spin" />
               <span className="text-sm">Loading…</span>
             </div>
@@ -492,8 +486,8 @@ export default function SettingsPage() {
                   <HugeiconsIcon icon={Settings01Icon} size={18} className="text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Workflow Concurrency</p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Global maximum concurrent tasks during OCR extraction</p>
+                  <p className="text-sm font-semibold text-foreground">Workflow Concurrency</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Global maximum concurrent tasks during OCR extraction</p>
                 </div>
               </div>
 
@@ -507,9 +501,9 @@ export default function SettingsPage() {
                       setSystemForm({ ...systemForm, concurrencyLength: parseInt(e.target.value, 10) || 1 });
                       setSystemDirty(true);
                     }}
-                    className="w-14 bg-transparent text-sm font-bold text-zinc-900 dark:text-zinc-50 outline-none text-center tabular-nums"
+                    className="w-14 bg-transparent text-sm font-bold text-foreground outline-none text-center tabular-nums"
                   />
-                  <span className="text-xs text-zinc-400 font-medium">tasks</span>
+                  <span className="text-xs text-muted-foreground font-medium">tasks</span>
                 </div>
 
                 <AnimatePresence>
@@ -540,22 +534,21 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
-      </div>
+      </DashboardCard>
 
-      {/* ── User Overrides ─────────────────────────────────────────────────── */}
-      <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+      <DashboardCard className="overflow-hidden">
         {/* Header + search */}
-        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="px-6 py-4 border-b border flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1 flex items-center gap-3">
             <SectionLabel>User Overrides</SectionLabel>
             {usersData && (
-              <span className="text-[11px] text-zinc-400 tabular-nums">
+              <span className="text-[11px] text-muted-foreground tabular-nums">
                 {totalUsers} user{totalUsers !== 1 ? "s" : ""}
               </span>
             )}
           </div>
           <div className="relative w-full sm:w-72">
-            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-400">
+            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-muted-foreground">
               <HugeiconsIcon icon={Search01Icon} size={15} />
             </div>
             <Input
@@ -569,7 +562,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Table header */}
-        <div className="hidden sm:grid grid-cols-[2fr_2fr_1fr_auto] gap-4 px-6 py-2.5 bg-zinc-50 dark:bg-zinc-800/40 border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+        <div className="hidden sm:grid grid-cols-[2fr_2fr_1fr_auto] gap-4 px-6 py-2.5 bg-muted/40 border-b border text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           <span>User</span>
           <span>Email</span>
           <span>Quota Override</span>
@@ -577,14 +570,14 @@ export default function SettingsPage() {
         </div>
 
         {/* Rows */}
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+        <div className="divide-y divide-border">
           {!usersData ? (
-            <div className="py-10 flex items-center justify-center gap-3 text-zinc-400">
+            <div className="py-10 flex items-center justify-center gap-3 text-muted-foreground">
               <div className="size-5 border-2 border-zinc-200 dark:border-zinc-700 border-t-zinc-500 rounded-full animate-spin" />
               <span className="text-sm">Loading users…</span>
             </div>
           ) : users.length === 0 ? (
-            <div className="py-10 text-center text-sm text-zinc-400">No users found.</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">No users found.</div>
           ) : (
             users.map((u) => (
               <div key={u.id} className="px-6 py-3">
@@ -594,7 +587,7 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-2.5 min-w-0">
                     <UserAvatar image={u.image} name={u.name} />
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate">{u.name}</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{u.name}</p>
                       {u.role === "admin" && (
                         <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Admin</span>
                       )}
@@ -612,7 +605,7 @@ export default function SettingsPage() {
                         <span className="font-normal text-amber-600/70 dark:text-amber-500/60">/{u.overrideResetPeriod}</span>
                       </span>
                     ) : (
-                      <span className="text-xs text-zinc-400 italic">default</span>
+                      <span className="text-xs text-muted-foreground italic">default</span>
                     )}
                   </div>
 
@@ -621,7 +614,7 @@ export default function SettingsPage() {
                     {editingUserId !== u.id && (
                       <button
                         onClick={() => setEditingUserId(u.id)}
-                        className="h-7 px-2.5 flex items-center gap-1 text-xs font-medium rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        className="h-7 px-2.5 flex items-center gap-1 text-xs font-medium rounded-lg text-muted-foreground hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                       >
                         <HugeiconsIcon icon={Edit01Icon} size={13} />
                         <span className="hidden sm:inline">Edit</span>
@@ -663,8 +656,8 @@ export default function SettingsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-4">
-            <p className="text-xs text-zinc-400 tabular-nums">
+          <div className="px-6 py-4 border-t border flex items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground tabular-nums">
               Page {page} of {totalPages}
               <span className="ml-2 text-zinc-300 dark:text-zinc-600">·</span>
               <span className="ml-2">{totalUsers} total</span>
@@ -687,7 +680,7 @@ export default function SettingsPage() {
                 }, [])
                 .map((p, idx) =>
                   p === "…" ? (
-                    <span key={`ellipsis-${idx}`} className="text-xs text-zinc-400 px-1">…</span>
+                    <span key={`ellipsis-${idx}`} className="text-xs text-muted-foreground px-1">…</span>
                   ) : (
                     <button
                       key={p}
@@ -713,7 +706,7 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </DashboardCard>
+    </DashboardPageShell>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -21,24 +22,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="flex flex-col md:flex-row gap-8 max-w-[80vw] mx-auto">
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 shrink-0">
-        <nav className="flex md:flex-col gap-2 overflow-x-auto pb-4 md:pb-0 sticky top-24">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 lg:flex-row lg:gap-6">
+      <aside className="w-full shrink-0 lg:w-64">
+        <nav className="sticky top-24 flex gap-2 overflow-x-auto rounded-3xl border bg-card p-2 shadow-sm lg:flex-col">
           {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/dashboard/admin" && pathname?.startsWith(item.href));
             return (
-              <Link 
+              <Link
                 key={item.href}
-                href={item.href} 
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 whitespace-nowrap
-                  ${isActive 
-                    ? "bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 shadow-sm" 
-                    : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-50"
-                  }
-                `}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 whitespace-nowrap rounded-2xl px-4 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-accent hover:text-foreground",
+                  isActive && "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground"
+                )}
               >
-                <HugeiconsIcon icon={item.icon} size={20} className={isActive ? "text-blue-600 dark:text-blue-400" : "text-zinc-500 dark:text-zinc-400"} />
+                <HugeiconsIcon icon={item.icon} size={20} />
                 {item.label}
               </Link>
             );
@@ -46,8 +44,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 min-w-0">
+      <main className="min-w-0 flex-1">
         {children}
       </main>
     </div>

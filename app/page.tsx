@@ -8,10 +8,10 @@ import { ModelComparison } from "@/components/landing/model-comparison";
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen bg-zinc-50 dark:bg-background text-foreground selection:bg-blue-500/30 transition-colors">
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground selection:bg-primary/20">
       <BackgroundGrid />
       <Header />
-      <main className="flex-1 w-full pt-16">
+      <main className="relative w-full">
         <Hero />
         <Features />
         <ModelComparison />
