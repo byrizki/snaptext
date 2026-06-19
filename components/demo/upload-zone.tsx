@@ -85,7 +85,7 @@ export function UploadZone({ onFileSelect, quota, isLoadingQuota }: UploadZonePr
           </div>
         ) : null}
 
-        <div className="relative mb-6">
+        <div className="relative mb-6 mt-8">
           <AnimatePresence>
             {isDragging && (
               <motion.div

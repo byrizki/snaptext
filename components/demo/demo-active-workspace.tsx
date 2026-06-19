@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { UploadProgress } from "@/components/demo/upload-progress";
 import { ScanningView } from "@/components/demo/scanning-view";
@@ -28,7 +28,7 @@ function PdfPane({ pdfUrl, filename }: { pdfUrl?: string; filename: string }) {
   const displayUrl = stableUrlRef.current;
 
   return (
-    <div className="flex h-full min-h-[860px] flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+    <section className="flex min-h-[480px] flex-col overflow-hidden rounded-2xl border bg-card shadow-sm lg:min-h-0">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex gap-1.5" aria-hidden="true">
@@ -39,13 +39,13 @@ function PdfPane({ pdfUrl, filename }: { pdfUrl?: string; filename: string }) {
           <span className="truncate text-xs font-medium text-muted-foreground">{filename}</span>
         </div>
         <span className="rounded-full border bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-          Preview
+          Document
         </span>
       </div>
       {displayUrl ? (
         <iframe src={`${displayUrl}#toolbar=0`} className="min-h-0 flex-1 bg-background" title="PDF preview" />
       ) : (
-        <div className="flex flex-1 flex-col gap-3 p-5">
+        <div className="flex flex-1 flex-col gap-3 overflow-hidden p-5">
           {Array.from({ length: 12 }).map((_, index) => (
             <Skeleton
               key={index}
@@ -63,15 +63,15 @@ function PdfPane({ pdfUrl, filename }: { pdfUrl?: string; filename: string }) {
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
 function ResultPane({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative h-full min-h-[560px] rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+    <section className="relative flex min-h-[560px] flex-col overflow-hidden rounded-2xl border bg-card p-4 shadow-sm sm:p-5 lg:min-h-0">
       {children}
-    </div>
+    </section>
   );
 }
 
@@ -128,7 +128,7 @@ function StatusContent({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={transition}
-            className="flex h-full w-full flex-col"
+            className="flex h-full min-h-0 w-full flex-col"
           >
             <ResultsView result={result} onReset={onReset} />
           </motion.div>
@@ -162,45 +162,49 @@ export function DemoActiveWorkspace({
   onStop,
 }: DemoActiveWorkspaceProps) {
   const filename = result?.filename ?? currentFile?.name ?? "document.pdf";
-  const [activeTab, setActiveTab] = useState<"result" | "document">("result");
-
-  useEffect(() => {
-    if (status === "uploading" || status === "scanning" || status === "completed" || status === "error") {
-      setActiveTab("result");
-    }
-  }, [status]);
+  const [activeMobileTab, setActiveMobileTab] = useState<"result" | "document">("result");
+  const resultPane = (
+    <StatusContent
+      status={status}
+      uploadProgress={uploadProgress}
+      uploadPhase={uploadPhase}
+      runId={runId}
+      result={result}
+      error={error}
+      currentFile={currentFile}
+      filename={filename}
+      onReset={onReset}
+      onStop={onStop}
+    />
+  );
+  const documentPane = <PdfPane pdfUrl={result?.pdfUrl} filename={filename} />;
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-4 sm:px-6">
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "result" | "document")} className="flex min-h-0 flex-1 gap-4">
-        <div className="flex flex-col gap-3 rounded-2xl border bg-card/80 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 px-1">
-            <p className="truncate text-sm font-semibold text-foreground">{filename}</p>
-            <p className="text-xs text-muted-foreground">Switch between extraction output and source document.</p>
-          </div>
-          <TabsList className="w-full sm:w-fit">
-            <TabsTrigger value="result" className="flex-1 px-5 sm:flex-none">Result</TabsTrigger>
-            <TabsTrigger value="document" className="flex-1 px-5 sm:flex-none">Document</TabsTrigger>
-          </TabsList>
+    <div className="flex h-full min-h-0 w-full flex-col gap-4 overflow-hidden p-3 sm:p-4">
+      <div className="flex shrink-0 lg:hidden flex-col gap-3 rounded-2xl border bg-card/80 px-4 py-3 shadow-sm backdrop-blur lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground">{filename}</p>
+          <p className="text-xs text-muted-foreground">Switch between the extraction output and source document.</p>
         </div>
+        <Tabs value={activeMobileTab} onValueChange={(value) => setActiveMobileTab(value as "result" | "document")} className="lg:hidden">
+          <TabsList className="w-full">
+            <TabsTrigger value="result">Result</TabsTrigger>
+            <TabsTrigger value="document">Document</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
-        <TabsContent value="result" className="mt-0 min-h-0 flex-1">
-          <StatusContent
-            status={status}
-            uploadProgress={uploadProgress}
-            uploadPhase={uploadPhase}
-            runId={runId}
-            result={result}
-            error={error}
-            currentFile={currentFile}
-            filename={filename}
-            onReset={onReset}
-            onStop={onStop}
-          />
+      <div className="hidden min-h-0 flex-1 gap-4 overflow-hidden lg:grid lg:grid-cols-2">
+        {documentPane}
+        {resultPane}
+      </div>
+
+      <Tabs value={activeMobileTab} onValueChange={(value) => setActiveMobileTab(value as "result" | "document")} className="min-h-0 flex-1 lg:hidden">
+        <TabsContent value="result" className="mt-0 min-h-0 overflow-y-auto">
+          {resultPane}
         </TabsContent>
-
-        <TabsContent value="document" className="mt-0 min-h-0 flex-1">
-          <PdfPane pdfUrl={result?.pdfUrl} filename={filename} />
+        <TabsContent value="document" className="mt-0 min-h-0 overflow-y-auto">
+          {documentPane}
         </TabsContent>
       </Tabs>
     </div>
