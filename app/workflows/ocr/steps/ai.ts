@@ -56,6 +56,20 @@ function getAiModel(
     };
   }
 
+  if (modelId.startsWith("@sumopod/")) {
+    const actualModelId = modelId.slice("@sumopod/".length);
+    const provider = createOpenAICompatible({
+      apiKey: process.env.SUMOPOD_API_KEY,
+      name: "sumopod",
+      baseURL: "https://ai.sumopod.com/v1",
+    });
+
+    return {
+      model: async () => provider.chatModel(getModelId(actualModelId)),
+      providerConfig: { ...predefinedProvider },
+    };
+  }
+
   const actualModelId = modelId.replace(/^@cf\//, "");
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
