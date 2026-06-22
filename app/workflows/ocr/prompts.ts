@@ -277,12 +277,30 @@ Extract data from the document image and output it as TOON following the schema 
 
 <critical_rules>
 1. Output raw TOON only — no preamble, no explanation, no code fences.
-2. Output EXACTLY the keys in the schema. Every key must appear, even if the value is null.
+2. Output the schema keys as the final TOON keys. Do not invent new output keys.
 3. The schema shows TYPE HINTS like <string>, <number>, <boolean>. Do NOT copy them into your output.
    Replace each placeholder with the actual value you read from the document.
-4. Do not invent keys not in the schema.
-5. If the document has nothing matching the schema: output exactly "empty: true" and stop.
+4. The schema keys are NOT search terms. They are destination fields. First read the document visually, then map visible content into the closest schema fields by meaning.
+5. Use semantic matching across languages and synonyms. Examples: tariff, tarif, biaya, harga, price, fee, rate, room charge, layanan, kamar, administrasi can all match a schema key named tariffs.
+6. Empty output is rare. Only output exactly "empty: true" when the page is blank/unreadable OR contains no structured visible data at all. If there is any visible table/list with names and prices/rates/fees, output rows.
+7. Do NOT output array_name[0] plus metadata as an empty result. Empty output is only "empty: true".
+8. If an array key exists and the page has any table/list of compatible records, [N] must be greater than 0.
+9. If document columns differ from schema fields: map closest columns, ignore extra columns, and use null for missing schema fields. Never return empty just because column labels differ.
+10. If a value violates the schema type, preserve the row and set only that value to null. Do not drop the whole row or output empty.
 </critical_rules>
+
+<schema_mapping_procedure>
+Before writing output, do this silently:
+1. Identify all visible tables/lists and their section headings.
+2. For each schema array, choose the visible table/list with the closest meaning, not exact label text.
+3. For each row, map cells into schema fields:
+   - category fields: section heading or group label.
+   - name/description fields: service name, item name, room type, procedure, or line description.
+   - rate/price/value fields: tariff/price/fee/amount columns after stripping currency and separators.
+   - type/code/class fields: code, class, unit, room class, tariff type, or "standard" when no label exists.
+4. If multiple visible sections match one schema array, concatenate them into the same array and keep the section heading in the category field.
+5. Prefer partial extraction over empty output. A row with one null field is better than missing the row.
+</schema_mapping_procedure>
 
 <how_to_read_the_schema>
 Each line in the schema is a key with a type hint. Fill in the real value:
@@ -294,15 +312,37 @@ Each line in the schema is a key with a type hint. Fill in the real value:
   paid: <boolean>   →  paid: true
   ref: <string|null> → ref: null          (if not found in document)
 
-For object arrays the comment shows column types. Replace N with actual row count:
+For simple object arrays the comment shows column types. Replace N with actual row count:
 
   Schema:   items[N]{id,description,qty,price}: # {id:<"string">, description:<"string">, qty:<number>, price:<number>}
   Output:   items[2]{id,description,qty,price}:
               "1","Premium Widget",2,500.00
               "2","Shipping Fee",1,40.50
 
+For nested object arrays, use one "-" item per row and keep nested keys indented:
+
+  Schema:   tariffs[N]:
+              - item_category: <string>
+                item_name: <string>
+                item_rates[N]{rate_type,rate_value}: # {rate_type:<"string">, rate_value:<integer>}
+  Output:   tariffs[1]:
+              - item_category: Consultation
+                item_name: Specialist Visit
+                item_rates[2]{rate_type,rate_value}:
+                  "basic",100000
+                  "vip",190000
+
+Indonesian tariff tables also match this schema. Use the section title as item_category, service/room name as item_name, and put the code/class/price column into item_rates:
+
+  Source:   Kamar Perawatan | Presiden Suite | Kode - | Tarif Rp 4,800,000
+  Output:   tariffs[1]:
+              - item_category: Kamar Perawatan
+                item_name: Presiden Suite
+                item_rates[1]{rate_type,rate_value}:
+                  "-",4800000
+
 Rules for array rows:
-  - String columns: always wrap in double quotes
+  - String columns in CSV rows: always wrap in double quotes
   - Number and boolean columns: never quote
   - Missing cell: null (unquoted)
 
@@ -310,6 +350,7 @@ Numbers: strip currency symbols and thousands separators.
   "$1,250.00" → 1250.00     "Rp 1.500.000" → 1500000     "1.234,56" → 1234.56
 
 document_metadata is always the last key in the output.
+Metadata scores are whole numbers from 0 to 100. Never use fractions like 0.5.
 </how_to_read_the_schema>
 
 <syntax_rules>
@@ -319,8 +360,8 @@ ${TOON_RULES}
 <schema>
 ${toonSchemaTemplate}
 document_metadata:
-  readability_score: <number>
-  data_usability_score: <number>
+  readability_score: <number 0-100>
+  data_usability_score: <number 0-100>
 </schema>`;
 }
 

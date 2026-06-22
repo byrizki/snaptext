@@ -11,6 +11,9 @@ export interface ToonParseError extends Error {
 }
 
 export function decodeToon(input: string): Record<string, any> {
+  const jsonData = tryDecodeJsonResponse(input);
+  if (jsonData) return jsonData;
+
   const lines = input.split(/\r?\n/);
   const result: Record<string, any> = {};
   const stack: { obj: Record<string, any>; indent: number }[] = [{ obj: result, indent: -2 }];
@@ -229,6 +232,28 @@ export function decodeToon(input: string): Record<string, any> {
   }
 
   return result;
+}
+
+function tryDecodeJsonResponse(input: string): Record<string, unknown> | null {
+  const trimmed = input.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
+  const candidate = fenced ? fenced[1].trim() : trimmed;
+
+  if (!candidate.startsWith("{") && !candidate.startsWith("[")) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(candidate);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      console.warn("[TOON] Parsed JSON response emitted instead of TOON.");
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Not JSON; fall through to the TOON parser for its lenient handling.
+  }
+
+  return null;
 }
 
 function parseCsvLine(line: string): string[] {

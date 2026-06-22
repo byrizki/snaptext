@@ -108,12 +108,20 @@ async function renderPdfPageWithForms(
   const canvas = createCanvas(viewport.width, viewport.height);
   const canvasContext = canvas.getContext("2d");
 
+  // Render against an opaque page background. Some PDFs contain transparent
+  // layers or form appearances that become white/blank when rendered for print.
+  canvasContext.save();
+  canvasContext.fillStyle = "#ffffff";
+  canvasContext.fillRect(0, 0, viewport.width, viewport.height);
+  canvasContext.restore();
+
   await page.render({
     canvas: canvas as any,
     canvasContext: canvasContext as any,
     viewport,
-    intent: "print",
-    annotationMode: AnnotationMode.ENABLE_STORAGE,
+    intent: "display",
+    annotationMode: AnnotationMode.ENABLE,
+    background: "#ffffff",
   }).promise;
 
   return Buffer.from(await canvas.encode("png"));

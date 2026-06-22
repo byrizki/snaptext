@@ -7,6 +7,7 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { DurableAgent } from "@workflow/ai/agent";
 import { stepCountIs, createGateway } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
+import sharp from "sharp";
 import { fetch, getStepMetadata, RetryableError } from "workflow";
 import { OCR_VISION_MODEL } from "../models";
 import { buildOcrSystemPrompt } from "../prompts";
@@ -19,6 +20,51 @@ const predefinedProvider = {
     caching: "auto",
   },
 };
+
+const OCR_DEBUG_LOG_LIMIT = 12000;
+
+function withGoogleGeminiOcrDefaults(
+  actualModelId: string,
+  providerId: string,
+  config: Record<string, unknown>,
+): Record<string, unknown> {
+  if (providerId !== "google") {
+    return config;
+  }
+
+  const existingThinkingConfig =
+    typeof config.thinkingConfig === "object" && config.thinkingConfig !== null
+      ? (config.thinkingConfig as Record<string, unknown>)
+      : {};
+  const isGemini25 = actualModelId.includes("gemini-2.5");
+  const isGemini31 = actualModelId.includes("gemini-3.1");
+
+  if (!isGemini25 && !isGemini31) {
+    return config;
+  }
+
+  return {
+    ...config,
+    // OCR needs deterministic text output. Gemini can spend the whole budget
+    // on hidden reasoning and return empty text through Vercel Gateway.
+    thinkingConfig: {
+      ...(isGemini25 ? { thinkingBudget: 0 } : { thinkingLevel: "minimal" }),
+      ...existingThinkingConfig,
+    },
+  };
+}
+
+function truncateForLog(value: unknown, limit = OCR_DEBUG_LOG_LIMIT): string {
+  const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  if (!text) return "";
+  return text.length > limit
+    ? `${text.slice(0, limit)}\n... [truncated ${text.length - limit} chars]`
+    : text;
+}
+
+function logOcrDebug(label: string, payload: unknown): void {
+  console.log(`[OCR Debug] ${label}\n${truncateForLog(payload)}`);
+}
 
 function getAiModel(
   modelId: string,
@@ -36,9 +82,15 @@ function getAiModel(
         : process.env.AI_GATEWAY_API_KEY,
     });
 
+    const providerSpecificConfig = withGoogleGeminiOcrDefaults(
+      actualModelId,
+      providerId,
+      config,
+    );
+
     return {
       model: async () => gateway(actualModelId),
-      providerConfig: { ...predefinedProvider, [providerId]: config },
+      providerConfig: { ...predefinedProvider, [providerId]: providerSpecificConfig },
     };
   }
 
@@ -62,6 +114,10 @@ function getAiModel(
       apiKey: process.env.SUMOPOD_API_KEY,
       name: "sumopod",
       baseURL: "https://ai.sumopod.com/v1",
+      fetch: async (input, init) => {
+        await logAiRequest("Sumopod final request", input, init);
+        return fetch(input, init);
+      },
     });
 
     return {
@@ -96,14 +152,98 @@ function getAiModel(
   };
 }
 
-async function fetchImageBase64(pageBlobUrl: string): Promise<string> {
+async function fetchImageData(
+  pageBlobUrl: string,
+  options: { forceJpeg?: boolean } = {},
+): Promise<{ base64: string; mediaType: string; byteLength: number }> {
   const imageResponse = await fetch(pageBlobUrl);
   if (!imageResponse.ok) {
     throw new Error(
       `Failed to fetch page image: ${imageResponse.status} ${imageResponse.statusText}`,
     );
   }
-  return Buffer.from(await imageResponse.arrayBuffer()).toString("base64");
+
+  const sourceBuffer = Buffer.from(await imageResponse.arrayBuffer());
+  const imageBuffer = options.forceJpeg
+    ? await sharp(sourceBuffer).jpeg({ quality: 92 }).toBuffer()
+    : sourceBuffer;
+  const mediaType = options.forceJpeg
+    ? "image/jpeg"
+    : imageResponse.headers.get("content-type") || "image/png";
+  return {
+    base64: imageBuffer.toString("base64"),
+    mediaType,
+    byteLength: imageBuffer.byteLength,
+  };
+}
+
+function buildImageContentPart(
+  modelId: string,
+  imageData: { base64: string; mediaType: string },
+  pageBlobUrl: string,
+): any {
+  if (modelId.startsWith("@sumopod/")) {
+    // OpenAI-compatible provider maps image file parts to final image_url payloads.
+    return {
+      type: "file",
+      data: imageData.base64,
+      mediaType: imageData.mediaType,
+    };
+  }
+
+  if (modelId.startsWith("@vercel/")) {
+    return {
+      type: "image",
+      image: new URL(pageBlobUrl),
+    };
+  }
+
+  return {
+    type: "image",
+    image: imageData.base64,
+    mediaType: imageData.mediaType,
+  };
+}
+
+function sanitizeAiRequestBody(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeAiRequestBody);
+  if (!value || typeof value !== "object") return value;
+
+  const input = value as Record<string, unknown>;
+  const output: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(input)) {
+    if (key === "url" && typeof child === "string" && child.startsWith("data:image/")) {
+      output[key] = `${child.slice(0, child.indexOf(",") + 1)}[base64:${child.length}]`;
+    } else if ((key === "data" || key === "image") && typeof child === "string" && child.length > 500) {
+      output[key] = `[base64:${child.length}]`;
+    } else {
+      output[key] = sanitizeAiRequestBody(child);
+    }
+  }
+  return output;
+}
+
+async function logAiRequest(label: string, input: RequestInfo | URL, init?: RequestInit): Promise<void> {
+  try {
+    const url = input instanceof Request ? input.url : input.toString();
+    const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+    const body = init?.body ?? (input instanceof Request ? await input.clone().text() : undefined);
+    let parsedBody: unknown = body;
+    if (typeof body === "string") {
+      try {
+        parsedBody = JSON.parse(body);
+      } catch {
+        parsedBody = body;
+      }
+    }
+    logOcrDebug(label, {
+      method,
+      url,
+      body: sanitizeAiRequestBody(parsedBody),
+    });
+  } catch (error) {
+    logOcrDebug(`${label} logging failed`, error instanceof Error ? error.message : String(error));
+  }
 }
 
 export async function runOcrOnPage(
@@ -128,7 +268,9 @@ export async function runOcrOnPage(
 
     const modelId = ocrModelConfig?.modelId ?? OCR_VISION_MODEL;
     const isInterfaze = modelId.includes("interfaze");
-    const base64Image = isInterfaze ? null : await fetchImageBase64(pageBlobUrl);
+    const imageData = isInterfaze
+      ? null
+      : await fetchImageData(pageBlobUrl, { forceJpeg: modelId.startsWith("@sumopod/") });
     const temperature = ocrModelConfig?.temperature;
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};
@@ -143,10 +285,51 @@ export async function runOcrOnPage(
       `[Workflow] Using model: ${modelId}, config: ${JSON.stringify(providerConfig)}`,
     );
     const startedAt = "N/A";
+    const instructions = buildOcrSystemPrompt(toonSchemaTemplate);
+    const schemaReminder = toonSchemaTemplate
+      ? "\n\nImportant: schema keys are destination fields, not exact labels to find. If the page has any visible table/list of prices, fees, tariffs, room charges, services, or rates, map it into the schema and do not return empty."
+      : "";
+    const userInstruction = isInterfaze
+      ? `[DOCUMENT_URL]: ${pageBlobUrl}\n\nExtract all data from this document page (page ${pageNumber}) and output it in TOON format as instructed.${schemaReminder}`
+      : `Extract all data from this document page (page ${pageNumber}) and output it in TOON format as instructed.${schemaReminder}`;
+
+    console.log(
+      `[OCR Debug] Starting page extraction jobId=${jobId} page=${pageNumber} schema=${toonSchemaTemplate ? "yes" : "no"} model=${modelId} attempt=${attempt}`,
+    );
+    logOcrDebug("System instructions", instructions);
+    logOcrDebug("User instruction", userInstruction);
+    if (imageData) {
+      logOcrDebug("Image payload", {
+        pageBlobUrl,
+        mediaType: imageData.mediaType,
+        byteLength: imageData.byteLength,
+        base64Length: imageData.base64.length,
+        contentPartType: modelId.startsWith("@sumopod/") ? "image_url" : "image",
+        imageTransport: modelId.startsWith("@vercel/") ? "url" : "base64",
+        dataUrlPrefix: `data:${imageData.mediaType};base64,`,
+      });
+    }
+    if (toonSchemaTemplate) {
+      logOcrDebug("TOON schema template", toonSchemaTemplate);
+    }
+
+    llmLogs.push({
+      stepName: "ocr_prompt",
+      model: modelId,
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      pageNumber,
+      rawResponse: JSON.stringify({
+        systemInstructions: instructions,
+        userInstruction,
+        schemaTemplate: toonSchemaTemplate,
+        model: modelId,
+        providerConfig,
+      }),
+    });
 
     const agent = new DurableAgent({
       model: model as any,
-      instructions: buildOcrSystemPrompt(toonSchemaTemplate),
+      instructions,
       temperature,
       maxOutputTokens: maxTokens,
       providerOptions: providerConfig,
@@ -160,18 +343,14 @@ export async function runOcrOnPage(
             ? [
                 {
                   type: "text",
-                  text: `[DOCUMENT_URL]: ${pageBlobUrl}\n\nExtract all data from this document page (page ${pageNumber}) and output it in TOON format as instructed.`,
+                  text: userInstruction,
                 },
               ]
             : [
-                {
-                  type: "file",
-                  data: base64Image!,
-                  mediaType: "image/png",
-                },
+                buildImageContentPart(modelId, imageData!, pageBlobUrl),
                 {
                   type: "text",
-                  text: `Extract all data from this document page (page ${pageNumber}) and output it in TOON format as instructed.`,
+                  text: userInstruction,
                 },
               ],
         },
@@ -183,11 +362,16 @@ export async function runOcrOnPage(
         return {};
       },
       onStepFinish: async (event) => {
-        console.log(
-          "onStepFinish",
-          event.text,
-          JSON.stringify(event.toolCalls ?? {}),
-        );
+        logOcrDebug("Step finish", {
+          jobId,
+          pageNumber,
+          model: modelId,
+          finishReason: event.finishReason,
+          usage: event.usage,
+          text: event.text,
+          reasoningText: event.reasoningText,
+          toolCalls: event.toolCalls,
+        });
         llmLogs.push({
           stepName: "ocr_page",
           model: modelId,
@@ -233,6 +417,12 @@ export async function runOcrOnPage(
     );
 
     const rawToon = lastStep?.text || "";
+    logOcrDebug("Raw OCR response", {
+      jobId,
+      pageNumber,
+      finishReason,
+      rawToon,
+    });
 
     if (finishReason === "length") {
       const truncationMsg = `Output was truncated by the model (max tokens reached). The TOON is incomplete and cannot be decoded. Increase maxOutputTokens or split the page.`;
@@ -271,6 +461,13 @@ export async function runOcrOnPage(
     } catch (err) {
       parseError = err instanceof Error ? err.message : String(err);
       console.error("[OCR Error] TOON decode failed:", err);
+      logOcrDebug("TOON parse failure context", {
+        jobId,
+        pageNumber,
+        parseError,
+        rawToon,
+        schemaTemplate: toonSchemaTemplate,
+      });
       rawToon_decoded = {
         raw_text: rawToon,
         parse_error: true,
@@ -375,7 +572,9 @@ export async function repairOcrPage(
     );
     const modelId = "@vercel/google/gemini-2.5-flash-lite-preview-09-2025";
     const isInterfaze = modelId.includes("interfaze");
-    const base64Image = isInterfaze ? null : await fetchImageBase64(pageBlobUrl);
+    const imageData = isInterfaze
+      ? null
+      : await fetchImageData(pageBlobUrl, { forceJpeg: modelId.startsWith("@sumopod/") });
     const temperature = ocrModelConfig?.temperature;
     const maxTokens = ocrModelConfig?.maxOutputTokens;
     const config = ocrModelConfig?.config ?? {};
@@ -387,6 +586,43 @@ export async function repairOcrPage(
       userId,
     );
     const startedAt = "N/A";
+    const instructions = buildOcrSystemPrompt(toonSchemaTemplate);
+
+    console.log(
+      `[OCR Debug] Starting page repair jobId=${jobId} page=${pageNumber} schema=${toonSchemaTemplate ? "yes" : "no"} model=${modelId} attempt=${attempt}`,
+    );
+    logOcrDebug("Repair system instructions", instructions);
+    logOcrDebug("Repair input", {
+      errorMsg,
+      brokenToon,
+      schemaTemplate: toonSchemaTemplate,
+    });
+    if (imageData) {
+      logOcrDebug("Repair image payload", {
+        pageBlobUrl,
+        mediaType: imageData.mediaType,
+        byteLength: imageData.byteLength,
+        base64Length: imageData.base64.length,
+        contentPartType: modelId.startsWith("@sumopod/") ? "image_url" : "image",
+        imageTransport: modelId.startsWith("@vercel/") ? "url" : "base64",
+        dataUrlPrefix: `data:${imageData.mediaType};base64,`,
+      });
+    }
+
+    llmLogs.push({
+      stepName: "ocr_repair_prompt",
+      model: modelId,
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      pageNumber,
+      rawResponse: JSON.stringify({
+        systemInstructions: instructions,
+        errorMsg,
+        brokenToon,
+        schemaTemplate: toonSchemaTemplate,
+        model: modelId,
+        providerConfig,
+      }),
+    });
 
     let parsedResult: {
       rawToon: string;
@@ -405,7 +641,7 @@ export async function repairOcrPage(
 
     const agent = new DurableAgent({
       model: model as any,
-      instructions: buildOcrSystemPrompt(toonSchemaTemplate),
+      instructions,
       temperature,
       maxOutputTokens: maxTokens,
       providerOptions: providerConfig,
@@ -447,11 +683,7 @@ export async function repairOcrPage(
                 },
               ]
             : [
-                {
-                  type: "file",
-                  data: base64Image!,
-                  mediaType: "image/png",
-                },
+                buildImageContentPart(modelId, imageData!, pageBlobUrl),
                 {
                   type: "text",
                   text: [
@@ -487,6 +719,16 @@ export async function repairOcrPage(
         return {};
       },
       onStepFinish: async (event) => {
+        logOcrDebug("Repair step finish", {
+          jobId,
+          pageNumber,
+          model: modelId,
+          finishReason: event.finishReason,
+          usage: event.usage,
+          text: event.text,
+          toolCalls: event.toolCalls,
+        });
+
         llmLogs.push({
           stepName: "ocr_repair",
           model: modelId,
@@ -555,6 +797,15 @@ export async function repairOcrPage(
         data = { raw_text: rawToon, parse_error: true, error: parseError };
       }
     }
+
+    logOcrDebug("Raw repair response", {
+      jobId,
+      pageNumber,
+      finishReason,
+      rawToon,
+      parsedViaTool: Boolean(parsedResult),
+      parseError,
+    });
 
     const log = [
       `[${startedAt}] OCR Repair started — model: ${modelId}`,

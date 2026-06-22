@@ -46,13 +46,17 @@ export async function ocrWorkflow(
     }
 
     const schemaToToonModule = await import("@/lib/schema-to-toon");
-    const toonSchemaTemplate = job.jsonSchema
-      ? schemaToToonModule.jsonSchemaToToon(JSON.parse(job.jsonSchema))
+    const parsedJsonSchema = job.jsonSchema ? JSON.parse(job.jsonSchema) : undefined;
+    const toonSchemaTemplate = parsedJsonSchema
+      ? schemaToToonModule.jsonSchemaToToon(parsedJsonSchema)
       : undefined;
 
-    console.log("================== toon schema template ==================")
-    console.log(toonSchemaTemplate)
-    console.log("================== toon schema template ==================")
+    if (parsedJsonSchema) {
+      console.log(`[OCR Debug] JSON schema for jobId=${jobId}`);
+      console.log(JSON.stringify(parsedJsonSchema, null, 2));
+      console.log(`[OCR Debug] Converted TOON schema template for jobId=${jobId}`);
+      console.log(toonSchemaTemplate);
+    }
 
     let pageImages = await dbGetExistingPages(jobId);
 
