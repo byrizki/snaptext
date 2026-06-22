@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { BlobNotFoundError, head } from "@vercel/blob";
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb, jobPages, jobResults, jobs, ocrModels, llmLogs, systemSettings, type OcrModel } from "@/db";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
 
@@ -95,24 +94,6 @@ export async function dbGetExistingPages(jobId: string) {
     where: eq(jobPages.jobId, jobId),
     orderBy: [asc(jobPages.pageNumber)],
   });
-
-  const staleUrls = await findStalePageBlobUrls(
-    existingPages
-      .map((page) => page.pageBlobUrl)
-      .filter((url): url is string => Boolean(url)),
-  );
-
-  if (staleUrls.length > 0) {
-    await db
-      .update(jobPages)
-      .set({ pageBlobUrl: null })
-      .where(inArray(jobPages.pageBlobUrl, staleUrls));
-    console.log(
-      `[Step] dbGetExistingPages ignored ${existingPages.length} pages for jobId: ${jobId}; ${staleUrls.length} blob URLs are stale`,
-    );
-    return [];
-  }
-
   console.log(`[Step] dbGetExistingPages found ${existingPages.length} existing pages for jobId: ${jobId}`);
   return existingPages;
 }
@@ -130,48 +111,26 @@ export async function dbFindReusablePages(jobId: string, fileHash: string | null
       jobId: jobs.id,
       pageNumber: jobPages.pageNumber,
       pageBlobUrl: jobPages.pageBlobUrl,
-      totalPages: jobs.totalPages,
     })
     .from(jobPages)
     .innerJoin(jobs, eq(jobs.id, jobPages.jobId))
-    .where(and(eq(jobs.fileHash, fileHash), isNotNull(jobs.pdfBlobUrl), isNotNull(jobPages.pageBlobUrl)))
-    .orderBy(asc(jobPages.createdAt), asc(jobPages.pageNumber));
+    .where(eq(jobs.fileHash, fileHash))
+    .orderBy(asc(jobPages.pageNumber));
 
   const pagesByJob: Record<string, Array<{ pageNumber: number; pageBlobUrl: string }>> = {};
-  const expectedPageCountByJob: Record<string, number | null> = {};
   for (const p of allSimilarPages) {
     if (p.pageBlobUrl && p.jobId !== jobId) {
       if (!pagesByJob[p.jobId]) pagesByJob[p.jobId] = [];
       pagesByJob[p.jobId].push({ pageNumber: p.pageNumber, pageBlobUrl: p.pageBlobUrl });
-      expectedPageCountByJob[p.jobId] = p.totalPages;
     }
   }
 
   let reusablePages: Array<{ pageNumber: number; pageBlobUrl: string }> = [];
   for (const jId in pagesByJob) {
-    const pages = pagesByJob[jId].sort((a, b) => a.pageNumber - b.pageNumber);
-    const expectedPageCount = expectedPageCountByJob[jId];
-    const hasCompletePageSet =
-      expectedPageCount !== null &&
-      pages.length === expectedPageCount &&
-      pages.every((page, index) => page.pageNumber === index + 1);
-
-    if (!hasCompletePageSet) continue;
-
-    const staleUrls = await findStalePageBlobUrls(pages.map((page) => page.pageBlobUrl));
-    if (staleUrls.length > 0) {
-      await db
-        .update(jobPages)
-        .set({ pageBlobUrl: null })
-        .where(inArray(jobPages.pageBlobUrl, staleUrls));
-      console.log(
-        `[Step] dbFindReusablePages skipped reusable pages from jobId: ${jId}; ${staleUrls.length} blob URLs are stale`,
-      );
-      continue;
+    if (pagesByJob[jId].length > 0) {
+      reusablePages = pagesByJob[jId];
+      break;
     }
-
-    reusablePages = pages;
-    break;
   }
   console.log(`[Step] dbFindReusablePages found ${reusablePages.length} reusable pages for jobId: ${jobId}`);
   return reusablePages;
@@ -295,27 +254,4 @@ export async function finalizeJob(
     console.error(`🔥 Error in finalizeJob step for jobId: ${jobId}`, error);
     throw error;
   }
-}
-
-async function findStalePageBlobUrls(urls: string[]): Promise<string[]> {
-  const uniqueUrls = Array.from(new Set(urls));
-  const staleUrls: string[] = [];
-
-  await Promise.all(
-    uniqueUrls.map(async (url) => {
-      try {
-        await head(url);
-      } catch (error) {
-        if (error instanceof BlobNotFoundError) {
-          staleUrls.push(url);
-          return;
-        }
-
-        console.error(`[Step] Failed to verify page blob URL ${url}`, error);
-        staleUrls.push(url);
-      }
-    }),
-  );
-
-  return staleUrls;
 }
