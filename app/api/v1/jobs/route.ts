@@ -8,6 +8,7 @@ import { checkQuota, QuotaExceededError } from "@/lib/quota";
 import { validateApiKey } from "@/lib/api-key";
 import { ocrWorkflow } from "@/app/workflows/ocr";
 import { resolveModel } from "@/lib/model-resolution";
+import { reconcileOcrJobStatus } from "@/lib/ocr-job-status";
 
 export const maxDuration = 60;
 
@@ -107,17 +108,17 @@ export async function POST(request: Request): Promise<NextResponse> {
       .where(eq(jobs.fileHash, fileHash))
       .limit(1);
 
-    if (
-      activeJob &&
-      (activeJob.status === "pending" || activeJob.status === "running")
-    ) {
-      return NextResponse.json({
-        jobId: activeJob.id,
-        runId: activeJob.workflowRunId ?? "",
-        pdfUrl: activeJob.pdfBlobUrl,
-        status: activeJob.status,
-        deduplicated: true,
-      });
+    if (activeJob && (activeJob.status === "pending" || activeJob.status === "running")) {
+      const reconciledStatus = await reconcileOcrJobStatus(activeJob);
+      if (reconciledStatus === "pending" || reconciledStatus === "running") {
+        return NextResponse.json({
+          jobId: activeJob.id,
+          runId: activeJob.workflowRunId ?? "",
+          pdfUrl: activeJob.pdfBlobUrl,
+          status: reconciledStatus,
+          deduplicated: true,
+        });
+      }
     }
 
     // Stringify JSON schema if object was passed

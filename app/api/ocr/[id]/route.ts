@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getRun } from "workflow/api";
 
 import { getDb, jobPages, jobResults, jobs, ocrModels } from "@/db";
+import { reconcileOcrJobStatus } from "@/lib/ocr-job-status";
 import { decodeToon } from "@/lib/toon-parser";
 
 interface RouteParams {
@@ -44,29 +45,22 @@ export async function GET(
   const job = data?.job;
   const ocrModelName = data?.ocrModelName;
 
-  let status = "unknown";
+  let status = job ? await reconcileOcrJobStatus(job) : "unknown";
 
-  try {
-    // If we have a job, use its workflowRunId, otherwise assume the param itself is the runId.
-    const run = getRun(job?.workflowRunId ?? id);
-    status = await run.status;
-  } catch (error: any) {
-    // If the workflow run is not found (e.g., deleted or expired), fallback to the DB status
-    if (
-      error.name === "WorkflowRunNotFoundError" ||
-      error.message?.includes("not found")
-    ) {
-      status = job?.status ?? "unknown";
-    } else {
-      console.error("Workflow status error:", error);
+  if (!job) {
+    try {
+      const run = getRun(id);
+      status = await run.status;
+    } catch (error: any) {
+      if (
+        error.name === "WorkflowRunNotFoundError" ||
+        error.message?.includes("not found")
+      ) {
+        status = "unknown";
+      } else {
+        console.error("Workflow status error:", error);
+      }
     }
-  }
-
-  // If the DB says completed, trust the DB (in case workflow status is purged)
-  if (job?.status === "completed") {
-    status = "completed";
-  } else if (job?.status === "failed") {
-    status = "failed";
   }
 
   const pages = job

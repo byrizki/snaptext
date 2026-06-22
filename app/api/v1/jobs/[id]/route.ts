@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getRun } from "workflow/api";
 import { z } from "zod";
 
 import { getDb, jobPages, jobs, ocrModels } from "@/db";
-import { decodeToon } from "@/lib/toon-parser";
 import { validateApiKey } from "@/lib/api-key";
+import { reconcileOcrJobStatus } from "@/lib/ocr-job-status";
+import { decodeToon } from "@/lib/toon-parser";
 
 export const JobIdParam = z.object({
   id: z.string().describe("UUID of the job or wrun_ workflow execution run ID")
@@ -92,27 +92,7 @@ export async function GET(
     }
 
     const { job, ocrModelName } = data;
-    let status = "unknown";
-
-    try {
-      const run = getRun(job.workflowRunId ?? id);
-      status = await run.status;
-    } catch (error: any) {
-      if (
-        error.name === "WorkflowRunNotFoundError" ||
-        error.message?.includes("not found")
-      ) {
-        status = job.status ?? "unknown";
-      } else {
-        console.error("[jobs v1 id] Workflow status lookup error:", error);
-      }
-    }
-
-    if (job.status === "completed") {
-      status = "completed";
-    } else if (job.status === "failed") {
-      status = "failed";
-    }
+    const status = await reconcileOcrJobStatus(job);
 
     const pages = await db
       .select()

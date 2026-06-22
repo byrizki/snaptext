@@ -8,6 +8,7 @@ import { getDb, jobs } from "@/db";
 import { checkQuota, QuotaExceededError } from "@/lib/quota";
 import { validateApiKey } from "@/lib/api-key";
 import { resolveModel } from "@/lib/model-resolution";
+import { reconcileOcrJobStatus } from "@/lib/ocr-job-status";
 
 export const CreateUploadUrlRequest = z.object({
   filename: z.string().describe("The original name of the PDF file to be uploaded."),
@@ -93,16 +94,16 @@ export async function POST(request: Request): Promise<NextResponse> {
       .where(eq(jobs.fileHash, fileHash))
       .limit(1);
 
-    if (
-      activeJob &&
-      (activeJob.status === "pending" || activeJob.status === "running")
-    ) {
-      return NextResponse.json({
-        deduplicated: true,
-        jobId: activeJob.id,
-        runId: activeJob.workflowRunId ?? "",
-        pdfUrl: activeJob.pdfBlobUrl,
-      });
+    if (activeJob && (activeJob.status === "pending" || activeJob.status === "running")) {
+      const reconciledStatus = await reconcileOcrJobStatus(activeJob);
+      if (reconciledStatus === "pending" || reconciledStatus === "running") {
+        return NextResponse.json({
+          deduplicated: true,
+          jobId: activeJob.id,
+          runId: activeJob.workflowRunId ?? "",
+          pdfUrl: activeJob.pdfBlobUrl,
+        });
+      }
     }
 
     const basePathname = `uploads/${fileHash}.pdf`;

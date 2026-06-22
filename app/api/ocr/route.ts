@@ -5,6 +5,7 @@ import { getDb, jobs } from "@/db";
 import { eq } from "drizzle-orm";
 import { ocrWorkflow } from "@/app/workflows/ocr";
 import { auth } from "@/lib/auth";
+import { reconcileOcrJobStatus } from "@/lib/ocr-job-status";
 import { headers } from "next/headers";
 
 export const maxDuration = 60;
@@ -54,16 +55,16 @@ export async function POST(request: Request): Promise<NextResponse> {
 		.where(eq(jobs.fileHash, fileHash))
 		.limit(1);
 
-	if (
-		activeJob &&
-		(activeJob.status === "pending" || activeJob.status === "running")
-	) {
-		return NextResponse.json({
-			jobId: activeJob.id,
-			runId: activeJob.workflowRunId ?? "",
-			pdfUrl: activeJob.pdfBlobUrl,
-			deduplicated: true,
-		});
+	if (activeJob && (activeJob.status === "pending" || activeJob.status === "running")) {
+		const reconciledStatus = await reconcileOcrJobStatus(activeJob);
+		if (reconciledStatus === "pending" || reconciledStatus === "running") {
+			return NextResponse.json({
+				jobId: activeJob.id,
+				runId: activeJob.workflowRunId ?? "",
+				pdfUrl: activeJob.pdfBlobUrl,
+				deduplicated: true,
+			});
+		}
 	}
 
 	// Reuse existing blob URL for previously-uploaded identical files

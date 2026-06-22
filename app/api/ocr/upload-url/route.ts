@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { getDb, jobs } from "@/db";
 import { checkQuota, QuotaExceededError } from "@/lib/quota";
 import { auth } from "@/lib/auth";
+import { reconcileOcrJobStatus } from "@/lib/ocr-job-status";
 
 export const maxDuration = 30;
 
@@ -80,16 +81,16 @@ export async function POST(request: Request): Promise<NextResponse> {
 			.where(eq(jobs.fileHash, fileHash))
 			.limit(1);
 
-		if (
-			activeJob &&
-			(activeJob.status === "pending" || activeJob.status === "running")
-		) {
-			return NextResponse.json({
-				deduplicated: true,
-				jobId: activeJob.id,
-				runId: activeJob.workflowRunId ?? "",
-				pdfUrl: activeJob.pdfBlobUrl,
-			});
+		if (activeJob && (activeJob.status === "pending" || activeJob.status === "running")) {
+			const reconciledStatus = await reconcileOcrJobStatus(activeJob);
+			if (reconciledStatus === "pending" || reconciledStatus === "running") {
+				return NextResponse.json({
+					deduplicated: true,
+					jobId: activeJob.id,
+					runId: activeJob.workflowRunId ?? "",
+					pdfUrl: activeJob.pdfBlobUrl,
+				});
+			}
 		}
 	}
 
