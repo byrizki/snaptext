@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { CodeCircleIcon, Presentation02Icon } from "@hugeicons/core-free-icons";
+import { CodeCircleIcon, Presentation02Icon, File01Icon, Delete02Icon, PlayIcon } from "@hugeicons/core-free-icons";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,17 +10,24 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ModelSelector } from "@/components/demo/model-selector";
 import { SchemaEditor } from "@/components/demo/schema-editor";
 import { UploadZone } from "@/components/demo/upload-zone";
+import { UploadProgress } from "@/components/demo/upload-progress";
 
 interface DashboardScanPanelProps {
   selectedModelId: string;
   onModelChange: (id: string) => void;
   onFileSelect: (file: File, schema?: string) => void;
+  status?: string;
+  uploadProgress?: number;
+  uploadPhase?: string;
 }
 
 export function DashboardScanPanel({
   selectedModelId,
   onModelChange,
   onFileSelect,
+  status,
+  uploadProgress,
+  uploadPhase,
 }: DashboardScanPanelProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [jsonSchema, setJsonSchema] = useState("");
@@ -28,6 +35,7 @@ export function DashboardScanPanel({
   const [isLoaded, setIsLoaded] = useState(false);
   const [quota, setQuota] = useState<{ limit: number; used: number; remaining: number; isAnonymous: boolean } | null>(null);
   const [isLoadingQuota, setIsLoadingQuota] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     setIsLoadingQuota(true);
@@ -75,11 +83,44 @@ export function DashboardScanPanel({
           </div>
         </div>
         <div className="p-4 sm:p-6 lg:px-8">
-          <UploadZone
-            quota={quota}
-            isLoadingQuota={isLoadingQuota}
-            onFileSelect={(file) => onFileSelect(file, showAdvanced ? jsonSchema : undefined)}
-          />
+          {status === "uploading" ? (
+            <div className="flex min-h-[22rem] items-center justify-center p-6 border rounded-[1.75rem] bg-card/55">
+              <UploadProgress progress={uploadProgress ?? 0} filename={selectedFile?.name || "document.pdf"} phase={uploadPhase as any} />
+            </div>
+          ) : selectedFile ? (
+            <div className="flex flex-col items-center justify-center min-h-[22rem] p-6 border rounded-[1.75rem] bg-card/55 border-dashed">
+              <div className="flex items-center gap-4 w-full max-w-md p-4 rounded-2xl border bg-background shadow-sm">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <HugeiconsIcon icon={File01Icon} size={24} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{selectedFile.name}</p>
+                  <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                </div>
+                <button 
+                  onClick={() => setSelectedFile(null)}
+                  className="p-2 text-muted-foreground hover:text-destructive rounded-lg hover:bg-muted transition focus:outline-none"
+                  aria-label="Remove file"
+                >
+                  <HugeiconsIcon icon={Delete02Icon} size={18} />
+                </button>
+              </div>
+              
+              <button 
+                onClick={() => onFileSelect(selectedFile, showAdvanced ? jsonSchema : undefined)}
+                className="mt-6 flex items-center justify-center gap-2 h-12 w-full max-w-xs rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/95 active:scale-[0.98] transition focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <HugeiconsIcon icon={PlayIcon} size={16} />
+                Start OCR Scan
+              </button>
+            </div>
+          ) : (
+            <UploadZone
+              quota={quota}
+              isLoadingQuota={isLoadingQuota}
+              onFileSelect={setSelectedFile}
+            />
+          )}
         </div>
       </DashboardCard>
 

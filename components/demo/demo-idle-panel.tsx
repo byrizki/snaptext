@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { CodeCircleIcon, Presentation02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
+import { CodeCircleIcon, Presentation02Icon, SparklesIcon, File01Icon, Delete02Icon, PlayIcon } from "@hugeicons/core-free-icons";
 import { ModelSelector } from "@/components/demo/model-selector";
 import { UploadZone } from "@/components/demo/upload-zone";
 import { HistoryList } from "@/components/demo/history-list";
@@ -36,6 +36,7 @@ export function DemoIdlePanel({
   const [isLoaded, setIsLoaded] = useState(false);
   const [quota, setQuota] = useState<{ limit: number; used: number; remaining: number; isAnonymous: boolean } | null>(null);
   const [isLoadingQuota, setIsLoadingQuota] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     setIsLoadingQuota(true);
@@ -111,11 +112,40 @@ export function DemoIdlePanel({
                 </div>
               </CardHeader>
               <CardContent>
-                <UploadZone
-                  quota={quota}
-                  isLoadingQuota={isLoadingQuota}
-                  onFileSelect={(file) => onFileSelect(file, showAdvanced ? jsonSchema : undefined)}
-                />
+                {selectedFile ? (
+                  <div className="flex flex-col items-center justify-center p-6 border rounded-[1.75rem] bg-card/55 border-dashed">
+                    <div className="flex items-center gap-4 w-full max-w-md p-4 rounded-2xl border bg-background shadow-sm">
+                      <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <HugeiconsIcon icon={File01Icon} size={24} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{selectedFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedFile(null)}
+                        className="p-2 text-muted-foreground hover:text-destructive rounded-lg hover:bg-muted transition focus:outline-none"
+                        aria-label="Remove file"
+                      >
+                        <HugeiconsIcon icon={Delete02Icon} size={18} />
+                      </button>
+                    </div>
+                    
+                    <button 
+                      onClick={() => onFileSelect(selectedFile, showAdvanced ? jsonSchema : undefined)}
+                      className="mt-6 flex items-center justify-center gap-2 h-12 w-full max-w-xs rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/95 active:scale-[0.98] transition focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <HugeiconsIcon icon={PlayIcon} size={16} />
+                      Start OCR Scan
+                    </button>
+                  </div>
+                ) : (
+                  <UploadZone
+                    quota={quota}
+                    isLoadingQuota={isLoadingQuota}
+                    onFileSelect={setSelectedFile}
+                  />
+                )}
               </CardContent>
             </Card>
 

@@ -1,6 +1,6 @@
-import { test, describe } from 'node:test';
+import { test, describe } from 'vitest';
 import assert from 'node:assert';
-import { getModelId } from './provider-mapping.ts';
+import { getModelId } from './provider-mapping';
 
 describe('getModelId', () => {
   test('should remove @vercel/ prefix and preserve nested path', () => {

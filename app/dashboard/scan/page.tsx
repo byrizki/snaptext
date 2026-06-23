@@ -8,7 +8,7 @@ import { useOcrPipeline } from "@/hooks/use-ocr-pipeline";
 
 export default function DashboardScanPage() {
   const router = useRouter();
-  const { status, runId, startOcr } = useOcrPipeline();
+  const { status, runId, startOcr, uploadProgress, uploadPhase } = useOcrPipeline();
   const [selectedModelId, setSelectedModelId] = useState<string>("");
 
   useEffect(() => {
@@ -27,6 +27,9 @@ export default function DashboardScanPage() {
         selectedModelId={selectedModelId}
         onModelChange={setSelectedModelId}
         onFileSelect={(file, schema) => startOcr(file, selectedModelId, schema)}
+        status={status}
+        uploadProgress={uploadProgress}
+        uploadPhase={uploadPhase}
       />
     </DashboardPageShell>
   );

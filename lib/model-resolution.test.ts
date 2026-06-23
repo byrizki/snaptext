@@ -1,4 +1,4 @@
-import { test, describe } from 'node:test';
+import { test, describe } from 'vitest';
 import assert from 'node:assert';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -15,13 +15,13 @@ describe('resolveModel', () => {
   });
 
   test('should resolve Spark model by exact modelId', async () => {
-    const model = await resolveModel('@vercel/google/gemini-2.5-flash-lite-preview-09-2025');
+    const model = await resolveModel('@vercel/google/gemini-2.5-flash-lite');
     assert.ok(model);
     assert.strictEqual(model.name, 'Spark');
   });
 
   test('should resolve Zenith model by stripped modelId', async () => {
-    const model = await resolveModel('moonshotai/kimi-k2.5');
+    const model = await resolveModel('kimi-k2.5');
     assert.ok(model);
     assert.strictEqual(model.name, 'Zenith');
   });

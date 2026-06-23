@@ -10,7 +10,7 @@ interface UploadProgressProps {
 
 const PHASE_LABELS: Record<UploadPhase, string> = {
 	hashing: "Analyzing…",
-	uploading: "{PHASE_LABELS[phase]}",
+	uploading: "Uploading…",
 };
 
 export function UploadProgress({
@@ -48,7 +48,7 @@ export function UploadProgress({
 			</div>
 
 			<h3 className="text-xl font-bold mb-1 text-zinc-900 dark:text-white">
-				Uploading…
+				{PHASE_LABELS[phase]}
 			</h3>
 			<p className="text-zinc-400 dark:text-zinc-500 text-sm truncate max-w-xs mx-auto">
 				{filename}

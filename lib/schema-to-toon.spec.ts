@@ -144,6 +144,6 @@ describe('jsonSchemaToToon', () => {
         }
       }
     };
-    expect(jsonSchemaToToon(schema)).toBe('items[N]{id}:');
+    expect(jsonSchemaToToon(schema)).toBe('items[N]{id}: # {id:<"string">}');
   });
 });
