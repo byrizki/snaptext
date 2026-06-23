@@ -8,7 +8,7 @@ import { DurableAgent } from "@workflow/ai/agent";
 import { stepCountIs, createGateway } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import sharp from "sharp";
-import { fetch, getStepMetadata, RetryableError } from "workflow";
+import { FatalError, fetch, getStepMetadata, RetryableError } from "workflow";
 import { OCR_VISION_MODEL } from "../models";
 import { buildOcrSystemPrompt } from "../prompts";
 import { buildToonTools } from "../tools";
@@ -64,6 +64,85 @@ function truncateForLog(value: unknown, limit = OCR_DEBUG_LOG_LIMIT): string {
 
 function logOcrDebug(label: string, payload: unknown): void {
   console.log(`[OCR Debug] ${label}\n${truncateForLog(payload)}`);
+}
+
+function serializeError(err: unknown) {
+  if (err instanceof Error) {
+    return {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+    };
+  }
+  return {
+    name: "Error",
+    message: String(err),
+  };
+}
+
+function deserializeError(serialized: any) {
+  if (!serialized) return undefined;
+  let err: Error;
+  if (serialized.name === "FatalError") {
+    err = new FatalError(serialized.message);
+  } else if (serialized.name === "RetryableError") {
+    err = new RetryableError(serialized.message);
+  } else {
+    err = new Error(serialized.message);
+    err.name = serialized.name;
+  }
+  err.stack = serialized.stack;
+  return err;
+}
+
+function getRetryDelay(error: any, attempt: number): number {
+  let delayMs: number | undefined = undefined;
+
+  // Try to extract retry-after headers
+  const getHeader = (name: string): string | undefined => {
+    try {
+      return (
+        error.responseHeaders?.get?.(name) ||
+        error.headers?.get?.(name) ||
+        error.response?.headers?.get?.(name) ||
+        error.responseHeaders?.[name] ||
+        error.headers?.[name] ||
+        error.response?.headers?.[name]
+      );
+    } catch {
+      return undefined;
+    }
+  };
+
+  const retryAfterMs = getHeader("retry-after-ms");
+  if (retryAfterMs) {
+    const ms = parseInt(retryAfterMs, 10);
+    if (!isNaN(ms)) {
+      delayMs = ms;
+    }
+  }
+
+  if (delayMs === undefined) {
+    const retryAfter = getHeader("retry-after");
+    if (retryAfter) {
+      const seconds = parseInt(retryAfter, 10);
+      if (!isNaN(seconds)) {
+        delayMs = seconds * 1000;
+      } else {
+        const dateMs = Date.parse(retryAfter);
+        if (!isNaN(dateMs)) {
+          delayMs = Math.max(0, dateMs - Date.now());
+        }
+      }
+    }
+  }
+
+  // Fallback to default backoff calculation: 15s + (attempt - 1) * 10s
+  if (delayMs === undefined || delayMs <= 0) {
+    delayMs = 15000 + (attempt - 1) * 10000;
+  }
+
+  return delayMs;
 }
 
 function getAiModel(
@@ -525,7 +604,7 @@ export async function runOcrOnPage(
       msg.toLowerCase().includes("service unavailable")
     ) {
       const { attempt } = getStepMetadata();
-      const delayMs = 15000 + (attempt - 1) * 10000;
+      const delayMs = getRetryDelay(error, attempt);
       throw new RetryableError(
         "Rate limited by AI provider (429). Please try again later.",
         { retryAfter: `${delayMs}ms` }
@@ -542,7 +621,7 @@ export async function runOcrOnPage(
       finishReason: "error",
       log: `[Error] ${msg}`,
       llmLogs,
-      internalError: error,
+      internalError: serializeError(error),
     };
   }
 }
@@ -850,7 +929,7 @@ export async function repairOcrPage(
       msg.toLowerCase().includes("service unavailable")
     ) {
       const { attempt } = getStepMetadata();
-      const delayMs = 15000 + (attempt - 1) * 10000;
+      const delayMs = getRetryDelay(error, attempt);
       throw new RetryableError(
         "Rate limited by AI provider (429). Please try again later.",
         { retryAfter: `${delayMs}ms` },
@@ -867,7 +946,7 @@ export async function repairOcrPage(
       finishReason: "error",
       log: `[Error] ${msg}`,
       llmLogs,
-      internalError: error,
+      internalError: serializeError(error),
     };
   }
 }
@@ -974,7 +1053,7 @@ export async function processOcrPage(
     }
 
     if (internalError) {
-      throw internalError;
+      throw deserializeError(internalError);
     }
 
     return result;

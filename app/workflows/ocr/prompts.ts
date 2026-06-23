@@ -141,7 +141,7 @@ Before writing any data:
 - Note indentation and whitespace → hierarchy.
 - Note colour highlights → totals or flagged rows.
 
-If the document is a plain letter or wall of text with no structured data:
+If the document is a plain letter or wall of text with no structured data, or contains NO content semantically relevant to the target schema fields:
   empty: true
 Stop there. Output nothing else.
 
@@ -282,7 +282,7 @@ Extract data from the document image and output it as TOON following the schema 
    Replace each placeholder with the actual value you read from the document.
 4. The schema keys are NOT search terms. They are destination fields. First read the document visually, then map visible content into the closest schema fields by meaning.
 5. Use semantic matching across languages and synonyms. Examples: tariff, tarif, biaya, harga, price, fee, rate, room charge, layanan, kamar, administrasi can all match a schema key named tariffs.
-6. Empty output is rare. Only output exactly "empty: true" when the page is blank/unreadable OR contains no structured visible data at all. If there is any visible table/list with names and prices/rates/fees, output rows.
+6. If the page is blank, unreadable, or contains NO structured content semantically relevant to the schema (e.g. a cover page, diagnostic image, or text completely unrelated to the target fields), skip extraction and output exactly "empty: true" to return early. Do not force-map unrelated content.
 7. Do NOT output array_name[0] plus metadata as an empty result. Empty output is only "empty: true".
 8. If an array key exists and the page has any table/list of compatible records, [N] must be greater than 0.
 9. If document columns differ from schema fields: map closest columns, ignore extra columns, and use null for missing schema fields. Never return empty just because column labels differ.
