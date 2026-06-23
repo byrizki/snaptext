@@ -287,6 +287,8 @@ Extract data from the document image and output it as TOON following the schema 
 8. If an array key exists and the page has any table/list of compatible records, [N] must be greater than 0.
 9. If document columns differ from schema fields: map closest columns, ignore extra columns, and use null for missing schema fields. Never return empty just because column labels differ.
 10. If a value violates the schema type, preserve the row and set only that value to null. Do not drop the whole row or output empty.
+11. For every non-empty extraction, document_metadata is mandatory even if the source document has no explicit metadata. It is your quality assessment of the page, not copied source text.
+12. Never end immediately after an extracted object or array. The final root-level block must be document_metadata with both scores present.
 </critical_rules>
 
 <schema_mapping_procedure>
@@ -349,8 +351,11 @@ Rules for array rows:
 Numbers: strip currency symbols and thousands separators.
   "$1,250.00" → 1250.00     "Rp 1.500.000" → 1500000     "1.234,56" → 1234.56
 
-document_metadata is always the last key in the output.
-Metadata scores are whole numbers from 0 to 100. Never use fractions like 0.5.
+document_metadata is always the last key in the output and must contain exactly both fields:
+  readability_score: visual/text legibility score from 0 to 100
+  data_usability_score: confidence that extracted structured data is complete and usable, from 0 to 100
+
+Metadata scores are whole numbers from 0 to 100. Never use fractions like 0.5. If you are unsure, estimate conservatively; do not omit the block.
 </how_to_read_the_schema>
 
 <syntax_rules>
@@ -360,9 +365,16 @@ ${TOON_RULES}
 <schema>
 ${toonSchemaTemplate}
 document_metadata:
-  readability_score: <number 0-100>
-  data_usability_score: <number 0-100>
-</schema>`;
+  readability_score: <number 0-100> # REQUIRED, final root-level block
+  data_usability_score: <number 0-100> # REQUIRED, final field in the response
+</schema>
+
+<final_output_checklist>
+Before sending your answer, silently verify:
+- The response is raw TOON only, with no markdown fences.
+- If the page is not exactly empty: true, the last root-level key is document_metadata.
+- document_metadata contains both readability_score and data_usability_score as whole numbers from 0 to 100.
+</final_output_checklist>`;
 }
 
 /**
