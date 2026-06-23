@@ -31,6 +31,25 @@ export async function GET() {
       .orderBy(desc(jobs.createdAt))
       .limit(100);
 
+    // Fetch pricing configuration from DB models
+    const allDbModels = await db
+      .select({
+        modelId: ocrModels.modelId,
+        inputPrice: ocrModels.inputPrice,
+        outputPrice: ocrModels.outputPrice,
+      })
+      .from(ocrModels);
+
+    const pricingMap = new Map<string, { input: number; output: number }>();
+    for (const [key, val] of Object.entries(VERCEL_AI_GATEWAY_PRICING)) {
+      pricingMap.set(key, val);
+    }
+    for (const m of allDbModels) {
+      if (m.inputPrice > 0 || m.outputPrice > 0) {
+        pricingMap.set(m.modelId, { input: m.inputPrice, output: m.outputPrice });
+      }
+    }
+
     // Aggregate token usage per job from llm_logs
     const tokensByJob = await db
       .select({
@@ -71,8 +90,8 @@ export async function GET() {
         completionTokens += row.completionTokens;
         totalTokens += row.totalTokens;
 
-        const pricing = VERCEL_AI_GATEWAY_PRICING[row.model as keyof typeof VERCEL_AI_GATEWAY_PRICING]
-          ?? VERCEL_AI_GATEWAY_PRICING[job.modelId as keyof typeof VERCEL_AI_GATEWAY_PRICING]
+        const pricing = pricingMap.get(row.model)
+          ?? pricingMap.get(job.modelId || "")
           ?? { input: 0, output: 0 };
         cost += row.promptTokens * (pricing.input / 1_000_000);
         cost += row.completionTokens * (pricing.output / 1_000_000);

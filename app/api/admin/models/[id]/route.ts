@@ -19,7 +19,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       modelId: getProviderPrefixedModelId(data.provider, data.modelId),
       temperature: data.temperature,
       maxOutputTokens: data.maxOutputTokens,
+      priority: data.priority ?? 1,
       config: data.config,
+      inputPrice: data.inputPrice ?? 0,
+      outputPrice: data.outputPrice ?? 0,
+      isEnabled: data.isEnabled ?? true,
       updatedAt: new Date(),
     }).where(eq(ocrModels.id, id)).returning();
     

@@ -68,6 +68,25 @@ export async function GET(
       .where(eq(jobResults.jobId, id))
       .limit(1);
 
+    // Fetch pricing configuration from DB models
+    const allDbModels = await db
+      .select({
+        modelId: ocrModels.modelId,
+        inputPrice: ocrModels.inputPrice,
+        outputPrice: ocrModels.outputPrice,
+      })
+      .from(ocrModels);
+
+    const pricingMap = new Map<string, { input: number; output: number }>();
+    for (const [key, val] of Object.entries(VERCEL_AI_GATEWAY_PRICING)) {
+      pricingMap.set(key, val);
+    }
+    for (const m of allDbModels) {
+      if (m.inputPrice > 0 || m.outputPrice > 0) {
+        pricingMap.set(m.modelId, { input: m.inputPrice, output: m.outputPrice });
+      }
+    }
+
     let promptTokens = 0;
     let completionTokens = 0;
     let totalTokens = 0;
@@ -80,8 +99,8 @@ export async function GET(
       completionTokens += log.completionTokens;
       totalTokens += log.totalTokens;
 
-      const pricing = VERCEL_AI_GATEWAY_PRICING[log.model as keyof typeof VERCEL_AI_GATEWAY_PRICING]
-        ?? VERCEL_AI_GATEWAY_PRICING[jobData.modelId as keyof typeof VERCEL_AI_GATEWAY_PRICING]
+      const pricing = pricingMap.get(log.model)
+        ?? pricingMap.get(jobData.modelId || "")
         ?? { input: 0, output: 0 };
       
       const logCost = (log.promptTokens * (pricing.input / 1_000_000)) + (log.completionTokens * (pricing.output / 1_000_000));

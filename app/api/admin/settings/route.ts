@@ -17,7 +17,7 @@ async function getQuotaByType(type: "global" | "registered") {
 async function getSystemSettings() {
   const db = getDb();
   const [row] = await db.select().from(systemSettings).limit(1);
-  return row ?? { concurrencyLength: 5 };
+  return row ?? { concurrencyLength: 5, rotationMode: "round-robin", repairModelId: null };
 }
 
 export async function GET() {
@@ -42,6 +42,8 @@ export async function GET() {
         : { count: 50, resetPeriod: "daily" },
       system: {
         concurrencyLength: system.concurrencyLength,
+        rotationMode: system.rotationMode ?? "round-robin",
+        repairModelId: system.repairModelId ?? null,
       },
     });
   } catch (error: any) {
@@ -80,18 +82,40 @@ export async function POST(request: Request) {
     if (data.guest) await saveQuota("global", data.guest);
     if (data.registered) await saveQuota("registered", data.registered);
 
-    if (data.system && data.system.concurrencyLength !== undefined) {
-      const concurrencyLength = parseInt(String(data.system.concurrencyLength), 10);
-      if (isNaN(concurrencyLength) || concurrencyLength < 1) throw new Error("Invalid concurrency length");
+    if (data.system) {
+      const { concurrencyLength: rawConcurrency, rotationMode, repairModelId } = data.system;
+      const updates: Record<string, any> = { updatedAt: new Date() };
+
+      if (rawConcurrency !== undefined) {
+        const concurrencyLength = parseInt(String(rawConcurrency), 10);
+        if (isNaN(concurrencyLength) || concurrencyLength < 1) throw new Error("Invalid concurrency length");
+        updates.concurrencyLength = concurrencyLength;
+      }
+
+      if (rotationMode !== undefined) {
+        if (rotationMode !== "round-robin" && rotationMode !== "random" && rotationMode !== "priority-weighted") {
+          throw new Error("Invalid rotation mode");
+        }
+        updates.rotationMode = rotationMode;
+      }
+
+      if (repairModelId !== undefined) {
+        updates.repairModelId = repairModelId || null;
+      }
 
       const [existing] = await db.select().from(systemSettings).limit(1);
       if (existing) {
         await db
           .update(systemSettings)
-          .set({ concurrencyLength, updatedAt: new Date() })
+          .set(updates)
           .where(eq(systemSettings.id, existing.id));
       } else {
-        await db.insert(systemSettings).values({ id: "default", concurrencyLength });
+        await db.insert(systemSettings).values({
+          id: "default",
+          concurrencyLength: updates.concurrencyLength ?? 5,
+          rotationMode: updates.rotationMode ?? "round-robin",
+          repairModelId: updates.repairModelId ?? null,
+        });
       }
     }
 

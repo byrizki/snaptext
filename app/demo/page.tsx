@@ -20,7 +20,9 @@ export default function DemoPage() {
     result,
     error,
     currentFile,
-    startOcr,
+    uploadedFileData,
+    uploadFile,
+    submitScan,
     rerunOcr,
     stopJob,
     reset,
@@ -34,7 +36,19 @@ export default function DemoPage() {
 
   const [selectedModelId, setSelectedModelId] = useState<string>("");
 
-  const isActive = status !== "idle";
+  const handleFileSelect = (file: File) => {
+    if (!file) {
+      reset();
+      return;
+    }
+    void uploadFile(file);
+  };
+
+  const handleStartScan = (schema?: string) => {
+    void submitScan(selectedModelId || undefined, schema || undefined);
+  };
+
+  const isActive = status === "uploading" || status === "scanning" || status === "completed" || status === "error";
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background text-foreground">
@@ -55,10 +69,16 @@ export default function DemoPage() {
               <DemoIdlePanel
                 selectedModelId={selectedModelId}
                 onModelChange={setSelectedModelId}
-                onFileSelect={(file, schema) => startOcr(file, selectedModelId, schema)}
+                onFileSelect={handleFileSelect}
+                onStartScan={handleStartScan}
                 onRerun={rerunOcr}
                 onView={async (jobId) => router.push(`/demo/jobs/${jobId}`)}
                 onStop={stopJob}
+                status={status}
+                uploadProgress={uploadProgress}
+                uploadPhase={uploadPhase}
+                uploadedFileData={uploadedFileData}
+                currentFile={currentFile}
               />
               <Footer />
             </motion.div>

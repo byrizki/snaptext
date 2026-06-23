@@ -142,6 +142,20 @@ Before output:
 - Scan indentation, spacing → identify hierarchy.
 - Scan highlights → identify totals, flagged rows.
 
+#### Non-Data Page Detection (skip immediately)
+Output `empty: true` and stop if the page is primarily any of the following:
+- Table of contents / daftar isi (list of chapters with page numbers, no extractable row data)
+- Index page / daftar indeks
+- Cover page, title page, or spine (only document title, author, publisher logo)
+- Copyright / hak cipta page (legal boilerplate, ISBN, edition notice)
+- Blank or near-blank page (whitespace, single logo, decorative border only)
+- Section divider / chapter break (large heading only, no content rows)
+- Foreword, preface, kata pengantar, or acknowledgment pages (narrative prose only)
+- Glossary / glosarium (term definitions only, no structured data rows)
+- Bibliography / daftar pustaka / references list (citations only)
+- Repeating page header/footer strip with no body content
+- "This page intentionally left blank" or equivalent notice
+
 If document has no structured data, or has no content relevant to schema:
   empty: true
 Stop immediately. Output nothing else.
@@ -264,7 +278,7 @@ Extract image data to TOON matching schema.
 3. Replace type hints (<string>, <number>, etc.) with real values. No placeholders.
 4. Schema keys are destination fields, not search terms. Map visible document content to closest schema fields by meaning.
 5. Perform semantic matching: map source synonyms or different languages to target schema keys (e.g. map source text "biaya" or "fee" to schema key "tariffs").
-6. Blank, unreadable, or unrelated page → output exactly "empty: true" and stop. Forbidden: outputting empty schema keys or arrays with count 0.
+6. Blank, unreadable, unrelated, or non-data structural page → output exactly "empty: true" and stop. Non-data structural pages include: table of contents (daftar isi), index (daftar indeks), cover/title page, copyright/hak cipta page, section divider, chapter break, foreword/preface/kata pengantar, glossary/glosarium, bibliography/daftar pustaka, blank pages, and any page containing only navigation or prose with no extractable data rows. Forbidden: outputting empty schema keys or arrays with count 0.
 7. If schema array key exists and page contains matching rows → N must be > 0.
 8. Column name mismatch → map closest fields by meaning, ignore extra columns, use null for missing schema fields. Do not skip rows.
 9. Value type violation → preserve row, set violated value to null. Do not discard row.

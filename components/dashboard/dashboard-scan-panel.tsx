@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { CodeCircleIcon, Presentation02Icon, File01Icon, Delete02Icon, PlayIcon } from "@hugeicons/core-free-icons";
+import { CodeCircleIcon, Presentation02Icon, File01Icon, Delete02Icon, PlayIcon, Loading03Icon } from "@hugeicons/core-free-icons";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,23 +11,30 @@ import { ModelSelector } from "@/components/demo/model-selector";
 import { SchemaEditor } from "@/components/demo/schema-editor";
 import { UploadZone } from "@/components/demo/upload-zone";
 import { UploadProgress } from "@/components/demo/upload-progress";
+import type { UploadedFileData } from "@/hooks/use-ocr-pipeline";
 
 interface DashboardScanPanelProps {
   selectedModelId: string;
   onModelChange: (id: string) => void;
-  onFileSelect: (file: File, schema?: string) => void;
+  onFileSelect: (file: File) => void;
+  onStartScan: (schema?: string) => void;
   status?: string;
   uploadProgress?: number;
   uploadPhase?: string;
+  uploadedFileData?: UploadedFileData | null;
+  currentFile?: File | null;
 }
 
 export function DashboardScanPanel({
   selectedModelId,
   onModelChange,
   onFileSelect,
+  onStartScan,
   status,
   uploadProgress,
   uploadPhase,
+  uploadedFileData,
+  currentFile,
 }: DashboardScanPanelProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [jsonSchema, setJsonSchema] = useState("");
@@ -35,7 +42,7 @@ export function DashboardScanPanel({
   const [isLoaded, setIsLoaded] = useState(false);
   const [quota, setQuota] = useState<{ limit: number; used: number; remaining: number; isAnonymous: boolean } | null>(null);
   const [isLoadingQuota, setIsLoadingQuota] = useState(true);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     setIsLoadingQuota(true);
@@ -57,6 +64,13 @@ export function DashboardScanPanel({
     setIsLoaded(true);
   }, []);
 
+  // Reset submitting lock when status changes away from scanning
+  useEffect(() => {
+    if (status !== "scanning") {
+      isSubmittingRef.current = false;
+    }
+  }, [status]);
+
   const handleSchemaChange = (newSchema: string) => {
     setJsonSchema(newSchema);
     if (newSchema) {
@@ -65,6 +79,22 @@ export function DashboardScanPanel({
       localStorage.removeItem("snaptext_json_schema");
     }
   };
+
+  const handleStartScan = () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    onStartScan(showAdvanced ? jsonSchema : undefined);
+  };
+
+  const handleClearFile = () => {
+    // Re-render to idle by selecting no file — parent controls actual state
+    onFileSelect(null as unknown as File);
+  };
+
+  const isUploading = status === "uploading";
+  const isScanning = status === "scanning";
+  const hasUploadedFile = !!uploadedFileData && status === "idle";
+  const displayFile = currentFile;
 
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
@@ -83,42 +113,47 @@ export function DashboardScanPanel({
           </div>
         </div>
         <div className="p-4 sm:p-6 lg:px-8">
-          {status === "uploading" ? (
+          {isUploading ? (
             <div className="flex min-h-[22rem] items-center justify-center p-6 border rounded-[1.75rem] bg-card/55">
-              <UploadProgress progress={uploadProgress ?? 0} filename={selectedFile?.name || "document.pdf"} phase={uploadPhase as any} />
+              <UploadProgress progress={uploadProgress ?? 0} filename={displayFile?.name || "document.pdf"} phase={uploadPhase as any} />
             </div>
-          ) : selectedFile ? (
+          ) : hasUploadedFile && displayFile ? (
             <div className="flex flex-col items-center justify-center min-h-[22rem] p-6 border rounded-[1.75rem] bg-card/55 border-dashed">
               <div className="flex items-center gap-4 w-full max-w-md p-4 rounded-2xl border bg-background shadow-sm">
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <HugeiconsIcon icon={File01Icon} size={24} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{selectedFile.name}</p>
-                  <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  <p className="text-sm font-semibold text-foreground truncate">{displayFile.name}</p>
+                  <p className="text-xs text-muted-foreground">{(displayFile.size / 1024 / 1024).toFixed(2)} MB · Ready to scan</p>
                 </div>
-                <button 
-                  onClick={() => setSelectedFile(null)}
+                <button
+                  onClick={handleClearFile}
                   className="p-2 text-muted-foreground hover:text-destructive rounded-lg hover:bg-muted transition focus:outline-none"
                   aria-label="Remove file"
                 >
                   <HugeiconsIcon icon={Delete02Icon} size={18} />
                 </button>
               </div>
-              
-              <button 
-                onClick={() => onFileSelect(selectedFile, showAdvanced ? jsonSchema : undefined)}
-                className="mt-6 flex items-center justify-center gap-2 h-12 w-full max-w-xs rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/95 active:scale-[0.98] transition focus:outline-none focus:ring-2 focus:ring-ring"
+
+              <button
+                onClick={handleStartScan}
+                disabled={isScanning}
+                className="mt-6 flex items-center justify-center gap-2 h-12 w-full max-w-xs rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/95 active:scale-[0.98] transition focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
               >
-                <HugeiconsIcon icon={PlayIcon} size={16} />
-                Start OCR Scan
+                {isScanning ? (
+                  <HugeiconsIcon icon={Loading03Icon} size={16} className="animate-spin" />
+                ) : (
+                  <HugeiconsIcon icon={PlayIcon} size={16} />
+                )}
+                {isScanning ? "Starting scan…" : "Start OCR Scan"}
               </button>
             </div>
           ) : (
             <UploadZone
               quota={quota}
               isLoadingQuota={isLoadingQuota}
-              onFileSelect={setSelectedFile}
+              onFileSelect={onFileSelect}
             />
           )}
         </div>

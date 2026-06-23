@@ -1,0 +1,1 @@
+ALTER TABLE "ocr_models" ADD COLUMN "is_enabled" boolean DEFAULT true NOT NULL;

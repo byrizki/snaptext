@@ -29,6 +29,16 @@ export interface OcrResult {
 	filename?: string;
 }
 
+export interface UploadedFileData {
+	pdfUrl: string;
+	fileHash: string;
+	filename: string;
+	fileSize: number;
+	/** When true, the same file is already being processed — skip re-upload */
+	deduplicated: boolean;
+	existingJobId?: string;
+}
+
 export interface UseOcrPipelineReturn {
 	status: OcrStatus;
 	uploadProgress: number;
@@ -37,6 +47,9 @@ export interface UseOcrPipelineReturn {
 	result: OcrResult | null;
 	error: string | null;
 	currentFile: File | null;
+	uploadedFileData: UploadedFileData | null;
+	uploadFile: (file: File) => Promise<void>;
+	submitScan: (ocrModelId?: string, jsonSchema?: string) => Promise<void>;
 	startOcr: (
 		file: File,
 		ocrModelId?: string,
@@ -79,6 +92,8 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 	const [result, setResult] = useState<OcrResult | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [currentFile, setCurrentFile] = useState<File | null>(null);
+	const [uploadedFileData, setUploadedFileData] =
+		useState<UploadedFileData | null>(null);
 
 	const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const lastStatusRef = useRef<string | null>(null);
@@ -197,6 +212,163 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 		[getViewParam],
 	);
 
+	/**
+	 * Step 1: Hash the file and upload it to blob storage.
+	 * Sets status to "uploading" and stores the result in uploadedFileData.
+	 * Does NOT start the OCR scan job.
+	 */
+	const uploadFile = useCallback(
+		async (file: File) => {
+			clearPollTimer();
+			setStatus("uploading");
+			setUploadProgress(0);
+			setRunId(null);
+			setResult(null);
+			setError(null);
+			setCurrentFile(file);
+			setUploadedFileData(null);
+
+			try {
+				setUploadPhase("hashing");
+				const fileBuffer = await file.arrayBuffer();
+				const fileHash = await hashViaWorker(fileBuffer);
+
+				const uploadUrlRes = await fetch("/api/ocr/upload-url", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						filename: file.name,
+						fileSize: file.size,
+						fileHash,
+						ocrModelId: null,
+						jsonSchema: null,
+					}),
+				});
+
+				if (!uploadUrlRes.ok) {
+					const err = (await uploadUrlRes.json()) as { error?: string };
+					throw new Error(err.error ?? "Failed to obtain upload URL");
+				}
+
+				const uploadUrlData = (await uploadUrlRes.json()) as {
+					token?: string;
+					pathname?: string;
+					deduplicated?: boolean;
+					jobId?: string;
+					runId?: string;
+					pdfUrl?: string;
+				};
+
+				if (uploadUrlData.deduplicated) {
+					setUploadProgress(100);
+					setUploadedFileData({
+						pdfUrl: uploadUrlData.pdfUrl ?? "",
+						fileHash,
+						filename: file.name,
+						fileSize: file.size,
+						deduplicated: true,
+						existingJobId: uploadUrlData.jobId || uploadUrlData.runId,
+					});
+					// Stay in uploading state but show complete — user still needs to press scan
+					setStatus("idle");
+					return;
+				}
+
+				const { token, pathname } = uploadUrlData;
+
+				setUploadPhase("uploading");
+
+				const blobResult = await put(pathname!, file, {
+					access: "public",
+					token: token!,
+					contentType: "application/pdf",
+					onUploadProgress: (e) => {
+						setUploadProgress(e.percentage);
+					},
+				});
+
+				setUploadedFileData({
+					pdfUrl: blobResult.url,
+					fileHash,
+					filename: file.name,
+					fileSize: file.size,
+					deduplicated: false,
+				});
+
+				setUploadProgress(100);
+				setStatus("idle");
+			} catch (err) {
+				setStatus("error");
+				setError(
+					err instanceof Error ? err.message : "An unexpected error occurred.",
+				);
+			}
+		},
+		[clearPollTimer],
+	);
+
+	/**
+	 * Step 2: Submit the OCR scan job using previously uploaded file data.
+	 * Must call uploadFile first to populate uploadedFileData.
+	 */
+	const submitScan = useCallback(
+		async (ocrModelId?: string, jsonSchema?: string) => {
+			if (!uploadedFileData || !currentFile) {
+				setStatus("error");
+				setError("No file uploaded. Please select a file first.");
+				return;
+			}
+
+			setStatus("scanning");
+
+			try {
+				if (uploadedFileData.deduplicated && uploadedFileData.existingJobId) {
+					const idToTrack = uploadedFileData.existingJobId;
+					setRunId(idToTrack);
+					await pollStatus(idToTrack);
+					return;
+				}
+
+				const jobRes = await fetch("/api/ocr", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						pdfUrl: uploadedFileData.pdfUrl,
+						filename: uploadedFileData.filename,
+						fileSize: uploadedFileData.fileSize,
+						fileHash: uploadedFileData.fileHash,
+						ocrModelId: ocrModelId ?? null,
+						jsonSchema: jsonSchema ?? null,
+					}),
+				});
+
+				if (!jobRes.ok) {
+					const err = (await jobRes.json()) as { error?: string };
+					throw new Error(err.error ?? "Failed to create OCR job");
+				}
+
+				const jobData = (await jobRes.json()) as {
+					jobId: string;
+					runId: string;
+				};
+				const idToTrack = jobData.jobId || jobData.runId;
+				setRunId(idToTrack);
+
+				await pollStatus(idToTrack);
+			} catch (err) {
+				setStatus("error");
+				setError(
+					err instanceof Error ? err.message : "An unexpected error occurred.",
+				);
+			}
+		},
+		[uploadedFileData, currentFile, pollStatus],
+	);
+
+	/**
+	 * Combined: upload then immediately submit scan.
+	 * Preserved for backward compatibility.
+	 */
 	const startOcr = useCallback(
 		async (file: File, ocrModelId?: string, jsonSchema?: string) => {
 			clearPollTimer();
@@ -206,14 +378,13 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 			setResult(null);
 			setError(null);
 			setCurrentFile(file);
+			setUploadedFileData(null);
 
 			try {
-				// --- Step 1: hash file in web worker ---
-			setUploadPhase("hashing");
+				setUploadPhase("hashing");
 				const fileBuffer = await file.arrayBuffer();
 				const fileHash = await hashViaWorker(fileBuffer);
 
-				// --- Step 2: request signed upload URL from server ---
 				const uploadUrlRes = await fetch("/api/ocr/upload-url", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -241,7 +412,6 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 					pdfUrl?: string;
 				};
 
-				// If dedup hit, skip straight to polling
 				if (uploadUrlData.deduplicated) {
 					setUploadProgress(100);
 					const idToTrack = uploadUrlData.jobId || uploadUrlData.runId!;
@@ -251,7 +421,6 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 					return;
 				}
 
-				// --- Step 3: upload file directly to Vercel Blob ---
 				const { token, pathname } = uploadUrlData;
 
 				setUploadPhase("uploading");
@@ -267,7 +436,6 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 
 				const pdfUrl = blobResult.url;
 
-				// --- Step 4: submit job ---
 				const jobRes = await fetch("/api/ocr", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -341,7 +509,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 				);
 			}
 		},
-		[clearPollTimer, pollStatus, getViewParam],
+		[clearPollTimer, pollStatus],
 	);
 
 	const viewJob = useCallback(
@@ -372,7 +540,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 			setStatus("error");
 			setError("Job stopped by user.");
 		},
-		[clearPollTimer, getViewParam],
+		[clearPollTimer],
 	);
 
 	const reset = useCallback(() => {
@@ -383,6 +551,7 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 		setResult(null);
 		setError(null);
 		setCurrentFile(null);
+		setUploadedFileData(null);
 	}, [clearPollTimer]);
 
 	return {
@@ -393,6 +562,9 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 		result,
 		error,
 		currentFile,
+		uploadedFileData,
+		uploadFile,
+		submitScan,
 		startOcr,
 		rerunOcr,
 		viewJob,

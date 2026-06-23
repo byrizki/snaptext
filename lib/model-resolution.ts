@@ -1,5 +1,5 @@
 import { getDb, ocrModels } from "@/db";
-import { eq, ilike, or } from "drizzle-orm";
+import { eq, ilike, or, and } from "drizzle-orm";
 
 /**
  * Resolves a model identifier (UUID, name, or modelId with/without prefix) to its database row.
@@ -16,7 +16,7 @@ export async function resolveModel(
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(identifier)) {
     const model = await db.query.ocrModels.findFirst({
-      where: eq(ocrModels.id, identifier),
+      where: and(eq(ocrModels.id, identifier), eq(ocrModels.isEnabled, true)),
     });
     if (model) return model;
   }
@@ -26,13 +26,20 @@ export async function resolveModel(
   // by checking with @vercel/ and @cf/ prefixes as well.
   const prefixedVercel = `@vercel/${identifier}`;
   const prefixedCf = `@cf/${identifier}`;
+  const prefixedNvidia = `@nvidia/${identifier}`;
+  const prefixedSumopod = `@sumopod/${identifier}`;
 
   const model = await db.query.ocrModels.findFirst({
-    where: or(
-      ilike(ocrModels.name, identifier),
-      eq(ocrModels.modelId, identifier),
-      eq(ocrModels.modelId, prefixedVercel),
-      eq(ocrModels.modelId, prefixedCf)
+    where: and(
+      or(
+        ilike(ocrModels.name, identifier),
+        eq(ocrModels.modelId, identifier),
+        eq(ocrModels.modelId, prefixedVercel),
+        eq(ocrModels.modelId, prefixedCf),
+        eq(ocrModels.modelId, prefixedNvidia),
+        eq(ocrModels.modelId, prefixedSumopod)
+      ),
+      eq(ocrModels.isEnabled, true)
     ),
   });
 

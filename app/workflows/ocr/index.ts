@@ -14,6 +14,8 @@ import {
   dbSaveNewPages,
   dbGetOcrModel,
   dbGetSystemSettings,
+  dbGetOcrModelsByName,
+  dbGetDefaultActiveModel,
 } from "./steps";
 import type { OcrPageResult, OcrWorkflowResult } from "./types";
 import type { OcrModel } from "@/db";
@@ -34,8 +36,29 @@ export async function ocrWorkflow(
     }
 
     let ocrModelConfig: OcrModel | undefined = undefined;
+    let ocrModelsList: OcrModel[] = [];
     if (job.ocrModelId) {
-      ocrModelConfig = await dbGetOcrModel(job.ocrModelId);
+      const modelRow = await dbGetOcrModel(job.ocrModelId);
+      if (modelRow && modelRow.isEnabled) {
+        ocrModelConfig = modelRow;
+      }
+    }
+
+    if (ocrModelConfig) {
+      ocrModelsList = await dbGetOcrModelsByName(ocrModelConfig.name);
+      if (!ocrModelsList.find(m => m.id === ocrModelConfig!.id)) {
+        ocrModelsList.push(ocrModelConfig);
+      }
+    } else {
+      // Fallback to default active model if primary model is disabled/missing
+      const defaultActiveModel = await dbGetDefaultActiveModel();
+      if (defaultActiveModel) {
+        ocrModelConfig = defaultActiveModel;
+        ocrModelsList = await dbGetOcrModelsByName(defaultActiveModel.name);
+        if (!ocrModelsList.find(m => m.id === defaultActiveModel.id)) {
+          ocrModelsList.push(defaultActiveModel);
+        }
+      }
     }
 
     const schemaToToonModule = await import("@/lib/schema-to-toon");
@@ -76,6 +99,12 @@ export async function ocrWorkflow(
 
     const systemSettings = await dbGetSystemSettings();
 
+    // Fetch custom repair model configuration if set
+    let repairModelConfig: OcrModel | undefined = undefined;
+    if (systemSettings.repairModelId) {
+      repairModelConfig = await dbGetOcrModel(systemSettings.repairModelId);
+    }
+
     const pagesResults = await pMap(
       pagesToProcess,
       async (p: any): Promise<OcrPageResult | null> => {
@@ -83,7 +112,9 @@ export async function ocrWorkflow(
           p,
           jobId,
           job.fileHash,
-          ocrModelConfig,
+          ocrModelsList,
+          systemSettings.rotationMode ?? "round-robin",
+          repairModelConfig,
           toonSchemaTemplate,
           userId,
         );

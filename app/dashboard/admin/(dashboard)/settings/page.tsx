@@ -26,6 +26,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { AnimatePresence, motion } from "framer-motion";
@@ -46,7 +59,17 @@ interface AdminSettings {
   registered: QuotaSettings;
   system: {
     concurrencyLength: number;
+    rotationMode: string;
+    repairModelId: string | null;
   };
+}
+
+interface OcrModel {
+  id: string;
+  name: string;
+  provider: string;
+  modelId: string;
+  isEnabled?: boolean;
 }
 
 interface UserRow {
@@ -184,6 +207,75 @@ function QuotaRow({
   );
 }
 
+// ─── Searchable repair model picker ──────────────────────────────────────────
+
+interface RepairModelPickerProps {
+  value: string;
+  models: OcrModel[];
+  onChange: (value: string) => void;
+}
+
+function RepairModelPicker({ value, models, onChange }: RepairModelPickerProps) {
+  const [open, setOpen] = useState(false);
+  const selected = models.find((m) => m.id === value);
+  const label = selected ? `${selected.name} · ${selected.modelId}` : "System Default (Gemini)";
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        className="h-9 min-w-[13rem] max-w-[22rem] rounded-xl border border-zinc-200 dark:border-zinc-700/60 bg-zinc-100 dark:bg-zinc-800 px-3 text-sm font-medium text-left flex items-center justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
+        aria-label="Select repair model"
+      >
+        <span className="truncate">{label}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0 opacity-50" aria-hidden>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="end" side="bottom" sideOffset={6}>
+        <Command>
+          <CommandInput placeholder="Search models…" />
+          <CommandList>
+            <CommandEmpty>No models found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="system-default"
+                data-checked={value === "" ? "true" : undefined}
+                onSelect={() => {
+                  onChange("");
+                  setOpen(false);
+                }}
+              >
+                System Default (Gemini)
+              </CommandItem>
+            </CommandGroup>
+            <CommandGroup heading="Models">
+              {models.map((model) => (
+                <CommandItem
+                  key={model.id}
+                  value={`${model.name} ${model.provider} ${model.modelId}`}
+                  data-checked={value === model.id ? "true" : undefined}
+                  onSelect={() => {
+                    onChange(model.id);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="flex-1 min-w-0">
+                    <span className="block truncate font-medium">{model.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {model.provider} · {model.modelId}
+                      {model.isEnabled === false && " · Disabled"}
+                    </span>
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ─── Inline override editor for a user row ────────────────────────────────────
 
 interface UserOverrideEditorProps {
@@ -312,9 +404,15 @@ export default function SettingsPage() {
     fetcher
   );
 
+  const { data: modelsData = [] } = useSWR<OcrModel[]>(
+    "/api/admin/models",
+    fetcher
+  );
+  const models = Array.isArray(modelsData) ? modelsData : [];
+
   const [guestForm, setGuestForm] = useState<QuotaSettings>({ count: 5, resetPeriod: "daily" });
   const [registeredForm, setRegisteredForm] = useState<QuotaSettings>({ count: 50, resetPeriod: "daily" });
-  const [systemForm, setSystemForm] = useState({ concurrencyLength: 5 });
+  const [systemForm, setSystemForm] = useState({ concurrencyLength: 5, rotationMode: "round-robin", repairModelId: "" });
   const [guestDirty, setGuestDirty] = useState(false);
   const [registeredDirty, setRegisteredDirty] = useState(false);
   const [systemDirty, setSystemDirty] = useState(false);
@@ -338,7 +436,13 @@ export default function SettingsPage() {
     if (!settings) return;
     setGuestForm(settings.guest);
     setRegisteredForm(settings.registered);
-    if (settings.system) setSystemForm(settings.system);
+    if (settings.system) {
+      setSystemForm({
+        concurrencyLength: settings.system.concurrencyLength,
+        rotationMode: settings.system.rotationMode ?? "round-robin",
+        repairModelId: settings.system.repairModelId ?? "",
+      });
+    }
     setGuestDirty(false);
     setRegisteredDirty(false);
     setSystemDirty(false);
@@ -480,32 +584,90 @@ export default function SettingsPage() {
               <span className="text-sm">Loading…</span>
             </div>
           ) : (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="size-10 rounded-2xl flex items-center justify-center shrink-0 bg-emerald-50 dark:bg-emerald-900/30">
-                  <HugeiconsIcon icon={Settings01Icon} size={18} className="text-emerald-600 dark:text-emerald-400" />
+            <div className="flex flex-col gap-6 py-5">
+              {/* Row 1: Concurrency */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="size-10 rounded-2xl flex items-center justify-center shrink-0 bg-emerald-50 dark:bg-emerald-900/30">
+                    <HugeiconsIcon icon={Settings01Icon} size={18} className="text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Workflow Concurrency</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Global maximum concurrent tasks during OCR extraction</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Workflow Concurrency</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Global maximum concurrent tasks during OCR extraction</p>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl px-3 h-9 border border-zinc-200/80 dark:border-zinc-700/60">
+                    <input
+                      type="number"
+                      min={1}
+                      value={systemForm.concurrencyLength}
+                      onChange={(e) => {
+                        setSystemForm({ ...systemForm, concurrencyLength: parseInt(e.target.value, 10) || 1 });
+                        setSystemDirty(true);
+                      }}
+                      className="w-14 bg-transparent text-sm font-bold text-foreground outline-none text-center tabular-nums"
+                    />
+                    <span className="text-xs text-muted-foreground font-medium">tasks</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl px-3 h-9 border border-zinc-200/80 dark:border-zinc-700/60">
-                  <input
-                    type="number"
-                    min={1}
-                    value={systemForm.concurrencyLength}
-                    onChange={(e) => {
-                      setSystemForm({ ...systemForm, concurrencyLength: parseInt(e.target.value, 10) || 1 });
-                      setSystemDirty(true);
-                    }}
-                    className="w-14 bg-transparent text-sm font-bold text-foreground outline-none text-center tabular-nums"
-                  />
-                  <span className="text-xs text-muted-foreground font-medium">tasks</span>
+              {/* Row 2: Rotation Mode */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-5 border-t border-dashed">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="size-10 rounded-2xl flex items-center justify-center shrink-0 bg-blue-50 dark:bg-blue-900/30">
+                    <HugeiconsIcon icon={Settings01Icon} size={18} className="text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Model Rotation Mode</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Distribution strategy for models sharing the same name</p>
+                  </div>
                 </div>
 
+                <Select
+                  value={systemForm.rotationMode}
+                  onValueChange={(v) => {
+                    setSystemForm({ ...systemForm, rotationMode: v || "round-robin" });
+                    setSystemDirty(true);
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-44 rounded-xl border-zinc-200 dark:border-zinc-700/60 bg-zinc-100 dark:bg-zinc-800 text-sm font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="round-robin">Round Robin</SelectItem>
+                    <SelectItem value="random">Random</SelectItem>
+                    <SelectItem value="priority-weighted">Priority-Weighted</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Row 3: Repair Model */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-5 border-t border-dashed">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="size-10 rounded-2xl flex items-center justify-center shrink-0 bg-amber-50 dark:bg-amber-900/30">
+                    <HugeiconsIcon icon={Settings01Icon} size={18} className="text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Repair Model</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Model used to fix and repair validation failures</p>
+                  </div>
+                </div>
+
+                <RepairModelPicker
+                  value={systemForm.repairModelId}
+                  models={models}
+                  onChange={(v) => {
+                    setSystemForm({ ...systemForm, repairModelId: v });
+                    setSystemDirty(true);
+                  }}
+                />
+              </div>
+
+              {/* Save Button Row */}
+              <div className="flex justify-end pt-4">
                 <AnimatePresence>
                   {systemDirty && (
                     <motion.div
@@ -525,7 +687,7 @@ export default function SettingsPage() {
                         ) : (
                           <HugeiconsIcon icon={CheckmarkCircle01Icon} size={15} />
                         )}
-                        Save
+                        Save System Settings
                       </Button>
                     </motion.div>
                   )}

@@ -11,11 +11,28 @@ export async function dbGetOcrModel(modelId: string): Promise<OcrModel | undefin
   });
 }
 
+export async function dbGetOcrModelsByName(name: string): Promise<OcrModel[]> {
+  "use step";
+  const db = getDb();
+  return await db.query.ocrModels.findMany({
+    where: and(eq(ocrModels.name, name), eq(ocrModels.isEnabled, true)),
+  });
+}
+
+export async function dbGetDefaultActiveModel(): Promise<OcrModel | undefined> {
+  "use step";
+  const db = getDb();
+  return await db.query.ocrModels.findFirst({
+    where: eq(ocrModels.isEnabled, true),
+    orderBy: (m, { desc }) => [desc(m.createdAt)],
+  });
+}
+
 export async function dbGetSystemSettings() {
   "use step";
   const db = getDb();
   const [row] = await db.select().from(systemSettings).limit(1);
-  return row ?? { concurrencyLength: 5 };
+  return row ?? { concurrencyLength: 5, rotationMode: "round-robin", repairModelId: null };
 }
 
 export async function dbSaveLlmLogsBatch(

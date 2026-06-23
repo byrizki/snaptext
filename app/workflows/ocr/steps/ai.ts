@@ -651,6 +651,7 @@ export async function repairOcrPage(
   ocrModelConfig?: OcrModel,
   toonSchemaTemplate?: string,
   userId?: string | null,
+  repairModelConfig?: OcrModel,
 ): Promise<
   OcrPageResult & { log: string; llmLogs: any[]; internalError?: any }
 > {
@@ -680,14 +681,14 @@ export async function repairOcrPage(
         console.error(`[Abort Check] Error checking job status for jobId: ${jobId}, page: ${pageNumber}:`, err);
       }
     }, 1500);
-    const modelId = "@vercel/google/gemini-2.5-flash-lite-preview-09-2025";
+    const modelId = repairModelConfig?.modelId ?? "@vercel/google/gemini-2.5-flash-lite-preview-09-2025";
     const isInterfaze = modelId.includes("interfaze");
     const imageData = isInterfaze
       ? null
       : await fetchImageData(pageBlobUrl, { forceJpeg: modelId.startsWith("@sumopod/") });
-    const temperature = ocrModelConfig?.temperature;
-    const maxTokens = ocrModelConfig?.maxOutputTokens;
-    const config = ocrModelConfig?.config ?? {};
+    const temperature = repairModelConfig ? repairModelConfig.temperature : ocrModelConfig?.temperature;
+    const maxTokens = repairModelConfig ? repairModelConfig.maxOutputTokens : ocrModelConfig?.maxOutputTokens;
+    const config = repairModelConfig ? (repairModelConfig.config ?? {}) : (ocrModelConfig?.config ?? {});
 
     const { model, providerConfig } = getAiModel(
       modelId,
@@ -977,6 +978,45 @@ export async function repairOcrPage(
 
 repairOcrPage.maxRetries = 5;
 
+function getSortedCandidates(
+  candidates: OcrModel[],
+  rotationMode: string,
+  pageNumber: number
+): OcrModel[] {
+  if (candidates.length <= 1) {
+    return candidates;
+  }
+
+  // Stable sort by ID first to have a consistent base ordering
+  const baseList = [...candidates].sort((a, b) => a.id.localeCompare(b.id));
+
+  if (rotationMode === "random") {
+    // Fisher-Yates shuffle
+    const shuffled = [...baseList];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  if (rotationMode === "priority-weighted") {
+    // Math.random() ** (1 / priority) descending
+    const scored = baseList.map((m) => ({
+      model: m,
+      score: Math.pow(Math.random(), 1 / Math.max(1, m.priority ?? 1)),
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    return scored.map((s) => s.model);
+  }
+
+  // Fallback / "round-robin"
+  // Start offset at (pageNumber - 1) % baseList.length
+  const n = baseList.length;
+  const startIndex = Math.max(0, pageNumber - 1) % n;
+  return baseList.slice(startIndex).concat(baseList.slice(0, startIndex));
+}
+
 export async function processOcrPage(
   page: {
     pageNumber: number;
@@ -991,7 +1031,9 @@ export async function processOcrPage(
   },
   jobId: string,
   fileHash: string | null,
-  ocrModelConfig?: OcrModel,
+  ocrModelsList: OcrModel[],
+  rotationMode: string,
+  repairModelConfig?: OcrModel,
   toonSchemaTemplate?: string,
   userId?: string | null,
 ): Promise<OcrPageResult | null> {
@@ -1022,78 +1064,158 @@ export async function processOcrPage(
     return null;
   }
 
-  try {
+  // Get sorted candidates list based on rotation mode and page number
+  const candidates = getSortedCandidates(ocrModelsList, rotationMode, pageNumber);
+
+  if (candidates.length === 0) {
+    throw new Error("No OCR models available for processing");
+  }
+
+  let lastError: any = null;
+  let lastFailedResult: any = null;
+
+  for (let i = 0; i < candidates.length; i++) {
+    const candidateModel = candidates[i];
     console.log(
-      `[Step] Running OCR on page ${pageNumber} using image for jobId: ${jobId}`,
-    );
-    let { llmLogs, internalError, ...result } = await runOcrOnPage(
-      pageBlobUrl,
-      pageNumber,
-      jobId,
-      fileHash,
-      ocrModelConfig,
-      toonSchemaTemplate,
-      userId,
+      `[Workflow] Attempting OCR on page ${pageNumber} using candidate ${i + 1}/${candidates.length}: ${candidateModel.name} (Model ID: ${candidateModel.modelId}, Provider: ${candidateModel.provider})`
     );
 
-    // If job was cancelled during OCR, return early
-    const isCancelledPostOcr = await dbIsJobCancelled(jobId);
-    if (isCancelledPostOcr) {
-      console.log(`[Workflow] Job ${jobId} was cancelled/failed during OCR. Skipping page ${pageNumber} save/repair.`);
-      return null;
-    }
+    let llmLogs: any[] = [];
+    let internalError: any = null;
+    let result: any = null;
 
-    if (
-      result.data.parse_error &&
-      !internalError &&
-      !result.data.truncation_error
-    ) {
-      console.log(
-        `[Step] OCR failed validation on page ${pageNumber}, calling repairOcrPage for jobId: ${jobId}`,
-      );
-      const repairResponse = await repairOcrPage(
+    try {
+      // 1. Run OCR step
+      const ocrResponse = await runOcrOnPage(
         pageBlobUrl,
         pageNumber,
         jobId,
         fileHash,
-        result.rawToon,
-        result.data.error as string,
-        ocrModelConfig,
+        candidateModel,
         toonSchemaTemplate,
         userId,
       );
 
-      // If job was cancelled during repair, return early
-      const isCancelledPostRepair = await dbIsJobCancelled(jobId);
-      if (isCancelledPostRepair) {
-        console.log(`[Workflow] Job ${jobId} was cancelled/failed during repair. Skipping page ${pageNumber} save.`);
+      llmLogs = ocrResponse.llmLogs || [];
+      internalError = ocrResponse.internalError;
+
+      const { llmLogs: _, internalError: __, ...re } = ocrResponse;
+      result = re;
+
+      // Check if job was cancelled during OCR
+      const isCancelledPostOcr = await dbIsJobCancelled(jobId);
+      if (isCancelledPostOcr) {
+        console.log(`[Workflow] Job ${jobId} was cancelled/failed during OCR. Skipping page ${pageNumber}.`);
         return null;
       }
 
-      // Merge logs
-      llmLogs = [...(llmLogs || []), ...(repairResponse.llmLogs || [])];
+      // If there is an internalError in OCR, throw to trigger fallback
+      if (internalError) {
+        throw deserializeError(internalError);
+      }
 
-      const {
-        llmLogs: _repairLogs,
-        internalError: repairInternalError,
-        ...repairedResult
-      } = repairResponse;
-      result = repairedResult;
-      internalError = repairInternalError;
-    } // end if (parse_error)
+      // 2. If parsing failed, attempt repair step
+      if (
+        result.data.parse_error &&
+        !result.data.truncation_error
+      ) {
+        console.log(
+          `[Step] OCR failed validation on page ${pageNumber} with model ${candidateModel.modelId}. calling repairOcrPage for jobId: ${jobId}`,
+        );
+        const repairResponse = await repairOcrPage(
+          pageBlobUrl,
+          pageNumber,
+          jobId,
+          fileHash,
+          result.rawToon,
+          result.data.error as string,
+          candidateModel,
+          toonSchemaTemplate,
+          userId,
+          repairModelConfig,
+        );
 
-    await dbSaveOcrPageResult(jobId, pageNumber, result);
+        // Check if job was cancelled during repair
+        const isCancelledPostRepair = await dbIsJobCancelled(jobId);
+        if (isCancelledPostRepair) {
+          console.log(`[Workflow] Job ${jobId} was cancelled/failed during repair. Skipping page ${pageNumber}.`);
+          return null;
+        }
 
-    if (llmLogs && llmLogs.length > 0) {
-      await dbSaveLlmLogsBatch(jobId, llmLogs);
+        // Merge logs
+        llmLogs = [...llmLogs, ...(repairResponse.llmLogs || [])];
+
+        const {
+          llmLogs: _repairLogs,
+          internalError: repairInternalError,
+          ...repairedResult
+        } = repairResponse;
+
+        result = repairedResult;
+        internalError = repairInternalError;
+
+        if (internalError) {
+          throw deserializeError(internalError);
+        }
+      }
+
+      // 3. Check if we still have a parse_error after all extraction and repair attempts
+      if (result.data.parse_error) {
+        throw new Error(result.data.error || "TOON extraction validation and repair failed");
+      }
+
+      // If we got here, this candidate model succeeded! Save results and return.
+      await dbSaveOcrPageResult(jobId, pageNumber, result);
+
+      if (llmLogs && llmLogs.length > 0) {
+        await dbSaveLlmLogsBatch(jobId, llmLogs);
+      }
+
+      console.log(`[Workflow] OCR on page ${pageNumber} succeeded using model ${candidateModel.modelId}`);
+      return result;
+
+    } catch (err: any) {
+      console.warn(
+        `⚠️ OCR candidate ${candidateModel.name} (Model ID: ${candidateModel.modelId}) failed on page ${pageNumber}: ${err.message || err}`
+      );
+      lastError = err;
+      
+      // Store the failed result so we can write the last candidate's attempt if all fail
+      if (result) {
+        lastFailedResult = result;
+      } else {
+        lastFailedResult = {
+          pageNumber,
+          pageBlobUrl,
+          rawToon: "",
+          data: { parse_error: true, error: err.message || String(err) },
+          model: candidateModel.modelId,
+          usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+          finishReason: "error",
+          log: `[Error] ${err.message || String(err)}`,
+        };
+      }
+      
+      // Save logs immediately so we don't drop costs of failed attempts
+      if (llmLogs && llmLogs.length > 0) {
+        try {
+          await dbSaveLlmLogsBatch(jobId, llmLogs);
+        } catch (dbErr) {
+          console.error(`Failed to save intermediate failed OCR candidate logs to DB:`, dbErr);
+        }
+      }
     }
-
-    if (internalError) {
-      throw deserializeError(internalError);
-    }
-
-    return result;
-  } catch (error: any) {
-    throw error;
   }
+
+  // If all candidates failed, save the last candidate's failed result (logs are already saved in the catch block)
+  if (lastFailedResult) {
+    try {
+      await dbSaveOcrPageResult(jobId, pageNumber, lastFailedResult);
+    } catch (dbErr) {
+      console.error(`Failed to save final failed OCR page result to DB:`, dbErr);
+    }
+  }
+
+  console.error(`🔥 All OCR model candidates exhausted on page ${pageNumber} for jobId: ${jobId}`);
+  throw lastError || new Error(`All OCR model candidates exhausted on page ${pageNumber}`);
 }

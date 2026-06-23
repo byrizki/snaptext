@@ -31,7 +31,9 @@ export const ocrModels = pgTable("ocr_models", {
   inputPrice: real("input_price").notNull().default(0),
   outputPrice: real("output_price").notNull().default(0),
   maxOutputTokens: integer("max_output_tokens").notNull().default(4096),
+  priority: integer("priority").notNull().default(1),
   config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+  isEnabled: boolean("is_enabled").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -207,6 +209,8 @@ export type NewLlmLog = typeof llmLogs.$inferInsert;
 export const systemSettings = pgTable("system_settings", {
   id: text("id").primaryKey().default("default"),
   concurrencyLength: integer("concurrency_length").notNull().default(5),
+  rotationMode: text("rotation_mode").notNull().default("round-robin"),
+  repairModelId: text("repair_model_id"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

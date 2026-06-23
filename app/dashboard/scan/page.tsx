@@ -1,14 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardPageShell } from "@/components/dashboard/dashboard-page-shell";
 import { DashboardScanPanel } from "@/components/dashboard/dashboard-scan-panel";
 import { useOcrPipeline } from "@/hooks/use-ocr-pipeline";
+import { useState } from "react";
 
 export default function DashboardScanPage() {
   const router = useRouter();
-  const { status, runId, startOcr, uploadProgress, uploadPhase } = useOcrPipeline();
+  const {
+    status,
+    runId,
+    uploadFile,
+    submitScan,
+    uploadProgress,
+    uploadPhase,
+    uploadedFileData,
+    currentFile,
+    reset,
+  } = useOcrPipeline();
   const [selectedModelId, setSelectedModelId] = useState<string>("");
 
   useEffect(() => {
@@ -16,6 +27,18 @@ export default function DashboardScanPage() {
       router.push(`/dashboard/scan/${runId}`);
     }
   }, [runId, status, router]);
+
+  const handleFileSelect = (file: File) => {
+    if (!file) {
+      reset();
+      return;
+    }
+    void uploadFile(file);
+  };
+
+  const handleStartScan = (schema?: string) => {
+    void submitScan(selectedModelId || undefined, schema || undefined);
+  };
 
   return (
     <DashboardPageShell
@@ -26,10 +49,13 @@ export default function DashboardScanPage() {
       <DashboardScanPanel
         selectedModelId={selectedModelId}
         onModelChange={setSelectedModelId}
-        onFileSelect={(file, schema) => startOcr(file, selectedModelId, schema)}
+        onFileSelect={handleFileSelect}
+        onStartScan={handleStartScan}
         status={status}
         uploadProgress={uploadProgress}
         uploadPhase={uploadPhase}
+        uploadedFileData={uploadedFileData}
+        currentFile={currentFile}
       />
     </DashboardPageShell>
   );
