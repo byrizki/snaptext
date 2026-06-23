@@ -4,35 +4,37 @@
 const TOON_RULES = `## TOON Format (Token-Oriented Object Notation)
 
 ### Output contract
-Your response MUST be raw TOON and nothing else.
-- First character = first character of the first key. Nothing before it.
-- Last character = last character of the last value. Nothing after it.
-- No greetings, no explanations, no "Here is the extracted data:", no code fences.
+Output raw TOON only.
+- First char = first char of first key. No text before.
+- Last char = last char of last value. No text after.
+- No greetings, explanations, or markdown code fences.
 
-WRONG:
+Correct:
+  document_type: invoice
+
+Forbidden:
   Here is the extracted TOON data:
   document_type: invoice
 
-WRONG:
+Forbidden:
   \`\`\`toon
   document_type: invoice
   \`\`\`
 
-CORRECT:
-  document_type: invoice
-
 ### Scalars
-One key-value per line. Numbers, booleans, and null stay unquoted.
-Keys are always lower_snake_case.
+One key-value per line.
+Keys: lower_snake_case.
+Values: numbers, booleans, null NOT quoted.
 
-name: Alice
-age: 30
-active: true
-score: 98.6
-nothing: null
+Example:
+  name: Alice
+  age: 30
+  active: true
+  score: 98.6
+  nothing: null
 
 ### Nested objects
-Indent child keys by exactly 2 spaces. No tabs.
+Indent child keys exactly 2 spaces. No tabs.
 
 vendor:
   name: Acme Corp
@@ -42,37 +44,36 @@ vendor:
     zip: 78701
 
 ### Flat arrays
-Declare the count in [N], then comma-separate the values.
-
-tags[3]: typescript,llm,ocr
-phones[2]: +1-555-0100,+1-555-0101
-
-If a value contains a comma, wrap only that value in double quotes:
+Format: key[N]: val1,val2
+If value has comma, wrap value in double quotes:
   regions[3]: "North, East","South, West",Central
 
+Example:
+  tags[3]: typescript,llm,ocr
+  phones[2]: +1-555-0100,+1-555-0101
 
 ### Object arrays
-Declare [N] rows AND {col1,...,colC} headers, then write one indented row per record.
+Format: key[N]{col1,col2,...}:
+Indent each row.
+Headers: lower_snake_case, no quotes.
+Row values: exactly C values.
+Strings in object arrays: always double-quoted.
+Numbers, booleans: never quoted.
 
-items[3]{id,description,qty,unit_price,total}:
-  "1","Widget A",2,15.00,30.00
-  "2","Widget B",1,25.00,25.00
-  "3","Widget C",3,10.00,30.00
-
-Headers must be lower_snake_case and never quoted.
-Every row must have exactly C values — no more, no less.
-ALL string values in object arrays MUST be wrapped in double quotes.
-Numeric and boolean values remain unquoted.
+Example:
+  items[3]{id,description,qty,unit_price,total}:
+    "1","Widget A",2,15.00,30.00
+    "2","Widget B",1,25.00,25.00
+    "3","Widget C",3,10.00,30.00
 
 ### Quoting
-Outside object arrays: quote only when the value contains a comma, colon, or newline.
-Inside object arrays: ALL strings must be double-quoted, always.
-
-CORRECT: notes: "Thank you for your order, please pay within 30 days."
-CORRECT: address: "123 Main St, Suite 400"
-WRONG:   total: "1250.00"   -- numeric, don't quote
-WRONG:   active: "true"     -- boolean, never quote
-WRONG:   name: "Alice"      -- clean string outside array, don't quote`;
+Outside object arrays: quote only if value contains comma, colon, or newline.
+Inside object arrays: all strings must be double-quoted.
+- Yes: notes: "Thank you, pay in 30 days."
+- Yes: address: "123 Main St, Suite 400"
+- No: total: "1250.00" (numeric, no quotes)
+- No: active: "true" (boolean, no quotes)
+- No: name: "Alice" (clean string, no quotes)`;
 
 /**
  * A single, rich worked example the model can imitate.
@@ -132,26 +133,26 @@ document_metadata:
 function buildExtractionInstructions(): string {
   return `## Extraction Pipeline
 
-Work through these phases in order.
+Execute phases in order.
 
 ### Phase 1 — Visual Scan
-Before writing any data:
-- Locate bold text → section headers.
-- Locate grid lines, shading → tables.
-- Note indentation and whitespace → hierarchy.
-- Note colour highlights → totals or flagged rows.
+Before output:
+- Scan bold text → identify section headers.
+- Scan grid lines, shading → identify tables.
+- Scan indentation, spacing → identify hierarchy.
+- Scan highlights → identify totals, flagged rows.
 
-If the document is a plain letter or wall of text with no structured data, or contains NO content semantically relevant to the target schema fields:
+If document has no structured data, or has no content relevant to schema:
   empty: true
-Stop there. Output nothing else.
+Stop immediately. Output nothing else.
 
 ### Phase 2 — Decompose Fields
 
-#### Addresses — always split into granular subkeys
-Supported fields: street, district, city, state, zip, country, po_box
-Omit any field not present in the source.
+#### Addresses
+Split into subkeys: street, district, city, state, zip, country, po_box.
+Do not combine. Omit missing fields.
 
-"123 Main St, Suite 400, Austin, TX 78701, USA" →
+Example: "123 Main St, Suite 400, Austin, TX 78701, USA" →
   address:
     street: "123 Main St, Suite 400"
     city: Austin
@@ -159,203 +160,191 @@ Omit any field not present in the source.
     zip: 78701
     country: USA
 
-"Jl. Sudirman No. 10 / Kec. Setiabudi, Jakarta Selatan 12920" →
+Example: "Jl. Sudirman No. 10 / Kec. Setiabudi, Jakarta Selatan 12920" →
   address:
     street: Jl. Sudirman No. 10
     district: Kec. Setiabudi
     city: Jakarta Selatan
     zip: 12920
 
-WRONG: address: "123 Main St, Suite 400, Austin, TX 78701"
+Forbidden: address: "123 Main St, Suite 400, Austin, TX 78701"
 
-#### Other compound fields
-- "Acme Corp (TIN: 01.234.567)" → name: Acme Corp + tax_id: 01.234.567
-- "50 kg" → weight: 50 + weight_unit: kg
-- "Tel: +1-555-0100 / Fax: +1-555-0199" → phone: +1-555-0100 + fax: +1-555-0199
+#### Other Compound Fields
+Split compound source data into separate keys:
+- "Acme Corp (TIN: 01.234.567)" → name: Acme Corp, tax_id: 01.234.567
+- "50 kg" → weight: 50, weight_unit: kg
+- "Tel: +1-555-0100 / Fax: +1-555-0199" → phone: +1-555-0100, fax: +1-555-0199
 
 Group related fields into nested objects with lower_snake_case keys.
-Use issuer.address.city — never flat keys like issuer_address_city.
+Always nest: issuer.address.city. Never flatten: issuer_address_city.
 
-### Phase 3 — Numbers and Currencies
-Strip currency symbols and thousands separators. Store raw numbers.
+### Phase 3 — Numbers & Currencies
+Strip currency symbols and thousands separators. Store raw numbers only.
+- "$1,250.00" → 1250.00
+- "Rp 1.500.000" → 1500000
+- "1.234,56" → 1234.56
 
-"$1,250.00"    → amount: 1250.00, currency: USD
-"€ 1.250,00"  → amount: 1250.00, currency: EUR
-"Rp 1.500.000" → amount: 1500000, currency: IDR
-"1,234.56"     → 1234.56
-"1.234,56"     → 1234.56
-
-Missing or illegible: null. Never use 0 unless the source shows a zero.
+Missing/illegible → null. Never use 0 unless source explicitly shows 0.
 
 ### Phase 4 — Tables
+Follow steps exactly:
+1. Count columns: Read headers left-to-right. C = total columns. Use lower_snake_case in {…}.
+2. Count rows: Count data rows only. N = total. Set [N].
+3. Write rows: Each row must have exactly C values. No skipping, no merging, no splitting.
 
-**Step A — Count columns.** Read header row left-to-right. C = number of columns. Use lower_snake_case in {…}.
-**Step B — Count rows.** Count all data rows. N = total. Set [N].
-**Step C — Write every row.** Each row must have exactly C values. No skipping, no merging, no splitting.
+String values with commas must be quoted: e.g. "Item A, B".
 
-String cells with commas must be quoted: "Widget A, B" counts as one value.
+#### Multiple Tables
+Keep distinct tables separate. Do not merge.
+New table signs:
+- Row index resets.
+- Headers change.
+- Divider line or section title appears.
 
-#### Multiple tables on one page
-Each distinct table gets its own TOON key — never merge them.
+Correct:
+  table1[2]{...}:
+  table2[3]{...}:
+Forbidden:
+  merged_table[5]{...}:
 
-Signs of a separate table:
-- Row numbering resets.
-- New header row with different columns appears.
-- Bold divider line or section title between tables.
+#### Sub-header / Category Rows
+Headers or category rows spanning columns are NOT data. Do not count in [N]. Do not emit as rows.
+Absorb label into data rows:
+- Prefix description: "Emergency Room - Night Visit"
+- Or use category column: category: night_visit
+If column is numeric, all values must be numbers or null. If text occupies numeric cell (e.g. "HOLIDAY", "SUBTOTAL"), it is a sub-header or summary row. Drop it.
 
-CORRECT — two separate arrays:
-  consultation_fees[45]{no,description,opd,ed,basic,...}:
-    ...
-  surgeon_operator_fees[19]{no,procedure,opd,ed,basic,...}:
-    ...
+#### Multi-line Cells
+Line with blank first column belongs to row above.
+Collapse wrapped text with \\n in quotes:
+  "A002","Heavy-Duty Bolt\\nGalvanised",50
 
-WRONG — merged:
-  items[64]{no,description,opd,ed,...}:
-    ...
-
-#### Sub-header / category rows
-Rows that span columns as labels are NOT data rows. Don't count them in [N], don't emit them.
-
-Absorb the label into subsequent rows:
-- Prefix the description: "ED CONSULTATION I_1 - NIGHT/SUNDAY/HOLIDAY"
-- Or add a category column: category: night_sunday_holiday
-
-Once a column is numeric, every value must be a number or null.
-If you find text where a price belongs — day names, "HOLIDAY", "REPORT & CONSULTATION" — it's a sub-header row. Drop it.
-
-#### Multi-line cells
-A blank first column on a visual line means it belongs to the row above.
-Collapse wrapped text with \\n inside a quoted string:
-
-  Source:
-    | A002 | Heavy-Duty Bolt      | 50 |
-    |      | Galvanised, Grade 8  |    |
-  → A002,"Heavy-Duty Bolt\nGalvanised, Grade 8",50
-
-#### Rotated / vertical column headers
-Read top-to-bottom as plain text, then list left-to-right.
-Stacked multi-word headers → one snake_case field:
+#### Rotated Headers
+Read vertical text top-to-bottom, then left-to-right.
+Combine stacked headers into single lower_snake_case key:
   [Unit][Price] → unit_price
 
 ### Phase 5 — Visual Elements
-- Stamps and seals: stamp: APPROVED, stamp_date: 2024-03-15
-- Handwritten notes: handwritten_notes: <text or null>
-- Checkboxes: express_delivery: true
-- Highlighted rows: is_highlighted: true (only clearly highlighted ones)
-- Watermarks: document_status: VOID (skip "DRAFT", "COPY")
-- Logos / signatures: has_signature: true
+- Stamps/Seals: stamp: APPROVED, stamp_date: 2024-03-15
+- Handwritten text: handwritten_notes: "text" (or null)
+- Checkboxes: key: true/false
+- Highlighted rows: is_highlighted: true (if visual highlight present)
+- Watermarks: document_status: VOID (skip "DRAFT"/"COPY")
+- Logos/Signatures: has_signature: true
 
-### Phase 6 — Language and Metadata
-- Extract text exactly as it appears. No translation.
-- Ignore page numbers, repeated headers, boilerplate disclaimers.
-- Always end with a root-level document_metadata block:
-
-document_metadata:
-  readability_score: <0–100>
-  data_usability_score: <0–100>
+### Phase 6 — Language & Metadata
+- Extract original text exactly. No translation.
+- Ignore page numbers, repeating headers, boilerplate disclaimers.
+- Always end with root-level document_metadata:
+  document_metadata:
+    readability_score: <0-100>
+    data_usability_score: <0-100>
 
 ### Phase 7 — Output
-Your entire response is the TOON document.
-- No text before the first key.
-- No text after the last value.
-- No markdown code fences.
-- No inline comments or annotations.
-
-Empty or useless page:
+Entire response must be raw TOON.
+- No preamble/postamble.
+- No markdown code blocks/fences.
+- No comments/annotations.
+Empty page:
   empty: true`;
 }
 
 /**
  * Schema-constrained extraction prompt.
- * Used when a JSON schema is provided — model fills in only the declared keys.
  */
 function buildSchemaPrompt(toonSchemaTemplate: string): string {
   return `<role>
-You are a document data extractor with vision capabilities.
-Extract data from the document image and output it as TOON following the schema below.
+Document data extractor with vision.
+Extract image data to TOON matching schema.
 </role>
 
-<critical_rules>
-1. Output raw TOON only — no preamble, no explanation, no code fences.
-2. Output the schema keys as the final TOON keys. Do not invent new output keys.
-3. The schema shows TYPE HINTS like <string>, <number>, <boolean>. Do NOT copy them into your output.
-   Replace each placeholder with the actual value you read from the document.
-4. The schema keys are NOT search terms. They are destination fields. First read the document visually, then map visible content into the closest schema fields by meaning.
-5. Use semantic matching across languages and synonyms. Examples: tariff, tarif, biaya, harga, price, fee, rate, room charge, layanan, kamar, administrasi can all match a schema key named tariffs.
-6. If the page is blank, unreadable, or contains NO structured content semantically relevant to the schema (e.g. a cover page, diagnostic image, or text completely unrelated to the target fields), skip extraction and output exactly "empty: true" to return early. Do not force-map unrelated content.
-7. Do NOT output array_name[0] plus metadata as an empty result. Empty output is only "empty: true".
-8. If an array key exists and the page has any table/list of compatible records, [N] must be greater than 0.
-9. If document columns differ from schema fields: map closest columns, ignore extra columns, and use null for missing schema fields. Never return empty just because column labels differ.
-10. If a value violates the schema type, preserve the row and set only that value to null. Do not drop the whole row or output empty.
-11. For every non-empty extraction, document_metadata is mandatory even if the source document has no explicit metadata. It is your quality assessment of the page, not copied source text.
-12. Never end immediately after an extracted object or array. The final root-level block must be document_metadata with both scores present.
-</critical_rules>
+<rules>
+1. Output raw TOON only. No preamble, no explanation, no markdown fences.
+2. Output keys MUST match schema keys exactly. Do not rename schema keys. Do not invent keys. Forbidden: outputting keys, properties, or variables not declared in the schema.
+3. Replace type hints (<string>, <number>, etc.) with real values. No placeholders.
+4. Schema keys are destination fields, not search terms. Map visible document content to closest schema fields by meaning.
+5. Perform semantic matching: map source synonyms or different languages to target schema keys (e.g. map source text "biaya" or "fee" to schema key "tariffs").
+6. Blank, unreadable, or unrelated page → output exactly "empty: true" and stop. Forbidden: outputting empty schema keys or arrays with count 0.
+7. If schema array key exists and page contains matching rows → N must be > 0.
+8. Column name mismatch → map closest fields by meaning, ignore extra columns, use null for missing schema fields. Do not skip rows.
+9. Value type violation → preserve row, set violated value to null. Do not discard row.
+10. Every non-empty response MUST end with document_metadata block. Scores are integers 0-100.
+11. Forbidden: flattening nested arrays or objects (like tariffs[N]) into a single flat CSV row block. Always use the exact nested format with "-" indentation.
+12. Forbidden: outputting raw JSON lists (like [...]) or JSON objects (like {...}) inside TOON cells or values.
+13. Omit irrelevant data: If document content has no semantically matching schema field, ignore and do not extract it. Do not force-map unrelated data into existing schema keys.
+</rules>
 
 <schema_mapping_procedure>
-Before writing output, do this silently:
-1. Identify all visible tables/lists and their section headings.
-2. For each schema array, choose the visible table/list with the closest meaning, not exact label text.
-3. For each row, map cells into schema fields:
-   - category fields: section heading or group label.
-   - name/description fields: service name, item name, room type, procedure, or line description.
-   - rate/price/value fields: tariff/price/fee/amount columns after stripping currency and separators.
-   - type/code/class fields: code, class, unit, room class, tariff type, or "standard" when no label exists.
-4. If multiple visible sections match one schema array, concatenate them into the same array and keep the section heading in the category field.
-5. Prefer partial extraction over empty output. A row with one null field is better than missing the row.
+Follow steps silently before writing output:
+1. Scan page for tables, lists, and section headers.
+2. Map each schema array to the visible table/list with closest meaning. Ignore header label mismatch.
+3. Map row cells to schema fields:
+   - category: use section header or group label.
+   - name/description: use item/service name or line description.
+   - rates/prices/values: use numeric values after stripping currency/separators.
+   - type/code/class: use code, class, unit, or default to "standard" if missing.
+4. Multiple matching tables → combine into single schema array, keep source section header in category field.
+5. Prefer partial data: row with null fields is better than dropping the row.
 </schema_mapping_procedure>
 
 <how_to_read_the_schema>
-Each line in the schema is a key with a type hint. Fill in the real value:
+Replace schema placeholders with extracted values:
 
-  Schema line          Your output
-  ─────────────────    ─────────────────────────
-  name: <string>    →  name: John Smith
-  total: <number>   →  total: 1250.00
-  paid: <boolean>   →  paid: true
-  ref: <string|null> → ref: null          (if not found in document)
+  Schema                      Output
+  ────────────────────────    ────────────────────────────────────────
+  name: <string>           →  name: John Smith
+  total: <number>          →  total: 1250.00
+  paid: <boolean>          →  paid: true
+  ref: <string|null>       →  ref: null (if not in document)
 
-For simple object arrays the comment shows column types. Replace N with actual row count:
+Arrays: Replace N with actual row count.
+Simple Array Example:
+  Schema: items[N]{id,description,qty,price}:
+  Output: items[2]{id,description,qty,price}:
+            "1","Premium Widget",2,500.00
+            "2","Shipping Fee",1,40.50
 
-  Schema:   items[N]{id,description,qty,price}: # {id:<"string">, description:<"string">, qty:<number>, price:<number>}
-  Output:   items[2]{id,description,qty,price}:
-              "1","Premium Widget",2,500.00
-              "2","Shipping Fee",1,40.50
+Nested Array Example:
+  Schema: tariffs[N]:
+            - item_category: <string>
+              item_name: <string>
+              item_rates[N]{rate_type,rate_value}:
+  Output: tariffs[1]:
+            - item_category: Consultation
+              item_name: Specialist Visit
+              item_rates[2]{rate_type,rate_value}:
+                "basic",100000
+                "vip",190000
 
-For nested object arrays, use one "-" item per row and keep nested keys indented:
+Example Indonesian Kamar/Tariff Mapping:
+  Source: Kamar Perawatan | Presiden Suite | Tarif Rp 4,800,000
+  Output: tariffs[1]:
+            - item_category: Kamar Perawatan
+              item_name: Presiden Suite
+              item_rates[1]{rate_type,rate_value}:
+                "-",4800000
 
-  Schema:   tariffs[N]:
-              - item_category: <string>
-                item_name: <string>
-                item_rates[N]{rate_type,rate_value}: # {rate_type:<"string">, rate_value:<integer>}
-  Output:   tariffs[1]:
-              - item_category: Consultation
-                item_name: Specialist Visit
-                item_rates[2]{rate_type,rate_value}:
-                  "basic",100000
-                  "vip",190000
+Nested Array Rules:
+- Never flatten nested keys (e.g. tariffs[N]) into a single flat CSV-like header block.
+- Never write JSON lists or JSON objects (like [...], {...}) inside TOON values.
+- Indent each nested object with two spaces and start with "-".
 
-Indonesian tariff tables also match this schema. Use the section title as item_category, service/room name as item_name, and put the code/class/price column into item_rates:
+Array Row Rules:
+- Strings in CSV rows: wrap in double quotes.
+- Numbers, booleans: do not quote.
+- Missing cell: null (unquoted).
 
-  Source:   Kamar Perawatan | Presiden Suite | Kode - | Tarif Rp 4,800,000
-  Output:   tariffs[1]:
-              - item_category: Kamar Perawatan
-                item_name: Presiden Suite
-                item_rates[1]{rate_type,rate_value}:
-                  "-",4800000
+Clean numbers:
+- Remove currency symbols and separators.
+- "$1,250.00" → 1250.00
+- "Rp 1.500.000" → 1500000
+- "1.234,56" → 1234.56
 
-Rules for array rows:
-  - String columns in CSV rows: always wrap in double quotes
-  - Number and boolean columns: never quote
-  - Missing cell: null (unquoted)
-
-Numbers: strip currency symbols and thousands separators.
-  "$1,250.00" → 1250.00     "Rp 1.500.000" → 1500000     "1.234,56" → 1234.56
-
-document_metadata is always the last key in the output and must contain exactly both fields:
-  readability_score: visual/text legibility score from 0 to 100
-  data_usability_score: confidence that extracted structured data is complete and usable, from 0 to 100
-
-Metadata scores are whole numbers from 0 to 100. Never use fractions like 0.5. If you are unsure, estimate conservatively; do not omit the block.
+Every non-empty response MUST end with document_metadata:
+  document_metadata:
+    readability_score: <0-100 integer>
+    data_usability_score: <0-100 integer>
+Never use decimals. Never omit document_metadata.
 </how_to_read_the_schema>
 
 <syntax_rules>
@@ -370,10 +359,10 @@ document_metadata:
 </schema>
 
 <final_output_checklist>
-Before sending your answer, silently verify:
-- The response is raw TOON only, with no markdown fences.
-- If the page is not exactly empty: true, the last root-level key is document_metadata.
-- document_metadata contains both readability_score and data_usability_score as whole numbers from 0 to 100.
+Silently verify before output:
+- Raw TOON only. No markdown fences. No markdown code blocks.
+- Non-empty response ends with document_metadata block.
+- document_metadata has both readability_score and data_usability_score as whole numbers (0 to 100).
 </final_output_checklist>`;
 }
 
@@ -387,13 +376,13 @@ export function buildOcrSystemPrompt(toonSchemaTemplate?: string): string {
   }
 
   return `<role>
-You are a document intelligence engine with vision capabilities.
+Document intelligence engine with vision.
 </role>
 
 <output_constraints>
-Your response MUST be raw TOON (Token-Oriented Object Notation) only.
-- No preamble, no explanations, no markdown code fences.
-- First character = first key. Last character = last value.
+Response MUST be raw TOON only.
+- No preamble, no explanation, no markdown code fences.
+- Start at first key character. End at last value character.
 </output_constraints>
 
 <syntax_rules>
