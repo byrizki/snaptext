@@ -54,7 +54,7 @@ export default function JobRunPage() {
       <BackgroundGrid />
       <Header />
 
-      <main className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-20 sm:px-6">
+      <main className="relative z-10 mx-auto flex w-full max-w-[96vw] flex-1 flex-col px-4 py-20 sm:px-6 max-h-[100vh]">
         <AnimatePresence mode="wait">
           {status !== "idle" ? (
             <motion.div

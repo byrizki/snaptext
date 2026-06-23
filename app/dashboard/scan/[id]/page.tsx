@@ -43,7 +43,7 @@ export default function DashboardJobRunPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-[96rem] min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] lg:min-h-[640px]">
+    <div className="mx-auto flex w-full max-w-[96vw] min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] lg:min-h-[640px]">
       <DashboardCard className="flex min-h-0 w-full overflow-hidden">
         {status !== "idle" ? (
           <DemoActiveWorkspace
