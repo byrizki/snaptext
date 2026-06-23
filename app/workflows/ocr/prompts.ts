@@ -143,7 +143,7 @@ Before output:
 - Scan highlights → identify totals, flagged rows.
 
 #### Non-Data Page Detection (skip immediately)
-Output `empty: true` and stop if the page is primarily any of the following:
+Output \`empty: true\` and stop if the page is primarily any of the following:
 - Table of contents / daftar isi (list of chapters with page numbers, no extractable row data)
 - Index page / daftar indeks
 - Cover page, title page, or spine (only document title, author, publisher logo)
