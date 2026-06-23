@@ -27,6 +27,7 @@ import {
 import { useRouter } from "next/navigation";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageShell } from "@/components/dashboard/dashboard-page-shell";
+import { formatDuration } from "@/lib/utils";
 
 export default function JobHistoryPage() {
   const { data = [], isLoading } = useSWR(
@@ -173,7 +174,7 @@ export default function JobHistoryPage() {
                       {job.duration && (
                         <div className="text-[11px] text-muted-foreground flex items-center gap-1">
                           <HugeiconsIcon icon={FlashIcon} size={12} />
-                          {(job.duration / 1000).toFixed(1)}s processing
+                          {formatDuration(job.duration)} processing
                         </div>
                       )}
                       {job.error && (

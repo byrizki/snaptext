@@ -97,6 +97,12 @@ export async function GET() {
         cost += row.completionTokens * (pricing.output / 1_000_000);
       }
 
+      const isTerminal = job.status === "completed" || job.status === "failed";
+      const duration =
+        isTerminal && job.updatedAt && job.createdAt
+          ? new Date(job.updatedAt).getTime() - new Date(job.createdAt).getTime()
+          : null;
+
       return {
         id: job.id,
         filename: job.filename,
@@ -105,6 +111,7 @@ export async function GET() {
         createdAt: job.createdAt,
         updatedAt: job.updatedAt,
         totalPages: job.totalPages,
+        duration,
         user: {
           name: job.userName,
           email: job.userEmail,

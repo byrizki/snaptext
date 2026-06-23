@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
+import { formatDuration } from "@/lib/utils";
 
 interface ScanJob {
   id: string;
@@ -20,6 +21,7 @@ interface ScanJob {
   ocrModelId: string | null;
   modelName: string | null;
   createdAt: string;
+  duration: number | null;
 }
 
 interface ScanJobsResponse {
@@ -136,7 +138,7 @@ export function ScanHistory() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{job.filename}</p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {formatBytes(job.fileSize)}{job.totalPages ? ` · ${job.totalPages} pages` : ""}{job.modelName ? ` · ${job.modelName}` : ""} · {formatDistanceToNow(new Date(job.createdAt), { addSuffix: true })}
+                    {formatBytes(job.fileSize)}{job.totalPages ? ` · ${job.totalPages} pages` : ""}{job.modelName ? ` · ${job.modelName}` : ""}{job.duration != null ? ` · ${formatDuration(job.duration)}` : ""} · {formatDistanceToNow(new Date(job.createdAt), { addSuffix: true })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 sm:justify-end">

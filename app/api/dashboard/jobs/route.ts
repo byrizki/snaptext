@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getDb, jobs, jobResults, ocrModels } from "@/db";
+import { getDb, jobs, ocrModels } from "@/db";
 import { desc, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
@@ -30,6 +30,7 @@ export async function GET(request: Request) {
         ocrModelId: jobs.ocrModelId,
         modelName: ocrModels.name,
         createdAt: jobs.createdAt,
+        updatedAt: jobs.updatedAt,
       })
       .from(jobs)
       .leftJoin(ocrModels, eq(jobs.ocrModelId, ocrModels.id))
@@ -43,8 +44,17 @@ export async function GET(request: Request) {
       .where(eq(jobs.userId, session.user.id))
   ]);
 
+  const jobsWithDuration = userJobs.map((job) => {
+    const isTerminal = job.status === "completed" || job.status === "failed";
+    const duration =
+      isTerminal && job.updatedAt && job.createdAt
+        ? new Date(job.updatedAt).getTime() - new Date(job.createdAt).getTime()
+        : null;
+    return { ...job, duration };
+  });
+
   return NextResponse.json({
-    jobs: userJobs,
+    jobs: jobsWithDuration,
     pagination: {
       total: count,
       page,
@@ -53,3 +63,4 @@ export async function GET(request: Request) {
     },
   });
 }
+
