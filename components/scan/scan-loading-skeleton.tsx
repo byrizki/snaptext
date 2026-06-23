@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ScanLoadingSkeleton() {
   return (
-    <div className="grid h-full min-h-[520px] gap-4 p-4 lg:grid-cols-[0.9fr_1.1fr] lg:p-5">
+    <div className="grid h-full min-h-[520px] w-full gap-4 p-4 lg:grid-cols-[0.9fr_1.1fr] lg:p-5">
       <div className="rounded-[1.5rem] border bg-muted/25 p-4">
         <div className="mb-5 flex items-center justify-between">
           <Skeleton className="h-5 w-36" />

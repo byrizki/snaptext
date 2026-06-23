@@ -31,7 +31,6 @@ function tryParseToon(
 
 export function buildToonTools(
   onParsed: (rawToon: string, data: Record<string, unknown>) => void,
-  stopState?: { current: boolean },
   initialToon?: string,
 ) {
   let currentToon = initialToon ?? "";
@@ -41,9 +40,6 @@ export function buildToonTools(
       "Validate the current state of the TOON output in memory. Call this to check if your patches have successfully fixed the TOON.",
     inputSchema: z.object({}),
     execute: async (): Promise<ParseResult> => {
-      if (stopState?.current) {
-        return { success: false, error: "Workflow stopped by user", hint: "Stop processing immediately." };
-      }
       console.log(`[Tool] validate_toon called (length: ${currentToon.length})`);
       return tryParseToon(currentToon, onParsed);
     },
@@ -67,9 +63,6 @@ export function buildToonTools(
       search: string;
       replace: string;
     }): Promise<ParseResult> => {
-      if (stopState?.current) {
-        return { success: false, error: "Workflow stopped by user", hint: "Stop processing immediately." };
-      }
       console.log(`[Tool] patch_toon called`);
       console.log(`  - Search:  "${search}"`);
       console.log(`  - Replace: "${replace}"`);

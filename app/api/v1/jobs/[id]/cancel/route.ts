@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getWorld } from "workflow/runtime";
+import { getRun } from "workflow/api";
 import { z } from "zod";
 
-import { stopHook } from "@/app/workflows/ocr/hooks";
 import { getDb, jobs } from "@/db";
 import { validateApiKey } from "@/lib/api-key";
 
@@ -84,27 +83,20 @@ export async function POST(
       );
     }
 
-    // Cancel workflow run via World SDK event
-    const world = await getWorld();
-    await world.events.create(job.workflowRunId, { eventType: "run_cancelled" });
-
-    // Gracefully stop via the modern stopHook
+    // Cancel workflow run via client API
     try {
-      await stopHook.resume(`stop:${job.workflowRunId}`, {
-        reason: "Cancelled via Developer API",
-      });
+      const run = getRun(job.workflowRunId);
+      await run.cancel();
     } catch (err: any) {
       if (
-        err?.name === "HookNotFoundError" ||
-        err?.message?.includes("Hook not found")
+        !err?.name?.includes("NotFound") &&
+        !err?.message?.includes("not found")
       ) {
-        console.debug(
-          "[cancel v1] Stop hook not found (workflow may already be finishing) — skipping"
-        );
-      } else {
-        console.error("[cancel v1] Failed to resume stop hook:", err);
+        console.error("[cancel v1] Failed to cancel workflow run:", err);
       }
     }
+
+
 
     // Mark the DB record as failed immediately
     await db

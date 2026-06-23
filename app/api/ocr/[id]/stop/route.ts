@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getWorld } from "workflow/runtime";
-import { stopHook } from "@/app/workflows/ocr/hooks";
+import { getRun } from "workflow/api";
 
 import { getDb, jobs } from "@/db";
 
@@ -33,13 +32,6 @@ export async function POST(
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    if (!job.workflowRunId) {
-      return NextResponse.json(
-        { error: "No active workflow run associated with this job" },
-        { status: 400 }
-      );
-    }
-
     if (job.status === "completed" || job.status === "failed") {
       return NextResponse.json(
         { error: `Cannot stop a job that is already '${job.status}'` },
@@ -47,21 +39,22 @@ export async function POST(
       );
     }
 
-    // Cancel the workflow run via World SDK event
-    const world = await getWorld();
-    await world.events.create(job.workflowRunId, { eventType: "run_cancelled" });
-
-    // Also trigger the modern stopHook to gracefully halt the DurableAgent tool loop
-    try {
-      await stopHook.resume(`stop:${job.workflowRunId}`, { reason: "User requested stop" });
-    } catch (err: any) {
-      // HookNotFoundError is expected if the workflow is already finishing or the hook was never registered in this run
-      if (err?.name === "HookNotFoundError" || err?.message?.includes("Hook not found")) {
-        console.debug("[stop] Stop hook not found (workflow may already be finishing) — skipping");
-      } else {
-        console.error("[stop] Failed to resume stop hook:", err);
+    // Cancel the workflow run via client API
+    if (job.workflowRunId) {
+        try {
+          const run = getRun(job.workflowRunId);
+          await run.cancel();
+        } catch (err: any) {
+        if (
+          !err?.name?.includes("NotFound") &&
+          !err?.message?.includes("not found")
+        ) {
+          console.error("[stop] Failed to cancel workflow run:", err);
+        }
       }
     }
+
+
 
     // Mark the DB record as failed immediately so the UI reflects the change
     await db

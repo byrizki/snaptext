@@ -255,3 +255,13 @@ export async function finalizeJob(
     throw error;
   }
 }
+
+export async function dbIsJobCancelled(jobId: string): Promise<boolean> {
+  "use step";
+  console.log(`[Step] dbIsJobCancelled check for jobId: ${jobId}`);
+  const db = getDb();
+  const [job] = await db.select({ status: jobs.status }).from(jobs).where(eq(jobs.id, jobId)).limit(1);
+  const isCancelled = job ? (job.status === "failed") : false;
+  console.log(`[Step] dbIsJobCancelled check for jobId: ${jobId} resolved to ${isCancelled}`);
+  return isCancelled;
+}

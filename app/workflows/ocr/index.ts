@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { FatalError, getWorkflowMetadata } from "workflow";
+import { FatalError } from "workflow";
 import pMap from "p-map";
-import { stopHook } from "./hooks";
 
 import {
   extractPdfPageImages,
@@ -25,12 +24,6 @@ export async function ocrWorkflow(
   userId?: string | null,
 ): Promise<OcrWorkflowResult> {
   "use workflow";
-  const { workflowRunId } = getWorkflowMetadata();
-  const stopState = { current: false };
-  const hook = stopHook.create({ token: `stop:${workflowRunId}` });
-  hook.then(() => {
-    stopState.current = true;
-  });
 
   try {
     await initializeJob(jobId);
@@ -81,23 +74,16 @@ export async function ocrWorkflow(
     );
     const pagesToProcess = pageImages;
 
-    if (stopState.current) {
-      throw new FatalError("Workflow stopped by user");
-    }
-
     const systemSettings = await dbGetSystemSettings();
 
     const pagesResults = await pMap(
       pagesToProcess,
       async (p: any): Promise<OcrPageResult | null> => {
-        if (stopState.current) return null;
-
         return processOcrPage(
           p,
           jobId,
           job.fileHash,
           ocrModelConfig,
-          stopState,
           toonSchemaTemplate,
           userId,
         );

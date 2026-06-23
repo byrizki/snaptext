@@ -130,19 +130,25 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 					error: string | null;
 				};
 
+				if (json.status === "failed" || json.status === "cancelled") {
+					setStatus("error");
+					setError(json.error ?? "Workflow failed unexpectedly.");
+					return;
+				}
+
 				const mappedResult: OcrResult = {
 					runId: json.runId || json.id,
-					pdfUrl: json.metadata.pdfUrl,
-					totalPages: json.metadata.totalPages ?? 0,
-					completedPages: json.metadata.completedPages ?? 0,
+					pdfUrl: json.metadata?.pdfUrl ?? "",
+					totalPages: json.metadata?.totalPages ?? 0,
+					completedPages: json.metadata?.completedPages ?? 0,
 					pages: [],
 					merged: json.data ?? {},
-					createdAt: json.metadata.createdAt,
-					updatedAt: json.metadata.updatedAt,
-					hasSchema: json.metadata.hasSchema,
-					schema: json.metadata.schema,
+					createdAt: json.metadata?.createdAt,
+					updatedAt: json.metadata?.updatedAt,
+					hasSchema: json.metadata?.hasSchema,
+					schema: json.metadata?.schema,
 					filename: json.filename,
-					modelName: json.metadata.modelName,
+					modelName: json.metadata?.modelName,
 				};
 				setResult(mappedResult);
 
@@ -160,12 +166,6 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 					}
 
 					setStatus("completed");
-					return;
-				}
-
-				if (json.status === "failed" || json.status === "cancelled") {
-					setStatus("error");
-					setError(json.error ?? "Workflow failed unexpectedly.");
 					return;
 				}
 
@@ -369,11 +369,8 @@ export function useOcrPipeline(): UseOcrPipelineReturn {
 			} catch (err) {
 				console.error("Failed to stop job:", err);
 			}
-			setStatus("idle");
-			setRunId(null);
-			setResult(null);
-			setError(null);
-			setCurrentFile(null);
+			setStatus("error");
+			setError("Job stopped by user.");
 		},
 		[clearPollTimer, getViewParam],
 	);

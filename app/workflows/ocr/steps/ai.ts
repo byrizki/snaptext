@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { OcrModel } from "@/db";
+import { getDb, jobs, type OcrModel } from "@/db";
 import { getModelId } from "@/lib/provider-mapping";
 import { decodeToon } from "@/lib/toon-parser";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { DurableAgent } from "@workflow/ai/agent";
 import { stepCountIs, createGateway } from "ai";
+import { eq } from "drizzle-orm";
 import { createWorkersAI } from "workers-ai-provider";
 import sharp from "sharp";
 import { FatalError, fetch, getStepMetadata, RetryableError } from "workflow";
@@ -13,7 +14,7 @@ import { OCR_VISION_MODEL } from "../models";
 import { buildOcrSystemPrompt } from "../prompts";
 import { buildToonTools } from "../tools";
 import type { OcrPageResult } from "../types";
-import { dbSaveLlmLogsBatch, dbSaveOcrPageResult } from "./db";
+import { dbSaveLlmLogsBatch, dbSaveOcrPageResult, dbIsJobCancelled } from "./db";
 
 const predefinedProvider = {
   gateway: {
@@ -331,7 +332,6 @@ export async function runOcrOnPage(
   jobId: string,
   fileHash: string | null,
   ocrModelConfig?: OcrModel,
-  stopState?: { current: boolean },
   toonSchemaTemplate?: string,
   userId?: string | null,
 ): Promise<
@@ -340,10 +340,29 @@ export async function runOcrOnPage(
   "use step";
   const llmLogs: any[] = [];
   const { attempt } = getStepMetadata();
+  const controller = new AbortController();
+  let checkInterval: any;
   try {
     console.log(
       `[Step] runOcrOnPage started for jobId: ${jobId}, page: ${pageNumber} (attempt: ${attempt})`,
     );
+
+    checkInterval = setInterval(async () => {
+      try {
+        const db = getDb();
+        const [job] = await db.select({ status: jobs.status }).from(jobs).where(eq(jobs.id, jobId)).limit(1);
+        if (job && job.status === "failed") {
+          console.log(`[Abort Check] Job ${jobId} is cancelled/failed. Aborting OCR AI stream on page ${pageNumber}.`);
+          controller.abort();
+          if (checkInterval) {
+            clearInterval(checkInterval);
+            checkInterval = undefined;
+          }
+        }
+      } catch (err) {
+        console.error(`[Abort Check] Error checking job status for jobId: ${jobId}, page: ${pageNumber}:`, err);
+      }
+    }, 1500);
 
     const modelId = ocrModelConfig?.modelId ?? OCR_VISION_MODEL;
     const isInterfaze = modelId.includes("interfaze");
@@ -415,6 +434,7 @@ export async function runOcrOnPage(
     });
 
     const streamRes = await agent.stream({
+      abortSignal: controller.signal,
       messages: [
         {
           role: "user",
@@ -436,10 +456,6 @@ export async function runOcrOnPage(
       ],
       stopWhen: stepCountIs(1),
       writable: new WritableStream({ write() {} }),
-      prepareStep: () => {
-        if (stopState?.current) return { toolChoice: "none" };
-        return {};
-      },
       onStepFinish: async (event) => {
         logOcrDebug("Step finish", {
           jobId,
@@ -465,13 +481,6 @@ export async function runOcrOnPage(
             event.text ||
             (event.toolCalls ? JSON.stringify(event.toolCalls) : ""),
         });
-
-        if (stopState?.current) {
-          console.log(
-            `[Step] Stopping OCR stream for page ${pageNumber} as stop requested`,
-          );
-          throw new Error("Stopped execution");
-        }
       },
     });
 
@@ -623,6 +632,10 @@ export async function runOcrOnPage(
       llmLogs,
       internalError: serializeError(error),
     };
+  } finally {
+    if (checkInterval) {
+      clearInterval(checkInterval);
+    }
   }
 }
 
@@ -636,7 +649,6 @@ export async function repairOcrPage(
   brokenToon: string,
   errorMsg: string,
   ocrModelConfig?: OcrModel,
-  stopState?: { current: boolean },
   toonSchemaTemplate?: string,
   userId?: string | null,
 ): Promise<
@@ -645,10 +657,29 @@ export async function repairOcrPage(
   "use step";
   const llmLogs: any[] = [];
   const { attempt } = getStepMetadata();
+  const controller = new AbortController();
+  let checkInterval: any;
   try {
     console.log(
       `[Step] repairOcrPage started for jobId: ${jobId}, page: ${pageNumber} (attempt: ${attempt})`,
     );
+
+    checkInterval = setInterval(async () => {
+      try {
+        const db = getDb();
+        const [job] = await db.select({ status: jobs.status }).from(jobs).where(eq(jobs.id, jobId)).limit(1);
+        if (job && job.status === "failed") {
+          console.log(`[Abort Check] Job ${jobId} is cancelled/failed. Aborting repair AI stream on page ${pageNumber}.`);
+          controller.abort();
+          if (checkInterval) {
+            clearInterval(checkInterval);
+            checkInterval = undefined;
+          }
+        }
+      } catch (err) {
+        console.error(`[Abort Check] Error checking job status for jobId: ${jobId}, page: ${pageNumber}:`, err);
+      }
+    }, 1500);
     const modelId = "@vercel/google/gemini-2.5-flash-lite-preview-09-2025";
     const isInterfaze = modelId.includes("interfaze");
     const imageData = isInterfaze
@@ -714,7 +745,6 @@ export async function repairOcrPage(
         parsedResult = { rawToon, data };
         parseError = null;
       },
-      stopState,
       brokenToon,
     );
 
@@ -728,6 +758,7 @@ export async function repairOcrPage(
     });
 
     const streamRes = await agent.stream({
+      abortSignal: controller.signal,
       messages: [
         {
           role: "user",
@@ -793,10 +824,6 @@ export async function repairOcrPage(
       ],
       stopWhen: stepCountIs(30),
       writable: new WritableStream({ write() {} }),
-      prepareStep: () => {
-        if (stopState?.current) return { toolChoice: "none" };
-        return {};
-      },
       onStepFinish: async (event) => {
         logOcrDebug("Repair step finish", {
           jobId,
@@ -807,7 +834,7 @@ export async function repairOcrPage(
           text: event.text,
           toolCalls: event.toolCalls,
         });
-
+ 
         llmLogs.push({
           stepName: "ocr_repair",
           model: modelId,
@@ -821,13 +848,6 @@ export async function repairOcrPage(
             event.text ||
             (event.toolCalls ? JSON.stringify(event.toolCalls) : ""),
         });
-
-        if (stopState?.current) {
-          console.log(
-            `[Step] Stopping OCR stream for page ${pageNumber} as stop requested`,
-          );
-          throw new Error("Stopped execution");
-        }
       },
     });
 
@@ -948,6 +968,10 @@ export async function repairOcrPage(
       llmLogs,
       internalError: serializeError(error),
     };
+  } finally {
+    if (checkInterval) {
+      clearInterval(checkInterval);
+    }
   }
 }
 
@@ -968,7 +992,6 @@ export async function processOcrPage(
   jobId: string,
   fileHash: string | null,
   ocrModelConfig?: OcrModel,
-  stopState?: { current: boolean },
   toonSchemaTemplate?: string,
   userId?: string | null,
 ): Promise<OcrPageResult | null> {
@@ -992,6 +1015,13 @@ export async function processOcrPage(
     };
   }
 
+  // Check if job was cancelled/stopped
+  const isCancelled = await dbIsJobCancelled(jobId);
+  if (isCancelled) {
+    console.log(`[Workflow] Job ${jobId} is cancelled/failed. Skipping page ${pageNumber}.`);
+    return null;
+  }
+
   try {
     console.log(
       `[Step] Running OCR on page ${pageNumber} using image for jobId: ${jobId}`,
@@ -1002,48 +1032,54 @@ export async function processOcrPage(
       jobId,
       fileHash,
       ocrModelConfig,
-      stopState,
       toonSchemaTemplate,
       userId,
     );
+
+    // If job was cancelled during OCR, return early
+    const isCancelledPostOcr = await dbIsJobCancelled(jobId);
+    if (isCancelledPostOcr) {
+      console.log(`[Workflow] Job ${jobId} was cancelled/failed during OCR. Skipping page ${pageNumber} save/repair.`);
+      return null;
+    }
 
     if (
       result.data.parse_error &&
       !internalError &&
       !result.data.truncation_error
     ) {
-      if (stopState?.current) {
-        console.log(
-          `[Step] Skipping repair — stop requested (page ${pageNumber}, jobId: ${jobId})`,
-        );
-      } else {
-        console.log(
-          `[Step] OCR failed validation on page ${pageNumber}, calling repairOcrPage for jobId: ${jobId}`,
-        );
-        const repairResponse = await repairOcrPage(
-          pageBlobUrl,
-          pageNumber,
-          jobId,
-          fileHash,
-          result.rawToon,
-          result.data.error as string,
-          ocrModelConfig,
-          stopState,
-          toonSchemaTemplate,
-          userId,
-        );
+      console.log(
+        `[Step] OCR failed validation on page ${pageNumber}, calling repairOcrPage for jobId: ${jobId}`,
+      );
+      const repairResponse = await repairOcrPage(
+        pageBlobUrl,
+        pageNumber,
+        jobId,
+        fileHash,
+        result.rawToon,
+        result.data.error as string,
+        ocrModelConfig,
+        toonSchemaTemplate,
+        userId,
+      );
 
-        // Merge logs
-        llmLogs = [...(llmLogs || []), ...(repairResponse.llmLogs || [])];
+      // If job was cancelled during repair, return early
+      const isCancelledPostRepair = await dbIsJobCancelled(jobId);
+      if (isCancelledPostRepair) {
+        console.log(`[Workflow] Job ${jobId} was cancelled/failed during repair. Skipping page ${pageNumber} save.`);
+        return null;
+      }
 
-        const {
-          llmLogs: _repairLogs,
-          internalError: repairInternalError,
-          ...repairedResult
-        } = repairResponse;
-        result = repairedResult;
-        internalError = repairInternalError;
-      } // end else (not stopped)
+      // Merge logs
+      llmLogs = [...(llmLogs || []), ...(repairResponse.llmLogs || [])];
+
+      const {
+        llmLogs: _repairLogs,
+        internalError: repairInternalError,
+        ...repairedResult
+      } = repairResponse;
+      result = repairedResult;
+      internalError = repairInternalError;
     } // end if (parse_error)
 
     await dbSaveOcrPageResult(jobId, pageNumber, result);
