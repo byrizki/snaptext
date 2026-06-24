@@ -20,6 +20,7 @@ export interface OcrPageResult {
     usage: UsageData;
     pageNumber?: number;
     rawResponse?: string;
+    createdAt?: Date | string;
   }>;
 }
 

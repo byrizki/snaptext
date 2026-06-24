@@ -152,6 +152,16 @@ function DataVisualizer({ data, depth = 0 }: { data: any; depth?: number }) {
   return <span className="font-semibold text-zinc-900 dark:text-zinc-100">{String(data)}</span>;
 }
 
+function formatDuration(durationMs: number | null | undefined) {
+  if (durationMs === null || durationMs === undefined) return "--";
+  if (durationMs < 1000) return `${durationMs}ms`;
+  const seconds = durationMs / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
 function PageCollapsible({
   page,
 }: {
@@ -172,16 +182,19 @@ function PageCollapsible({
             <HugeiconsIcon icon={ArrowDown01Icon} size={16} className="text-zinc-400" />
           </div>
           <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">Page {page.pageNumber}</span>
-          <Badge variant="secondary" className="text-[9px] font-mono py-0 h-5 opacity-70">{page.model}</Badge>
-          <Badge variant={page.pageBlobUrl ? "outline" : "secondary"} className="text-[9px] font-mono py-0 h-5 opacity-70">
-            {page.pageBlobUrl ? "Image saved" : "No image"}
-          </Badge>
+          <Badge variant="secondary" className="text-[9px] font-mono py-0 h-5 opacity-70">{page.model?.split('/').slice(-1)?.[0]}</Badge>
 
           <div className="hidden sm:flex items-center gap-6 ml-auto mr-4">
             <div className="flex flex-col items-end">
-              <span className="text-[8px] text-zinc-400 font-bold uppercase leading-none mb-1">In / Out Tokens</span>
+              <span className="text-[8px] text-zinc-400 font-bold uppercase leading-none mb-1">In / Out</span>
               <span className="text-[10px] font-mono font-bold text-zinc-500">
                 {(page.usage?.promptTokens || 0).toLocaleString()} <span className="text-zinc-300 dark:text-zinc-700">/</span> {(page.usage?.completionTokens || 0).toLocaleString()}
+              </span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-[8px] text-zinc-400 font-bold uppercase leading-none mb-1">Duration</span>
+              <span className="text-[10px] font-mono font-bold text-sky-600 dark:text-sky-400">
+                {formatDuration(page.durationMs)}
               </span>
             </div>
             {page.cost !== undefined && (
@@ -344,7 +357,7 @@ export function JobDetailView({ jobId }: JobDetailViewProps) {
     );
   }
 
-  if (!job || job.error) {
+  if (!job || (job.error && !job.id)) {
     return (
       <div className="py-20 text-center space-y-4">
         <div className="size-16 bg-red-50 dark:bg-red-950/20 rounded-full flex items-center justify-center mx-auto text-red-500">
@@ -367,7 +380,7 @@ export function JobDetailView({ jobId }: JobDetailViewProps) {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out pb-20">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 min-w-0">
           <Link 
             href="/dashboard/admin/jobs" 
             className={cn(buttonVariants({ variant: "outline", size: "icon" }), "rounded-xl size-10 shrink-0")}
@@ -375,7 +388,7 @@ export function JobDetailView({ jobId }: JobDetailViewProps) {
             <HugeiconsIcon icon={ArrowLeft01Icon} size={20} />
           </Link>
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 min-w-0">
               <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 truncate" title={job.filename}>
                 {job.filename}
               </h1>

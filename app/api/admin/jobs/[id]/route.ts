@@ -92,7 +92,7 @@ export async function GET(
     let totalTokens = 0;
     let cost = 0;
 
-    const pageMetrics = new Map<string, { promptTokens: number, completionTokens: number, totalTokens: number, cost: number }>();
+    const pageMetrics = new Map<string, { promptTokens: number, completionTokens: number, totalTokens: number, cost: number, firstLogAt: Date | null, lastLogAt: Date | null }>();
 
     for (const log of logs) {
       promptTokens += log.promptTokens;
@@ -107,12 +107,22 @@ export async function GET(
       cost += logCost;
 
       if (log.jobPageId) {
-        const existing = pageMetrics.get(log.jobPageId) || { promptTokens: 0, completionTokens: 0, totalTokens: 0, cost: 0 };
+        const existing = pageMetrics.get(log.jobPageId) || {
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          cost: 0,
+          firstLogAt: null,
+          lastLogAt: null,
+        };
+        const createdAt = log.createdAt;
         pageMetrics.set(log.jobPageId, {
           promptTokens: existing.promptTokens + log.promptTokens,
           completionTokens: existing.completionTokens + log.completionTokens,
           totalTokens: existing.totalTokens + log.totalTokens,
           cost: existing.cost + logCost,
+          firstLogAt: !existing.firstLogAt || createdAt < existing.firstLogAt ? createdAt : existing.firstLogAt,
+          lastLogAt: !existing.lastLogAt || createdAt > existing.lastLogAt ? createdAt : existing.lastLogAt,
         });
       }
     }
@@ -199,7 +209,10 @@ export async function GET(
               ),
           )
           .map((p) => {
-            const metrics = pageMetrics.get(p.id) || { promptTokens: 0, completionTokens: 0, totalTokens: 0, cost: 0 };
+            const metrics = pageMetrics.get(p.id) || { promptTokens: 0, completionTokens: 0, totalTokens: 0, cost: 0, firstLogAt: null, lastLogAt: null };
+            const durationMs = metrics.firstLogAt && metrics.lastLogAt
+              ? Math.max(0, metrics.lastLogAt.getTime() - metrics.firstLogAt.getTime())
+              : null;
             const copy: any = { 
               id: p.id,
               pageNumber: p.pageNumber,
@@ -212,6 +225,7 @@ export async function GET(
                 totalTokens: metrics.totalTokens,
               },
               cost: metrics.cost,
+              durationMs,
               ...(p.parsedData || {}) 
             };
             delete copy.empty;

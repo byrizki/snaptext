@@ -44,6 +44,7 @@ export async function dbSaveLlmLogsBatch(
     usage: { promptTokens: number; completionTokens: number; totalTokens: number };
     pageNumber?: number;
     rawResponse?: string;
+    createdAt?: Date | string;
   }>
 ) {
   "use step";
@@ -73,6 +74,7 @@ export async function dbSaveLlmLogsBatch(
     completionTokens: l.usage.completionTokens,
     totalTokens: l.usage.totalTokens,
     rawResponse: l.rawResponse,
+    createdAt: l.createdAt ? new Date(l.createdAt) : undefined,
   }));
 
   await db.insert(llmLogs).values(values);
@@ -286,8 +288,9 @@ export async function finalizeJob(
       usage: { promptTokens: number; completionTokens: number; totalTokens: number };
       pageNumber?: number;
       rawResponse?: string;
+      createdAt?: Date | string;
     }>;
-  }>,
+  }>, 
   totalPages?: number
 ): Promise<void> {
   "use step";

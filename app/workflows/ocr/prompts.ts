@@ -158,23 +158,21 @@ Before output:
 - Scan indentation, spacing → identify hierarchy.
 - Scan highlights → identify totals, flagged rows.
 
-#### Non-Data Page Detection (skip immediately)
-Output \`empty: true\` and stop if the page is primarily any of the following:
-- Table of contents / daftar isi (list of chapters with page numbers, no extractable row data)
-- Index page / daftar indeks
-- Cover page, title page, or spine (only document title, author, publisher logo)
-- Copyright / hak cipta page (legal boilerplate, ISBN, edition notice)
-- Blank or near-blank page (whitespace, single logo, decorative border only)
-- Section divider / chapter break (large heading only, no content rows)
-- Foreword, preface, kata pengantar, or acknowledgment pages (narrative prose only)
-- Glossary / glosarium (term definitions only, no structured data rows)
-- Bibliography / daftar pustaka / references list (citations only)
-- Repeating page header/footer strip with no body content
-- "This page intentionally left blank" or equivalent notice
+#### Relevance Gate
+Decide by page region, not whole page.
 
-If document has no structured data, or has no content relevant to schema:
-  empty: true
-Stop immediately. Output nothing else.
+Useful data = prices, tariffs, totals, dates, IDs, names, codes, form fields, table/list rows.
+Bad prose = terms, conditions, disclaimers, privacy text, consent text, warranty text, liability text, instructions, policy paragraphs, navigation, page numbers.
+
+Rules:
+- If useful data exists anywhere on page: extract useful data. Ignore bad prose.
+- If useful data and bad prose both exist: extract useful data. Ignore bad prose only.
+- If only bad prose exists: output exactly \`empty: true\`.
+- If only cover, index, glossary, bibliography, blank, divider, foreword, preface, copyright, or navigation exists: output exactly \`empty: true\`.
+
+Never copy bad prose into notes, description, remarks, content, terms, or conditions.
+Never create rows from paragraphs.
+Never discard useful data because terms/conditions appear on the same page.
 
 ### Phase 2 — Decompose Fields
 
@@ -306,16 +304,20 @@ Extract image data to TOON matching schema.
 </rules>
 
 <schema_mapping_procedure>
-Follow steps silently before writing output:
-1. Scan page for tables, lists, and section headers.
-2. Map each schema array to the visible table/list with closest meaning. Ignore header label mismatch.
-3. Map row cells to schema fields:
-   - category: use section header or group label.
-   - name/description: use item/service name or line description.
-   - rates/prices/values: use numeric values after stripping currency/separators.
-   - type/code/class: use code, class, unit, or default to "standard" if missing.
-4. Multiple matching tables → combine into single schema array, keep source section header in category field.
-5. Prefer partial data: row with null fields is better than dropping the row.
+Do this silently before output:
+1. Mark useful data regions.
+2. Mark bad prose regions.
+3. If useful data region exists, ignore bad prose regions and extract useful data.
+4. If no useful data region exists, output exactly "empty: true" and stop.
+5. Map each schema array to matching visible table/list rows.
+6. Read field hints only as meaning hints. Do not output hint text.
+7. Map row cells to schema fields:
+   - category = section/group label.
+   - name/description = item/service name only, not paragraph text.
+   - rates/prices/values = numeric values with currency/separators removed.
+   - type/code/class = visible code/class/unit; use null if missing.
+8. Combine matching tables only when they mean the same schema array.
+9. Keep relevant partial rows; use null for missing cells.
 </schema_mapping_procedure>
 
 <how_to_read_the_schema>
@@ -387,6 +389,26 @@ Every non-empty response MUST end with document_metadata:
 Never use decimals. Never omit document_metadata.
 </how_to_read_the_schema>
 
+<negative_examples>
+BAD PAGE ONLY:
+Source: "TERMS AND CONDITIONS / SYARAT DAN KETENTUAN" plus only cancellation/privacy/warranty paragraphs.
+Output:
+empty: true
+
+MIXED PAGE:
+Source: tariff rows at top, "TERMS AND CONDITIONS" paragraphs at bottom.
+Output: tariff rows only. Do not output terms text. Do not output empty.
+
+PROSE ONLY:
+Source: long instructions or notes with no prices, dates, IDs, fields, or rows.
+Output:
+empty: true
+
+FORBIDDEN:
+notes: "Long terms and conditions paragraph..."
+description: "Privacy and liability paragraph..."
+</negative_examples>
+
 <syntax_rules>
 ${TOON_RULES}
 </syntax_rules>
@@ -403,6 +425,9 @@ Silently verify before output:
 - Raw TOON only. No markdown fences. No markdown code blocks.
 - Under every key[N]{...}: header, each row is one CSV line with exactly the same number of values as headers.
 - No '- key: value' YAML rows under typed arrays.
+- Terms/conditions/disclaimers/instructions/prose-only pages output exactly \`empty: true\`.
+- Mixed pages keep useful data and ignore only the terms/disclaimer/prose sections.
+- No large paragraph text is stored in description/notes/remarks/terms/conditions fields.
 - Non-empty response ends with document_metadata block.
 - document_metadata has both readability_score and data_usability_score as whole numbers (0 to 100).
 </final_output_checklist>`;

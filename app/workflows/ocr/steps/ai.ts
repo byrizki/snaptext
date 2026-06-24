@@ -403,6 +403,7 @@ export async function runOcrOnPage(
         model: modelId,
         providerConfig,
       }),
+      createdAt: new Date(),
     });
 
     const agent = new DurableAgent({
@@ -459,6 +460,7 @@ export async function runOcrOnPage(
             event.reasoningText ||
             event.text ||
             (event.toolCalls ? JSON.stringify(event.toolCalls) : ""),
+          createdAt: new Date(),
         });
       },
     });
@@ -705,6 +707,7 @@ export async function repairOcrPage(
         model: modelId,
         providerConfig,
       }),
+      createdAt: new Date(),
     });
 
     let parsedResult: {
@@ -819,6 +822,7 @@ export async function repairOcrPage(
           rawResponse:
             event.text ||
             (event.toolCalls ? JSON.stringify(event.toolCalls) : ""),
+          createdAt: new Date(),
         });
       },
     });
