@@ -43,6 +43,13 @@
       "when": 1782254868137,
       "tag": "0005_elite_bromley",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782308081576,
+      "tag": "0006_add_job_progress",
+      "breakpoints": true
     }
   ]
 }

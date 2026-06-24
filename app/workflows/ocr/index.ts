@@ -15,6 +15,7 @@ import {
   dbGetSystemSettings,
   dbGetOcrModelsByName,
   dbGetDefaultActiveModel,
+  dbUpdateJobProgress,
 } from "./steps";
 import type { OcrPageResult, OcrWorkflowResult } from "./types";
 import type { OcrModel } from "@/db";
@@ -120,7 +121,10 @@ export async function ocrWorkflow(
             toonSchemaTemplate,
             userId,
           );
-          if (result) pages.push(result);
+          if (result) {
+            pages.push(result);
+            await dbUpdateJobProgress(jobId, pages.length, pagesToProcess.length);
+          }
           return result;
         },
         { concurrency: systemSettings.concurrencyLength },

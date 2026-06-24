@@ -96,7 +96,7 @@ export async function GET(
   });
 
   const pagesWithData = processedPages.filter((p) => p.parsedData !== null);
-  const completedPages = pagesWithData.length;
+  const completedPages = job?.progress ?? pagesWithData.length;
 
   const isEmptyPage = (p: any) => {
     const data = p.parsedData as any;
@@ -180,7 +180,7 @@ export async function GET(
     filename: job?.filename,
     metadata: {
       totalPages: job?.totalPages ?? 0,
-      completedPages: completedPages,
+      completedPages,
       pdfUrl: job?.pdfBlobUrl,
       createdAt: job?.createdAt,
       updatedAt: job?.updatedAt,

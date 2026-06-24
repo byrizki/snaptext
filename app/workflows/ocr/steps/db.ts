@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, jobPages, jobResults, jobs, ocrModels, llmLogs, systemSettings, type OcrModel } from "@/db";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
 
@@ -173,7 +173,7 @@ export async function dbSaveReusablePages(jobId: string, reusablePages: Array<{ 
   }
   await db
     .update(jobs)
-    .set({ totalPages: reusablePages.length, updatedAt: new Date() })
+    .set({ totalPages: reusablePages.length, progress: 0, updatedAt: new Date() })
     .where(eq(jobs.id, jobId));
   console.log(`[Step] dbSaveReusablePages completed for jobId: ${jobId}`);
 }
@@ -198,9 +198,28 @@ export async function dbSaveNewPages(jobId: string, pages: Array<{ pageNumber: n
   }
   await db
     .update(jobs)
-    .set({ totalPages: pages.length, updatedAt: new Date() })
+    .set({ totalPages: pages.length, progress: 0, updatedAt: new Date() })
     .where(eq(jobs.id, jobId));
   console.log(`[Step] dbSaveNewPages completed for jobId: ${jobId}`);
+}
+
+export async function dbUpdateJobProgress(
+  jobId: string,
+  completedPages: number,
+  totalPages: number,
+): Promise<void> {
+  "use step";
+  const safeCompleted = Math.max(0, Math.min(completedPages, totalPages));
+  console.log(`[Step] dbUpdateJobProgress jobId=${jobId} progress=${safeCompleted}/${totalPages}`);
+  const db = getDb();
+  await db
+    .update(jobs)
+    .set({
+      progress: sql`greatest(${jobs.progress}, ${safeCompleted})`,
+      totalPages,
+      updatedAt: new Date(),
+    })
+    .where(eq(jobs.id, jobId));
 }
 
 export async function dbSaveOcrPageResult(
@@ -310,6 +329,7 @@ export async function finalizeJob(
         status,
         error: error || null,
         totalPages,
+        progress: sql`greatest(${jobs.progress}, ${status === "completed" ? (totalPages ?? pages?.length ?? 0) : (pages?.length ?? 0)})`,
         updatedAt: new Date(),
       })
       .where(eq(jobs.id, jobId));

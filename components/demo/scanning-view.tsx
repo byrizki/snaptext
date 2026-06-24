@@ -30,8 +30,10 @@ export function ScanningView({
     }
   };
 
-  const progressPercent =
-    totalPages > 0 ? Math.round((pagesProcessed / totalPages) * 100) : null;
+  const hasPageProgress = totalPages > 0 && pagesProcessed > 0;
+  const progressPercent = hasPageProgress
+    ? Math.round((pagesProcessed / totalPages) * 100)
+    : null;
 
   return (
     <div className="relative flex flex-col w-full items-center gap-8">
@@ -67,6 +69,15 @@ export function ScanningView({
         )}
       </div>
 
+      <div className="w-full max-w-xs rounded-2xl border border-blue-500/15 bg-blue-500/[0.03] p-3 text-center">
+        <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+          Scan is running
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+          Page writes are batched at finalization, so detailed counts may appear near the end.
+        </p>
+      </div>
+
       {progressPercent !== null ? (
         <div className="w-full max-w-xs space-y-2">
           <div className="flex items-center justify-between text-xs text-zinc-500">
@@ -83,14 +94,18 @@ export function ScanningView({
           </div>
         </div>
       ) : (
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="size-1.5 rounded-full bg-blue-500 animate-bounce"
-              style={{ animationDelay: `${i * 0.15}s` }}
+        <div className="w-full max-w-xs space-y-2">
+          <div className="flex items-center justify-between text-xs text-zinc-500">
+            <span>{totalPages > 0 ? `Preparing ${totalPages} pages` : "Preparing pages"}</span>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Working…</span>
+          </div>
+          <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <motion.div
+              className="absolute inset-y-0 w-1/2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+              animate={{ x: ["-120%", "220%"] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
             />
-          ))}
+          </div>
         </div>
       )}
 

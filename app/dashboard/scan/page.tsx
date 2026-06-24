@@ -23,10 +23,10 @@ export default function DashboardScanPage() {
   const [selectedModelId, setSelectedModelId] = useState<string>("");
 
   useEffect(() => {
-    if (runId && (status === "scanning" || status === "completed")) {
+    if (runId) {
       router.push(`/dashboard/scan/${runId}`);
     }
-  }, [runId, status, router]);
+  }, [runId, router]);
 
   const handleFileSelect = (file: File) => {
     if (!file) {

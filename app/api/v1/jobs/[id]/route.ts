@@ -125,7 +125,7 @@ export async function GET(
     });
 
     const pagesWithData = processedPages.filter((p) => p.parsedData !== null);
-    const completedPages = pagesWithData.length;
+    const completedPages = job.progress ?? pagesWithData.length;
 
     const isEmptyPage = (p: any) => {
       const pageData = p.parsedData as any;

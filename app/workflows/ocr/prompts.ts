@@ -56,15 +56,26 @@ Example:
 Format: key[N]{col1,col2,...}:
 Indent each row.
 Headers: lower_snake_case, no quotes.
-Row values: exactly C values.
+Row values: exactly C comma-separated values.
 Strings in object arrays: always double-quoted.
 Numbers, booleans: never quoted.
+Never use YAML object-list syntax under a typed object array.
 
 Example:
   items[3]{id,description,qty,unit_price,total}:
     "1","Widget A",2,15.00,30.00
     "2","Widget B",1,25.00,25.00
     "3","Widget C",3,10.00,30.00
+
+Forbidden object-array YAML mix:
+  items[1]{id,description,qty}:
+    - id: "1"
+      description: Widget A
+      qty: 2
+
+Correct replacement:
+  items[1]{id,description,qty}:
+    "1","Widget A",2
 
 ### Quoting
 Outside object arrays: quote only if value contains comma, colon, or newline.
@@ -73,7 +84,12 @@ Inside object arrays: all strings must be double-quoted.
 - Yes: address: "123 Main St, Suite 400"
 - No: total: "1250.00" (numeric, no quotes)
 - No: active: "true" (boolean, no quotes)
-- No: name: "Alice" (clean string, no quotes)`;
+- No: name: "Alice" (clean string, no quotes)
+
+### Critical syntax guard
+If a line has key[N]{...}: then every child line must be a CSV row with exactly the header count.
+Do not put '- key: value' rows below key[N]{...}:.
+Do not mix YAML mappings with TOON typed arrays.`;
 
 /**
  * A single, rich worked example the model can imitate.
@@ -286,6 +302,7 @@ Extract image data to TOON matching schema.
 11. Forbidden: flattening nested arrays or objects (like tariffs[N]) into a single flat CSV row block. Always use the exact nested format with "-" indentation.
 12. Forbidden: outputting raw JSON lists (like [...]) or JSON objects (like {...}) inside TOON cells or values.
 13. Omit irrelevant data: If document content has no semantically matching schema field, ignore and do not extract it. Do not force-map unrelated data into existing schema keys.
+14. For schema arrays written as key[N]{field1,field2}:, rows MUST be CSV-style only. Forbidden below that header: '- field1: value' or any YAML object mapping.
 </rules>
 
 <schema_mapping_procedure>
@@ -317,6 +334,15 @@ Simple Array Example:
   Output: items[2]{id,description,qty,price}:
             "1","Premium Widget",2,500.00
             "2","Shipping Fee",1,40.50
+
+Typed arrays are not YAML lists. This is invalid and will fail:
+  documents[1]{type,date,conclusion}:
+    - type: Laporan Medis Awal
+      date: 11/02
+      conclusion: null
+Correct:
+  documents[1]{type,date,conclusion}:
+    "Laporan Medis Awal","11/02",null
 
 Nested Array Example:
   Schema: tariffs[N]:
@@ -375,6 +401,8 @@ document_metadata:
 <final_output_checklist>
 Silently verify before output:
 - Raw TOON only. No markdown fences. No markdown code blocks.
+- Under every key[N]{...}: header, each row is one CSV line with exactly the same number of values as headers.
+- No '- key: value' YAML rows under typed arrays.
 - Non-empty response ends with document_metadata block.
 - document_metadata has both readability_score and data_usability_score as whole numbers (0 to 100).
 </final_output_checklist>`;
