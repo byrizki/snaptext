@@ -16,6 +16,8 @@ import {
   dbGetOcrModelsByName,
   dbGetDefaultActiveModel,
   dbUpdateJobProgress,
+  dbSaveNewPages,
+  dbSaveReusablePages,
 } from "./steps";
 import type { OcrPageResult, OcrWorkflowResult } from "./types";
 import type { OcrModel } from "@/db";
@@ -83,6 +85,7 @@ export async function ocrWorkflow(
     if (pageImages.length === 0 || !pageImages.every((p) => p.pageBlobUrl)) {
       const reusablePages = await dbFindReusablePages(jobId, job.fileHash);
       if (reusablePages.length > 0) {
+        await dbSaveReusablePages(jobId, reusablePages);
         pageImages = reusablePages as any;
       } else {
         const extracted = await extractPdfPageImages(
@@ -90,6 +93,7 @@ export async function ocrWorkflow(
           jobId,
           job.fileHash,
         );
+        await dbSaveNewPages(jobId, extracted);
         pageImages = extracted as any;
       }
     }
@@ -123,7 +127,11 @@ export async function ocrWorkflow(
           );
           if (result) {
             pages.push(result);
-            await dbUpdateJobProgress(jobId, pages.length, pagesToProcess.length);
+            const completedPages = pages.length;
+            const progressUpdateInterval = Math.max(1, Math.ceil(pagesToProcess.length / 20));
+            if (completedPages === 1 || completedPages === pagesToProcess.length || completedPages % progressUpdateInterval === 0) {
+              await dbUpdateJobProgress(jobId, completedPages, pagesToProcess.length);
+            }
           }
           return result;
         },

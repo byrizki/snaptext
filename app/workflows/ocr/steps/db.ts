@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import { fetch } from "workflow";
 import { getDb, jobPages, jobResults, jobs, ocrModels, llmLogs, systemSettings, type OcrModel } from "@/db";
 import { clearOcrProgress, setOcrProgress } from "@/lib/ocr-progress-store";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
@@ -213,7 +212,7 @@ export async function dbUpdateJobProgress(
   const safeCompleted = Math.max(0, Math.min(completedPages, totalPages));
   const startedAt = Date.now();
   console.log(`[Progress] dbUpdateJobProgress jobId=${jobId} progress=${safeCompleted}/${totalPages}`);
-  await setOcrProgress(jobId, safeCompleted, { fetcher: fetch });
+  await setOcrProgress(jobId, safeCompleted);
   console.log(
     `[Progress] dbUpdateJobProgress completed jobId=${jobId} progress=${safeCompleted}/${totalPages} duration=${Date.now() - startedAt}ms`,
   );
@@ -330,7 +329,7 @@ export async function finalizeJob(
         updatedAt: new Date(),
       })
       .where(eq(jobs.id, jobId));
-    await clearOcrProgress(jobId, { fetcher: fetch });
+    await clearOcrProgress(jobId);
     console.log(`[Step] finalizeJob completed for jobId: ${jobId}`);
   } catch (error) {
     console.error(`🔥 Error in finalizeJob step for jobId: ${jobId}`, error);

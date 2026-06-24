@@ -69,15 +69,6 @@ export function ScanningView({
         )}
       </div>
 
-      <div className="w-full max-w-xs rounded-2xl border border-blue-500/15 bg-blue-500/[0.03] p-3 text-center">
-        <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-          Scan is running
-        </p>
-        <p className="mt-1 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Page writes are batched at finalization, so detailed counts may appear near the end.
-        </p>
-      </div>
-
       {progressPercent !== null ? (
         <div className="w-full max-w-xs space-y-2">
           <div className="flex items-center justify-between text-xs text-zinc-500">

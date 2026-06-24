@@ -1,5 +1,7 @@
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+import { fetch } from "workflow";
+
+const REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+const REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
 const PROGRESS_TTL_SECONDS = 60 * 60 * 6;
 
 function progressKey(jobId: string): string {
@@ -12,14 +14,14 @@ type OcrProgressStoreOptions = {
   fetcher?: FetchLike;
 };
 
-async function redisCommand<T>(command: unknown[], options: OcrProgressStoreOptions = {}): Promise<T | null> {
-  if (!REDIS_URL || !REDIS_TOKEN) return null;
+async function redisRestCommand<T>(command: unknown[], options: OcrProgressStoreOptions = {}): Promise<T | null> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null;
 
   const fetcher = options.fetcher ?? fetch;
-  const response = await fetcher(REDIS_URL, {
+  const response = await fetcher(REDIS_REST_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${REDIS_TOKEN}`,
+      Authorization: `Bearer ${REDIS_REST_TOKEN}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(command),
@@ -40,7 +42,7 @@ export async function getOcrProgress(
   options: OcrProgressStoreOptions = {},
 ): Promise<number | null> {
   try {
-    const value = await redisCommand<string | number | null>(["GET", progressKey(jobId)], options);
+    const value = await redisRestCommand<string | number | null>(["GET", progressKey(jobId)], options);
     if (value === null || value === undefined) return null;
 
     const progress = Number(value);
@@ -69,7 +71,7 @@ redis.call("EXPIRE", KEYS[1], ARGV[2])
 return current
 `;
 
-    const value = await redisCommand<number>([
+    const value = await redisRestCommand<number>([
       "EVAL",
       script,
       1,
@@ -89,7 +91,7 @@ export async function clearOcrProgress(
   options: OcrProgressStoreOptions = {},
 ): Promise<void> {
   try {
-    await redisCommand<number>(["DEL", progressKey(jobId)], options);
+    await redisRestCommand<number>(["DEL", progressKey(jobId)], options);
   } catch (error) {
     console.warn(`[OCR Progress] Redis cleanup failed for job ${jobId}; key will expire by TTL`, error);
   }
