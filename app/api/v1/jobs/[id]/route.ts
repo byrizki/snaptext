@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getDb, jobPages, jobs, ocrModels } from "@/db";
+import { getOcrProgress } from "@/lib/ocr-progress-store";
 import { validateApiKey } from "@/lib/api-key";
 import { reconcileOcrJobStatus } from "@/lib/ocr-job-status";
 import { decodeToon } from "@/lib/toon-parser";
@@ -125,7 +126,8 @@ export async function GET(
     });
 
     const pagesWithData = processedPages.filter((p) => p.parsedData !== null);
-    const completedPages = job.progress ?? pagesWithData.length;
+    const redisProgress = await getOcrProgress(job.id);
+    const completedPages = redisProgress ?? job.progress ?? pagesWithData.length;
 
     const isEmptyPage = (p: any) => {
       const pageData = p.parsedData as any;

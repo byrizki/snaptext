@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, jobPages, jobResults, jobs, ocrModels, llmLogs, systemSettings, type OcrModel } from "@/db";
+import { clearOcrProgress, setOcrProgress } from "@/lib/ocr-progress-store";
 import { OCR_TEXT_MODEL, OCR_VISION_MODEL } from "../models";
 
 export async function dbGetOcrModel(modelId: string): Promise<OcrModel | undefined> {
@@ -211,15 +212,7 @@ export async function dbUpdateJobProgress(
   "use step";
   const safeCompleted = Math.max(0, Math.min(completedPages, totalPages));
   console.log(`[Step] dbUpdateJobProgress jobId=${jobId} progress=${safeCompleted}/${totalPages}`);
-  const db = getDb();
-  await db
-    .update(jobs)
-    .set({
-      progress: sql`greatest(${jobs.progress}, ${safeCompleted})`,
-      totalPages,
-      updatedAt: new Date(),
-    })
-    .where(eq(jobs.id, jobId));
+  await setOcrProgress(jobId, safeCompleted);
 }
 
 export async function dbSaveOcrPageResult(
@@ -333,6 +326,7 @@ export async function finalizeJob(
         updatedAt: new Date(),
       })
       .where(eq(jobs.id, jobId));
+    await clearOcrProgress(jobId);
     console.log(`[Step] finalizeJob completed for jobId: ${jobId}`);
   } catch (error) {
     console.error(`🔥 Error in finalizeJob step for jobId: ${jobId}`, error);
