@@ -2,6 +2,7 @@
 import { type OcrModel } from "@/db";
 import { getModelId } from "@/lib/provider-mapping";
 import { decodeToon } from "@/lib/toon-parser";
+import { tryDecodeToonWithRepair } from "@/lib/toon-repair";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { DurableAgent } from "@workflow/ai/agent";
@@ -516,14 +517,23 @@ export async function runOcrOnPage(
       };
     }
 
-    let rawToon_decoded: Record<string, unknown>;
+    let rawToonDecoded: Record<string, unknown>;
+    let canonicalRawToon = rawToon;
     let parseError: string | null = null;
+    let deterministicRepairLog: string[] = [];
     try {
-      const trimmed = rawToon.trim();
-      rawToon_decoded =
-        trimmed === "empty: true"
-          ? { empty: true }
-          : (decodeToon(trimmed) as Record<string, unknown>);
+      const decoded = tryDecodeToonWithRepair(rawToon, toonSchemaTemplate);
+      rawToonDecoded = decoded.data;
+      canonicalRawToon = decoded.rawToon;
+      deterministicRepairLog = decoded.repairLog;
+      if (decoded.repaired) {
+        logOcrDebug("TOON deterministic repair applied", {
+          jobId,
+          pageNumber,
+          repairLog: deterministicRepairLog,
+          repairedToon: canonicalRawToon,
+        });
+      }
     } catch (err) {
       parseError = err instanceof Error ? err.message : String(err);
       console.error("[OCR Error] TOON decode failed:", err);
@@ -534,29 +544,35 @@ export async function runOcrOnPage(
         rawToon,
         schemaTemplate: toonSchemaTemplate,
       });
-      rawToon_decoded = {
+      rawToonDecoded = {
         raw_text: rawToon,
         parse_error: true,
         error: parseError,
       };
     }
 
-    const data = rawToon_decoded;
+    const data = rawToonDecoded;
 
     const log = [
       `[${startedAt}] OCR started — model: ${modelId}`,
       `[N/A] Raw response: ${rawToon}`,
+      deterministicRepairLog.length > 0
+        ? `[N/A] Repaired response: ${canonicalRawToon}`
+        : null,
       `[N/A] OCR complete — finish_reason: ${finishReason} (Steps: ${steps.length})`,
       `[N/A] Tokens — input: ${inputTokens}, output: ${outputTokens}`,
+      deterministicRepairLog.length > 0
+        ? `[N/A] TOON deterministic repair: ${deterministicRepairLog.join("; ")}`
+        : null,
       parseError
         ? `[N/A] TOON parse error: ${parseError}`
         : `[N/A] TOON decoded successfully`,
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     const result = {
       pageNumber,
       pageBlobUrl,
-      rawToon,
+      rawToon: canonicalRawToon,
       data,
       model: modelId,
       usage: {

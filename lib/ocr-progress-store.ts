@@ -6,10 +6,17 @@ function progressKey(jobId: string): string {
   return `ocr:progress:${jobId}`;
 }
 
-async function redisCommand<T>(command: unknown[]): Promise<T | null> {
+type FetchLike = typeof fetch;
+
+type OcrProgressStoreOptions = {
+  fetcher?: FetchLike;
+};
+
+async function redisCommand<T>(command: unknown[], options: OcrProgressStoreOptions = {}): Promise<T | null> {
   if (!REDIS_URL || !REDIS_TOKEN) return null;
 
-  const response = await fetch(REDIS_URL, {
+  const fetcher = options.fetcher ?? fetch;
+  const response = await fetcher(REDIS_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${REDIS_TOKEN}`,
@@ -28,9 +35,12 @@ async function redisCommand<T>(command: unknown[]): Promise<T | null> {
   return payload.result ?? null;
 }
 
-export async function getOcrProgress(jobId: string): Promise<number | null> {
+export async function getOcrProgress(
+  jobId: string,
+  options: OcrProgressStoreOptions = {},
+): Promise<number | null> {
   try {
-    const value = await redisCommand<string | number | null>(["GET", progressKey(jobId)]);
+    const value = await redisCommand<string | number | null>(["GET", progressKey(jobId)], options);
     if (value === null || value === undefined) return null;
 
     const progress = Number(value);
@@ -41,7 +51,11 @@ export async function getOcrProgress(jobId: string): Promise<number | null> {
   }
 }
 
-export async function setOcrProgress(jobId: string, completedPages: number): Promise<number | null> {
+export async function setOcrProgress(
+  jobId: string,
+  completedPages: number,
+  options: OcrProgressStoreOptions = {},
+): Promise<number | null> {
   try {
     const safeCompleted = Math.max(0, Math.floor(completedPages));
     const script = `
@@ -62,7 +76,7 @@ return current
       progressKey(jobId),
       safeCompleted,
       PROGRESS_TTL_SECONDS,
-    ]);
+    ], options);
     return typeof value === "number" ? value : null;
   } catch (error) {
     console.warn(`[OCR Progress] Redis write failed for job ${jobId}; continuing without live progress`, error);
@@ -70,9 +84,12 @@ return current
   }
 }
 
-export async function clearOcrProgress(jobId: string): Promise<void> {
+export async function clearOcrProgress(
+  jobId: string,
+  options: OcrProgressStoreOptions = {},
+): Promise<void> {
   try {
-    await redisCommand<number>(["DEL", progressKey(jobId)]);
+    await redisCommand<number>(["DEL", progressKey(jobId)], options);
   } catch (error) {
     console.warn(`[OCR Progress] Redis cleanup failed for job ${jobId}; key will expire by TTL`, error);
   }
