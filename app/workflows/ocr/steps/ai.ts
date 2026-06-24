@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { getDb, jobs, type OcrModel } from "@/db";
+import { type OcrModel } from "@/db";
 import { getModelId } from "@/lib/provider-mapping";
 import { decodeToon } from "@/lib/toon-parser";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { DurableAgent } from "@workflow/ai/agent";
 import { stepCountIs, createGateway } from "ai";
-import { eq } from "drizzle-orm";
 import { createWorkersAI } from "workers-ai-provider";
 import sharp from "sharp";
 import { FatalError, fetch, getStepMetadata, RetryableError } from "workflow";
@@ -14,7 +13,6 @@ import { OCR_VISION_MODEL } from "../models";
 import { buildOcrSystemPrompt } from "../prompts";
 import { buildToonTools } from "../tools";
 import type { OcrPageResult } from "../types";
-import { dbSaveLlmLogsBatch, dbSaveOcrPageResult, dbIsJobCancelled } from "./db";
 
 const predefinedProvider = {
   gateway: {
@@ -340,29 +338,10 @@ export async function runOcrOnPage(
   "use step";
   const llmLogs: any[] = [];
   const { attempt } = getStepMetadata();
-  const controller = new AbortController();
-  let checkInterval: any;
   try {
     console.log(
       `[Step] runOcrOnPage started for jobId: ${jobId}, page: ${pageNumber} (attempt: ${attempt})`,
     );
-
-    checkInterval = setInterval(async () => {
-      try {
-        const db = getDb();
-        const [job] = await db.select({ status: jobs.status }).from(jobs).where(eq(jobs.id, jobId)).limit(1);
-        if (job && job.status === "failed") {
-          console.log(`[Abort Check] Job ${jobId} is cancelled/failed. Aborting OCR AI stream on page ${pageNumber}.`);
-          controller.abort();
-          if (checkInterval) {
-            clearInterval(checkInterval);
-            checkInterval = undefined;
-          }
-        }
-      } catch (err) {
-        console.error(`[Abort Check] Error checking job status for jobId: ${jobId}, page: ${pageNumber}:`, err);
-      }
-    }, 1500);
 
     const modelId = ocrModelConfig?.modelId ?? OCR_VISION_MODEL;
     const isInterfaze = modelId.includes("interfaze");
@@ -434,7 +413,6 @@ export async function runOcrOnPage(
     });
 
     const streamRes = await agent.stream({
-      abortSignal: controller.signal,
       messages: [
         {
           role: "user",
@@ -632,10 +610,6 @@ export async function runOcrOnPage(
       llmLogs,
       internalError: serializeError(error),
     };
-  } finally {
-    if (checkInterval) {
-      clearInterval(checkInterval);
-    }
   }
 }
 
@@ -658,29 +632,11 @@ export async function repairOcrPage(
   "use step";
   const llmLogs: any[] = [];
   const { attempt } = getStepMetadata();
-  const controller = new AbortController();
-  let checkInterval: any;
   try {
     console.log(
       `[Step] repairOcrPage started for jobId: ${jobId}, page: ${pageNumber} (attempt: ${attempt})`,
     );
 
-    checkInterval = setInterval(async () => {
-      try {
-        const db = getDb();
-        const [job] = await db.select({ status: jobs.status }).from(jobs).where(eq(jobs.id, jobId)).limit(1);
-        if (job && job.status === "failed") {
-          console.log(`[Abort Check] Job ${jobId} is cancelled/failed. Aborting repair AI stream on page ${pageNumber}.`);
-          controller.abort();
-          if (checkInterval) {
-            clearInterval(checkInterval);
-            checkInterval = undefined;
-          }
-        }
-      } catch (err) {
-        console.error(`[Abort Check] Error checking job status for jobId: ${jobId}, page: ${pageNumber}:`, err);
-      }
-    }, 1500);
     const modelId = repairModelConfig?.modelId ?? "@vercel/google/gemini-2.5-flash-lite-preview-09-2025";
     const isInterfaze = modelId.includes("interfaze");
     const imageData = isInterfaze
@@ -759,7 +715,6 @@ export async function repairOcrPage(
     });
 
     const streamRes = await agent.stream({
-      abortSignal: controller.signal,
       messages: [
         {
           role: "user",
@@ -969,10 +924,6 @@ export async function repairOcrPage(
       llmLogs,
       internalError: serializeError(error),
     };
-  } finally {
-    if (checkInterval) {
-      clearInterval(checkInterval);
-    }
   }
 }
 
@@ -1057,13 +1008,6 @@ export async function processOcrPage(
     };
   }
 
-  // Check if job was cancelled/stopped
-  const isCancelled = await dbIsJobCancelled(jobId);
-  if (isCancelled) {
-    console.log(`[Workflow] Job ${jobId} is cancelled/failed. Skipping page ${pageNumber}.`);
-    return null;
-  }
-
   // Get sorted candidates list based on rotation mode and page number
   const candidates = getSortedCandidates(ocrModelsList, rotationMode, pageNumber);
 
@@ -1102,13 +1046,6 @@ export async function processOcrPage(
       const { llmLogs: _, internalError: __, ...re } = ocrResponse;
       result = re;
 
-      // Check if job was cancelled during OCR
-      const isCancelledPostOcr = await dbIsJobCancelled(jobId);
-      if (isCancelledPostOcr) {
-        console.log(`[Workflow] Job ${jobId} was cancelled/failed during OCR. Skipping page ${pageNumber}.`);
-        return null;
-      }
-
       // If there is an internalError in OCR, throw to trigger fallback
       if (internalError) {
         throw deserializeError(internalError);
@@ -1135,13 +1072,6 @@ export async function processOcrPage(
           repairModelConfig,
         );
 
-        // Check if job was cancelled during repair
-        const isCancelledPostRepair = await dbIsJobCancelled(jobId);
-        if (isCancelledPostRepair) {
-          console.log(`[Workflow] Job ${jobId} was cancelled/failed during repair. Skipping page ${pageNumber}.`);
-          return null;
-        }
-
         // Merge logs
         llmLogs = [...llmLogs, ...(repairResponse.llmLogs || [])];
 
@@ -1164,15 +1094,9 @@ export async function processOcrPage(
         throw new Error(result.data.error || "TOON extraction validation and repair failed");
       }
 
-      // If we got here, this candidate model succeeded! Save results and return.
-      await dbSaveOcrPageResult(jobId, pageNumber, result);
-
-      if (llmLogs && llmLogs.length > 0) {
-        await dbSaveLlmLogsBatch(jobId, llmLogs);
-      }
-
+      // If we got here, this candidate model succeeded. Persist it during workflow finalization.
       console.log(`[Workflow] OCR on page ${pageNumber} succeeded using model ${candidateModel.modelId}`);
-      return result;
+      return { ...result, llmLogs };
 
     } catch (err: any) {
       console.warn(
@@ -1196,23 +1120,13 @@ export async function processOcrPage(
         };
       }
       
-      // Save logs immediately so we don't drop costs of failed attempts
+      // Defer log persistence to workflow finalization to keep scan steps DB-light.
       if (llmLogs && llmLogs.length > 0) {
-        try {
-          await dbSaveLlmLogsBatch(jobId, llmLogs);
-        } catch (dbErr) {
-          console.error(`Failed to save intermediate failed OCR candidate logs to DB:`, dbErr);
-        }
+        lastFailedResult = {
+          ...lastFailedResult,
+          llmLogs: [...(lastFailedResult?.llmLogs || []), ...llmLogs],
+        };
       }
-    }
-  }
-
-  // If all candidates failed, save the last candidate's failed result (logs are already saved in the catch block)
-  if (lastFailedResult) {
-    try {
-      await dbSaveOcrPageResult(jobId, pageNumber, lastFailedResult);
-    } catch (dbErr) {
-      console.error(`Failed to save final failed OCR page result to DB:`, dbErr);
     }
   }
 

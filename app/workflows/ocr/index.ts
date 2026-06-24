@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { FatalError } from "workflow";
+import { stopHook } from "./hooks";
 import pMap from "p-map";
 
 import {
@@ -10,8 +11,6 @@ import {
   dbGetJob,
   dbGetExistingPages,
   dbFindReusablePages,
-  dbSaveReusablePages,
-  dbSaveNewPages,
   dbGetOcrModel,
   dbGetSystemSettings,
   dbGetOcrModelsByName,
@@ -26,6 +25,10 @@ export async function ocrWorkflow(
   userId?: string | null,
 ): Promise<OcrWorkflowResult> {
   "use workflow";
+
+  const pages: OcrPageResult[] = [];
+  let pagesToProcess: any[] = [];
+  const stopSignal = stopHook.create({ token: `ocr-stop:${jobId}` });
 
   try {
     await initializeJob(jobId);
@@ -79,7 +82,6 @@ export async function ocrWorkflow(
     if (pageImages.length === 0 || !pageImages.every((p) => p.pageBlobUrl)) {
       const reusablePages = await dbFindReusablePages(jobId, job.fileHash);
       if (reusablePages.length > 0) {
-        await dbSaveReusablePages(jobId, reusablePages);
         pageImages = reusablePages as any;
       } else {
         const extracted = await extractPdfPageImages(
@@ -87,7 +89,6 @@ export async function ocrWorkflow(
           jobId,
           job.fileHash,
         );
-        await dbSaveNewPages(jobId, extracted);
         pageImages = extracted as any;
       }
     }
@@ -95,7 +96,7 @@ export async function ocrWorkflow(
     console.log(
       `[Workflow] Image-based PDF — all ${pageImages.length} pages will run vision OCR`,
     );
-    const pagesToProcess = pageImages;
+    pagesToProcess = pageImages;
 
     const systemSettings = await dbGetSystemSettings();
 
@@ -105,28 +106,40 @@ export async function ocrWorkflow(
       repairModelConfig = await dbGetOcrModel(systemSettings.repairModelId);
     }
 
-    const pagesResults = await pMap(
-      pagesToProcess,
-      async (p: any): Promise<OcrPageResult | null> => {
-        return processOcrPage(
-          p,
-          jobId,
-          job.fileHash,
-          ocrModelsList,
-          systemSettings.rotationMode ?? "round-robin",
-          repairModelConfig,
-          toonSchemaTemplate,
-          userId,
-        );
-      },
-      { concurrency: systemSettings.concurrencyLength },
+    const pagesResults = await Promise.race([
+      pMap(
+        pagesToProcess,
+        async (p: any): Promise<OcrPageResult | null> => {
+          const result = await processOcrPage(
+            p,
+            jobId,
+            job.fileHash,
+            ocrModelsList,
+            systemSettings.rotationMode ?? "round-robin",
+            repairModelConfig,
+            toonSchemaTemplate,
+            userId,
+          );
+          if (result) pages.push(result);
+          return result;
+        },
+        { concurrency: systemSettings.concurrencyLength },
+      ),
+      stopSignal.then(({ reason }) => {
+        throw new Error(reason || "OCR workflow cancelled by user");
+      }),
+    ]);
+
+    pages.push(
+      ...pagesResults.filter(
+        (p): p is OcrPageResult => p !== null && !pages.some((saved) => saved.pageNumber === p.pageNumber),
+      ),
     );
-    const pages = pagesResults.filter((p): p is OcrPageResult => p !== null);
 
     // Sort pages by pageNumber to maintain original order since pMap might process out of order
     pages.sort((a, b) => a.pageNumber - b.pageNumber);
 
-    await finalizeJob(jobId, "completed");
+    await finalizeJob(jobId, "completed", undefined, pages, pagesToProcess.length);
 
     return {
       jobId,
@@ -139,8 +152,11 @@ export async function ocrWorkflow(
   } catch (err) {
     const errorMessage =
       err instanceof Error ? err.message : "OCR workflow failed unexpectedly";
-    await finalizeJob(jobId, "failed", errorMessage);
+    pages.sort((a, b) => a.pageNumber - b.pageNumber);
+    await finalizeJob(jobId, "failed", errorMessage, pages, pagesToProcess.length || pages.length);
     throw new FatalError(errorMessage);
+  } finally {
+    stopSignal.dispose();
   }
 }
 

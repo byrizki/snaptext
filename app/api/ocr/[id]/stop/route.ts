@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getRun } from "workflow/api";
 
 import { getDb, jobs } from "@/db";
+import { stopHook } from "@/app/workflows/ocr/hooks";
 
 export const maxDuration = 30;
 
@@ -39,22 +40,30 @@ export async function POST(
       );
     }
 
-    // Cancel the workflow run via client API
-    if (job.workflowRunId) {
+    try {
+      await stopHook.resume(`ocr-stop:${job.id}`, { reason: "Job stopped by user" });
+    } catch (err: any) {
+      if (
+        !err?.name?.includes("NotFound") &&
+        !err?.message?.includes("not found")
+      ) {
+        console.error("[stop] Failed to resume stop hook:", err);
+      }
+
+      if (job.workflowRunId) {
         try {
           const run = getRun(job.workflowRunId);
           await run.cancel();
-        } catch (err: any) {
-        if (
-          !err?.name?.includes("NotFound") &&
-          !err?.message?.includes("not found")
-        ) {
-          console.error("[stop] Failed to cancel workflow run:", err);
+        } catch (cancelErr: any) {
+          if (
+            !cancelErr?.name?.includes("NotFound") &&
+            !cancelErr?.message?.includes("not found")
+          ) {
+            console.error("[stop] Failed to cancel workflow run:", cancelErr);
+          }
         }
       }
     }
-
-
 
     // Mark the DB record as failed immediately so the UI reflects the change
     await db

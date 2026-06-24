@@ -5,6 +5,7 @@ import { getRun } from "workflow/api";
 import { z } from "zod";
 
 import { getDb, jobs } from "@/db";
+import { stopHook } from "@/app/workflows/ocr/hooks";
 import { validateApiKey } from "@/lib/api-key";
 
 export const JobIdParam = z.object({
@@ -83,20 +84,28 @@ export async function POST(
       );
     }
 
-    // Cancel workflow run via client API
     try {
-      const run = getRun(job.workflowRunId);
-      await run.cancel();
+      await stopHook.resume(`ocr-stop:${job.id}`, { reason: "Cancelled via Developer API" });
     } catch (err: any) {
       if (
         !err?.name?.includes("NotFound") &&
         !err?.message?.includes("not found")
       ) {
-        console.error("[cancel v1] Failed to cancel workflow run:", err);
+        console.error("[cancel v1] Failed to resume stop hook:", err);
+      }
+
+      try {
+        const run = getRun(job.workflowRunId);
+        await run.cancel();
+      } catch (cancelErr: any) {
+        if (
+          !cancelErr?.name?.includes("NotFound") &&
+          !cancelErr?.message?.includes("not found")
+        ) {
+          console.error("[cancel v1] Failed to cancel workflow run:", cancelErr);
+        }
       }
     }
-
-
 
     // Mark the DB record as failed immediately
     await db

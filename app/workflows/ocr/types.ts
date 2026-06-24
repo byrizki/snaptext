@@ -13,6 +13,14 @@ export interface OcrPageResult {
   model: string;
   usage: UsageData;
   finishReason: string;
+  log?: string;
+  llmLogs?: Array<{
+    stepName: string;
+    model: string;
+    usage: UsageData;
+    pageNumber?: number;
+    rawResponse?: string;
+  }>;
 }
 
 export interface OcrWorkflowResult {

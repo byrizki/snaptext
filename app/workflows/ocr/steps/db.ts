@@ -256,15 +256,62 @@ export async function dbSaveJobResult(
 export async function finalizeJob(
   jobId: string,
   status: "completed" | "failed",
-  error?: string
+  error?: string,
+  pages?: Array<{
+    pageNumber: number;
+    pageBlobUrl: string;
+    rawToon?: string;
+    data?: any;
+    model?: string;
+    finishReason?: string;
+    log?: string;
+    llmLogs?: Array<{
+      stepName: string;
+      model: string;
+      usage: { promptTokens: number; completionTokens: number; totalTokens: number };
+      pageNumber?: number;
+      rawResponse?: string;
+    }>;
+  }>,
+  totalPages?: number
 ): Promise<void> {
   "use step";
   try {
     console.log(`[Step] finalizeJob setting status to '${status}' for jobId: ${jobId}`);
     const db = getDb();
+
+    if (pages) {
+      await db.delete(jobPages).where(eq(jobPages.jobId, jobId));
+
+      if (pages.length > 0) {
+        await db.insert(jobPages).values(
+          pages.map((p) => ({
+            jobId,
+            pageNumber: p.pageNumber,
+            pageBlobUrl: p.pageBlobUrl,
+            toonOutput: p.rawToon,
+            parsedData: p.data,
+            model: p.model || OCR_VISION_MODEL,
+            finishReason: p.finishReason,
+            log: p.log,
+          }))
+        );
+
+        const logs = pages.flatMap((p) => p.llmLogs || []);
+        if (logs.length > 0) {
+          await dbSaveLlmLogsBatch(jobId, logs);
+        }
+      }
+    }
+
     await db
       .update(jobs)
-      .set({ status, error: error || null, updatedAt: new Date() })
+      .set({
+        status,
+        error: error || null,
+        totalPages,
+        updatedAt: new Date(),
+      })
       .where(eq(jobs.id, jobId));
     console.log(`[Step] finalizeJob completed for jobId: ${jobId}`);
   } catch (error) {
